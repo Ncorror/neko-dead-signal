@@ -4,6 +4,9 @@ config_version=5
 config/name="REINA: DEAD SIGNAL — RTS"
 run/main_scene="res://scenes/main.tscn"
 
+[autoload]
+GameState="*res://scripts/game_state.gd"
+
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=720
