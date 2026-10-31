@@ -1,0 +1,22 @@
+# Godot
+.godot/
+.import/
+.export/
+android/build/
+# Android binaries / keys
+*.apk
+*.aab
+*.keystore
+*.jks
+*.p12
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# OS and editor
+.DS_Store
+.idea/
+.vscode/
+__pycache__/

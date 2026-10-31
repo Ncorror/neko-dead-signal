@@ -1,0 +1,12 @@
+name: Repository structure
+on:
+  push:
+  pull_request:
+
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check source layout
+        run: bash scripts/verify-layout.sh
