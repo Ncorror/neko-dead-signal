@@ -58,6 +58,11 @@ func _ready() -> void:
     confirm_button.pressed.connect(_on_confirm_pressed)
     layout.add_child(confirm_button)
 
+    var deploy_button := Button.new()
+    deploy_button.text = "Тестовая высадка на планету"
+    deploy_button.pressed.connect(_on_deploy_pressed)
+    layout.add_child(deploy_button)
+
     status_label = Label.new()
     status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     layout.add_child(status_label)
@@ -89,3 +94,7 @@ func _on_confirm_pressed() -> void:
     var faction: String = FACTIONS[faction_index]
     var officer: String = OFFICERS[faction_index][officer_index]
     status_label.text = "Выбрано: %s | %s. Следующий этап — высадка." % [faction, officer]
+
+func _on_deploy_pressed() -> void:
+    GameState.configure(faction_index, officer_index, FACTIONS[faction_index], OFFICERS[faction_index][officer_index])
+    get_tree().change_scene_to_file("res://scenes/operation.tscn")
