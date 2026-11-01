@@ -60,7 +60,22 @@ WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
 systemctl enable --now reina-rts-bootstrap.service
-systemctl --no-pager --full status reina-rts-bootstrap.service || true
+# Type=simple means systemd can report running before Python binds the socket.
+# Wait for a real HTTP 200, not just an active process.
+HEALTH_READY=0
+for attempt in $(seq 1 30); do
+  if curl --fail --silent --show-error --max-time 2        http://127.0.0.1:18777/healthz >/dev/null 2>&1; then
+    HEALTH_READY=1
+    break
+  fi
+  sleep 1
+done
+if (( ! HEALTH_READY )); then
+  systemctl --no-pager --full status reina-rts-bootstrap.service || true
+  journalctl -u reina-rts-bootstrap.service -n 70 --no-pager || true
+  echo "RTS_BOOTSTRAP_NOT_READY"
+  exit 1
+fi
 curl --fail --silent --show-error --max-time 4 http://127.0.0.1:18777/healthz
 printf '\nRTS_BOOTSTRAP_RUNNING_LOCAL_ONLY\n'
 echo "Do not expose this health stub to the Internet. Real multiplayer server not deployed."
