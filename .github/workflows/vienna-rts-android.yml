@@ -71,6 +71,15 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log; then
             exit 1
           fi
+      - name: Smoke-test orbital screen and landing scene
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          godot --headless --path client --quit-after 15 2>&1 | tee build/menu-smoke.log
+          godot --headless --path client res://scenes/operation.tscn --quit-after 15 2>&1 | tee build/landing-smoke.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/menu-smoke.log build/landing-smoke.log; then
+            exit 1
+          fi
       - name: Create RTS-only debug signing key if missing
         shell: bash
         run: |
@@ -106,5 +115,6 @@ jobs:
             client/build/*.apk
             client/build/SHA256SUMS
             build/godot-*.log
+            build/*-smoke.log
           retention-days: 14
           if-no-files-found: warn
