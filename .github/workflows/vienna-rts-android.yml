@@ -26,6 +26,12 @@ jobs:
       ANDROID_HOME: /opt/android-sdk
     steps:
       - uses: actions/checkout@v4
+      - name: Verify local server API contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s server -p 'test_*.py' -v
+
       - name: Verify RTS toolchain
         shell: bash
         run: |
