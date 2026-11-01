@@ -14,6 +14,9 @@ URL="https://github.com/actions/runner/releases/download/v${VERSION}/${ARCHIVE}"
 
 [[ $(uname -m) == x86_64 ]] || { echo "Only x86_64 is supported here"; exit 1; }
 [[ ! -e "$DIR/.runner" ]] || { echo "Already registered at $DIR; no changes"; exit 1; }
+if systemctl --no-pager --type=service --state=running 'actions.runner.*' | grep -q 'Ncorror-reina-dead-signal.*reina-game-ci'; then
+  echo "WARNING: old game runner appears active; audit it before switching to RTS."
+fi
 if [[ -d "$DIR" && -n $(ls -A "$DIR" 2>/dev/null) ]]; then
   echo "ABORT: runner directory not empty. Inspect manually."
   exit 1
@@ -58,7 +61,7 @@ echo
 [[ -n "$TOKEN" ]] || { echo "Empty token"; exit 1; }
 # Standard GitHub registration. One-time token remains in memory only.
 cd "$DIR"
-runuser -u "$USER" -- ./config.sh --unattended --url "$REPO_URL" --token "$TOKEN" --name "$NAME" --labels reina-rts-ci --work _work --replace --disableupdate
+runuser -u "$USER" -- ./config.sh --unattended --url "$REPO_URL" --token "$TOKEN" --name "$NAME" --labels reina-rts-ci --work _work
 unset TOKEN
 ./svc.sh install "$USER"
 # Add resource limits to this runner's systemd service without touching other runners.
