@@ -41,6 +41,26 @@ jobs:
           test -x "$ANDROID_HOME/build-tools/36.1.0/apksigner"
           test -d "$ANDROID_HOME/platforms/android-36"
           java -version
+      - name: Prepare writable Godot XDG directories
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # Each workflow job uses isolated writable data/config/cache directories.
+          # The system runner home may have root-owned intermediate directories
+          # from first-time export template provisioning.
+          DATA_DIR="$RUNNER_TEMP/reina-rts-xdg-data"
+          CONFIG_DIR="$RUNNER_TEMP/reina-rts-xdg-config"
+          CACHE_DIR="$RUNNER_TEMP/reina-rts-xdg-cache"
+          mkdir -p "$DATA_DIR/godot" "$CONFIG_DIR" "$CACHE_DIR"
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates"
+          test -s "$TEMPLATE_DIR/4.7.2.stable/android_debug.apk"
+          ln -s "$TEMPLATE_DIR" "$DATA_DIR/godot/export_templates"
+          {
+            echo "XDG_DATA_HOME=$DATA_DIR"
+            echo "XDG_CONFIG_HOME=$CONFIG_DIR"
+            echo "XDG_CACHE_HOME=$CACHE_DIR"
+          } >> "$GITHUB_ENV"
+          test -w "$DATA_DIR/godot"
       - name: Import and validate RTS project
         shell: bash
         run: |
