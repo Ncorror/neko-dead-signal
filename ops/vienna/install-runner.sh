@@ -56,9 +56,14 @@ install -m 0644 -o "$USER" -g "$USER" "$TEMPLATE_SOURCE" "$TEMPLATE_TARGET/andro
 echo "Get the one-hour token in Termux (separate session):"
 echo "gh api --method POST repos/Ncorror/reina-dead-signal-rts/actions/runners/registration-token --jq .token"
 echo "Never paste the token into ChatGPT."
-read -r -s -p "Paste one-time registration token: " TOKEN
-echo
-[[ -n "$TOKEN" ]] || { echo "Empty token"; exit 1; }
+if [[ -n "${REINA_RTS_REGISTRATION_TOKEN_FILE:-}" ]]; then
+  [[ -r "$REINA_RTS_REGISTRATION_TOKEN_FILE" ]] || { echo "Registration-token file unreadable"; exit 1; }
+  TOKEN="$(cat "$REINA_RTS_REGISTRATION_TOKEN_FILE")"
+else
+  read -r -s -p "Paste one-time registration token: " TOKEN
+  echo
+fi
+[[ -n "$TOKEN" ]] || { echo "Empty registration token"; exit 1; }
 # Standard GitHub registration. One-time token remains in memory only.
 cd "$DIR"
 runuser -u "$USER" -- ./config.sh --unattended --url "$REPO_URL" --token "$TOKEN" --name "$NAME" --labels reina-rts-ci --work _work
