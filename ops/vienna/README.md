@@ -1,66 +1,24 @@
-# Vienna RTS Infrastructure
+# Vienna RTS infrastructure — actual state, 2026-11-01
 
-Separate VPS: `shy-ivory` (Ubuntu 24.04; existing Reina Gateway, web, bot and old game runner live here).
-Do not remove or restart any other Reina service, and do not modify other projects.
+**Audit findings:** old GitHub repo `Ncorror/reina-dead-signal` was deleted, while its systemd runner `actions.runner.Ncorror-reina-dead-signal.reina-game-ci-01.service` and the separately running beta game server `reina-dead-signal.service` (UDP 27960) still exist on `shy-ivory`. Available RAM ~3.2 GiB and disk ~46 GiB during audit. No Docker services were found on this VPS.
 
-## 1. Identify runner and capacity (read-only)
-
-On the VPS, after cloning this repository:
+## One-shot deployment from Termux
 
 ```bash
-bash ops/vienna/audit-old-runner.sh
-bash ops/vienna/preflight.sh
+gh api "repos/Ncorror/reina-dead-signal-rts/contents/ops/vienna/deploy-one-shot-termux.sh?ref=infra/vienna-runner-server" --jq '.content' | base64 -d > "$HOME/deploy-reina-rts-vienna.sh"
+bash "$HOME/deploy-reina-rts-vienna.sh"
 ```
 
-On Termux, list only repository-scoped GitHub runners:
+GitHub authorization, SSH alias `reina`, and sudo on Vienna are needed; do not paste credentials in chat. The launcher downloads pinned deployment scripts from this private repo, obtains a short-lived registration token, sends the bundle to Vienna, and calls sudo with an interactive terminal.
 
-```bash
-gh api repos/Ncorror/reina-dead-signal/actions/runners --jq '.runners[] | [.id,.name,.status,.busy,(.labels|map(.name)|join(","))] | @tsv'
-gh api repos/Ncorror/reina-dead-signal-rts/actions/runners --jq '.runners[] | [.id,.name,.status,.busy,(.labels|map(.name)|join(","))] | @tsv'
-```
+It first installs the isolated `reina-rts-vienna-01` Actions runner and localhost-only RTS health service. Once both are healthy, it stops and disables **only** the old game runner, unless that runner still has a live Worker. It does **not** stop `reina-dead-signal.service`, change firewall ports, delete the old runner's files, or destroy beta APKs.
 
-**Do not print registration/removal tokens.** Confirm the old runner is an idle game runner scoped to `reina-dead-signal`; never delete Reina core's `reina-ci-01`.
+The old repository no longer exists, so ordinary GitHub runner deregistration via an old repository token cannot be performed. Its exact orphaned systemd service is disabled instead, with files preserved.
 
-## 2. Controlled old game runner retirement
+If the new installation fails, the old runner and game server are not deliberately stopped. Partial new files are preserved for troubleshooting. Do not force-delete them.
 
-Only after checking runner identity, path, service ownership, and that it is idle:
-- stop the exact old game's `actions.runner.*` service with that runner's `svc.sh stop`;
-- uninstall that service with `svc.sh uninstall`;
-- unregister old runner with `config.sh remove --token <one-time removal token>`, run as the old runner user;
-- keep the old runner directory and build logs as a dated restore point (do not use `rm -rf`);
-- if GitHub deregistration fails, do not destroy the runner files.
+## Reality check
 
-Old game's workflows with label `reina-game-ci` will no longer execute unless another runner with that label is registered.
+The `reina-rts-bootstrap.service` on `127.0.0.1:18777` is only a health stub. It responds `/healthz=200` and `/readyz=503`. It is **not** an authoritative online match server. Actual multiplayer simulation, synchronization, and persistent world come in later milestones.
 
-## 3. Install an isolated RTS runner
-
-```bash
-sudo bash ops/vienna/install-runner.sh
-```
-
-Run on VPS. It creates Linux user `reina-rts-ci` without sudo/docker access, registers runner label `reina-rts-ci`, and places resource limits. Registration token obtained privately from Termux when requested:
-
-```bash
-gh api --method POST repos/Ncorror/reina-dead-signal-rts/actions/runners/registration-token --jq .token
-```
-
-Use the token on the VPS terminal only; do not share it in chat. The installer checks the Godot 4.7.2/Android toolchain and copies the existing export template to the new isolated user's home.
-
-## 4. Start local-only RTS control stub
-
-```bash
-sudo bash ops/vienna/install-server.sh
-curl -fsS http://127.0.0.1:18777/healthz
-```
-
-Service: `reina-rts-bootstrap.service`. Its HTTP API binds to `127.0.0.1:18777`, with `CPUQuota=35%` and `MemoryMax=384M`. It is **only a health stub**, not online gameplay. `/readyz` intentionally returns HTTP 503.
-
-Check `sudo systemctl status reina-rts-bootstrap.service`; no UFW/firewall modifications should be necessary.
-
-## 5. Build verification
-
-New workflow: `.github/workflows/vienna-rts-android.yml`. It queues only on self-hosted label `reina-rts-ci`, builds an Android debug APK and uploads GitHub artifacts. Do not claim a successful APK before an Actions run and Android installation test.
-
-```bash
-gh run list -R Ncorror/reina-dead-signal-rts --workflow vienna-rts-android.yml --limit 5
-```
+The separate Android workflow is `.github/workflows/vienna-rts-android.yml`, with required runner label `reina-rts-ci`. No APK is considered valid until workflow results and device tests confirm it.
