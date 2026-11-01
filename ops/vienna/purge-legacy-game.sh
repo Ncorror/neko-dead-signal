@@ -35,7 +35,7 @@ if exe.name != 'runsvc.sh': sys.exit('unexpected runner executable')
 root=exe.parent
 meta=root/'.runner'
 if not meta.is_file(): sys.exit('missing old runner identity')
-j=json.loads(meta.read_text())
+j=json.loads(meta.read_text(encoding='utf-8-sig'))
 if j.get('agentName')!='reina-game-ci-01': sys.exit('runner name mismatch')
 url=str(j.get('gitHubUrl','')).rstrip('/').lower()
 if url!='https://github.com/ncorror/reina-dead-signal': sys.exit('runner repo mismatch')
