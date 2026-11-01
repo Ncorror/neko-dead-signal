@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - infra/vienna-runner-server
+      - feat/orbital-command-ui
       - main
     paths:
       - 'client/**'
