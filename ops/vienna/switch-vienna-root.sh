@@ -53,8 +53,21 @@ if [[ ! -f "/etc/systemd/system/$SERVER_SERVICE" ]]; then
   bash "$STAGE/ops/vienna/install-server.sh"
 fi
 systemctl is-active --quiet "$SERVER_SERVICE"
-curl -fsS --max-time 5 http://127.0.0.1:18777/healthz |
-  python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["healthy"] and x["match_server"] is False and x["online_gameplay"] is False'
+HEALTH_OK=0
+for attempt in $(seq 1 25); do
+  if curl -fsS --max-time 3 http://127.0.0.1:18777/healthz 2>/dev/null |
+      python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["healthy"] and x["match_server"] is False and x["online_gameplay"] is False' 2>/dev/null; then
+    HEALTH_OK=1
+    break
+  fi
+  sleep 1
+done
+if (( ! HEALTH_OK )); then
+  systemctl --no-pager --full status "$SERVER_SERVICE" || true
+  journalctl -u "$SERVER_SERVICE" -n 70 --no-pager || true
+  echo "RTS_CONTROL_SERVER_HEALTH_FAILED"
+  exit 1
+fi
 echo "RTS_CONTROL_SERVER_HEALTH_PASS (local bootstrap, NOT multiplayer)"
 
 # Repo already deleted: GitHub cannot issue old repo removal token.
