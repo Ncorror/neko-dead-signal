@@ -41,7 +41,7 @@ func _draw_orbit() -> void:
     for n in range(11):
         var v := float(n) / 11.0
         var y := planet.y + radius * (v * 1.6 - 0.7)
-        var half: float = sqrt(maxf(0.0, radius * radius - powf(y - planet.y, 2.0)))
+        var half: float = sqrt(maxf(0.0, radius * radius - pow(y - planet.y, 2.0)))
         draw_line(Vector2(planet.x - half * 0.6, y), Vector2(planet.x + half * 0.63, y), Color(0.11, 0.56, 0.62, 0.04 + v * 0.04), 1.0)
     for angle in [0.08, 0.24, 0.43, 0.62]:
         var a: float = -PI * angle
