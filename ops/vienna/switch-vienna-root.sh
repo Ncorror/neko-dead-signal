@@ -12,7 +12,7 @@ OLD_SERVICE="actions.runner.Ncorror-reina-dead-signal.reina-game-ci-01.service"
 NEW_DIR="/opt/reina-rts/runner"
 SERVER_SERVICE="reina-rts-bootstrap.service"
 TOKEN_FILE="$STAGE/registration.token"
-cleanup() { rm -f "$TOKEN_FILE"; }
+cleanup() { rm -rf -- "$STAGE"; }
 trap cleanup EXIT
 
 [[ -s "$TOKEN_FILE" ]] || { echo "Missing private registration token"; exit 1; }
@@ -23,9 +23,9 @@ trap cleanup EXIT
 python3 -m py_compile "$STAGE/server/control_api.py" "$STAGE/server/test_control_api.py"
 PYTHONPATH="$STAGE/server" python3 -m unittest discover -s "$STAGE/server" -p 'test_*.py' -v
 
-# Preserve older game server, listener 27960/udp and all archived APK files.
-echo "LEGACY_GAME_SERVER: $(systemctl is-active reina-dead-signal.service 2>/dev/null || true) (will not touch)"
-echo "LEGACY_GAME_RUNNER: $(systemctl is-active "$OLD_SERVICE" 2>/dev/null || true)"
+# Legacy game has been purged. Do not touch Reina Core or shared toolchains.
+echo "LEGACY_GAME_SERVER: $(systemctl is-active reina-dead-signal.service 2>/dev/null || true) (already purged)"
+echo "LEGACY_GAME_RUNNER: $(systemctl is-active "$OLD_SERVICE" 2>/dev/null || true) (already purged)"
 echo "CAPACITY: $(free -h | awk '/^Mem:/ {print "RAM available " $7}')"
 echo "FREE_DISK: $(df -h / | awk 'NR==2 {print $4}')"
 
@@ -70,5 +70,5 @@ if systemctl cat "$OLD_SERVICE" >/dev/null 2>&1; then
 else
   echo "OLD_RUNNER_UNIT_ABSENT: nothing to stop"
 fi
-echo "OLD_GAME_SERVER_STILL_$(systemctl is-active reina-dead-signal.service 2>/dev/null || true)"
+echo "OLD_GAME_SERVER_STATUS=$(systemctl is-active reina-dead-signal.service 2>/dev/null || true)"
 echo "RTS_VIENNA_SWITCH_COMPLETE"
