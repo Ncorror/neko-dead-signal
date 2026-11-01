@@ -1,0 +1,56 @@
+{
+  "project": "REINA DEAD SIGNAL RTS",
+  "date": "2026-11-02",
+  "status": "reference concept assets, not yet final in-game models",
+  "files": [
+    {
+      "path": "assets/art/commanders-v1/characters/amina_dossier.png",
+      "sha256": "4b78cee5fe871127aaaa4c09faea1fe59456040e986a6614ae0a43dbe85cceeb",
+      "size_bytes": 2839383,
+      "original": "амина_командир_разведки_досье.png"
+    },
+    {
+      "path": "assets/art/commanders-v1/characters/reina_dossier.png",
+      "sha256": "bec6b3635f095e8d4aa32739920d31c2efe9d9dbcad98776866edc4fc50f4b84",
+      "size_bytes": 2787379,
+      "original": "рэйна_командир_флота_dead_signal.png"
+    },
+    {
+      "path": "assets/art/commanders-v1/characters/lyra_voss_dossier.png",
+      "sha256": "81c12a3213c1089b991fb018d75c3c1eb2a08e4366f35c3c5316d4150ffca81a",
+      "size_bytes": 2862175,
+      "original": "лира_восс_неоновый_профиль_оперативника.png"
+    },
+    {
+      "path": "assets/art/commanders-v1/characters/mira_kade_dossier.png",
+      "sha256": "4e9494ee2d2893604571b918b126cdd0319c1944b3bf95dd29a0833cd4fc6a55",
+      "size_bytes": 2778741,
+      "original": "чертёж_мира_кейд_инженер_неонового_десанта.png"
+    },
+    {
+      "path": "assets/art/commanders-v1/characters/amina_turnaround_four_views.png",
+      "sha256": "30508736bcd13aae2ab164847212f3d0653887f753ec78e79138fc00dbc36ad3",
+      "size_bytes": 2024360,
+      "original": "амина_футуристический_техно_кэтворкаунд_персонажа.png"
+    },
+    {
+      "path": "assets/art/commanders-v1/characters/amina_single_reference.png",
+      "sha256": "d8005be8ece8f79b7280bcc05adade56616c591c3bc60b25acf6fe510fa13afb",
+      "size_bytes": 1861162,
+      "original": "a_highly_detailed_anime_style_character_illustrati.png"
+    },
+    {
+      "path": "assets/art/commanders-v1/meshy/amina_neon_neko_cadet_unrigged.glb",
+      "sha256": "193f9d12856f20f5dc8d4d9990595827bd999bbd60780bfc7c668defc9c4ea3f",
+      "size_bytes": 4616428,
+      "original": "Meshy_AI_Neon_Neko_Cadet_1101233212_texture.glb"
+    },
+    {
+      "path": "assets/art/commanders-v1/meshy/amina_meshy_preview.png",
+      "sha256": "593beacda4e17552e1b7230fb5774ec4002342e77e66833ebef77ed8ff7b7bad",
+      "size_bytes": 1108871,
+      "original": "meshy_amina_texture_preview.png"
+    }
+  ],
+  "usage": "Original art references for commander selection UI and Meshy rigging. Store generated concept art without external reference images."
+}
