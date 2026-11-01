@@ -6,7 +6,18 @@ umask 077
 STAGE="${1:?staging directory required}"
 [[ "$STAGE" == /tmp/reina-rts-switch-* ]] || { echo "ERROR: staging directory must be dedicated"; exit 1; }
 [[ -s "$STAGE/registration.token" ]] || { echo "ERROR: missing ephemeral registration token"; exit 1; }
-trap 'rm -f "$STAGE/registration.token" "$STAGE/package.tgz"' EXIT
+SUCCESS=0
+SWITCH_STARTED=0
+OLD_SERVICE=""
+cleanup() {
+  rm -f "$STAGE/registration.token" "$STAGE/package.tgz"
+  if (( SWITCH_STARTED && ! SUCCESS )); then
+    echo "NEW RUNNER DEPLOY FAILED. Restoring old game runner service..."
+    systemctl enable "$OLD_SERVICE" || true
+    systemctl start "$OLD_SERVICE" || true
+  fi
+}
+trap cleanup EXIT
 
 HOST="$(hostname -s)"
 [[ "$HOST" == "shy-ivory" ]] || { echo "ERROR: unexpected host $HOST"; exit 1; }
@@ -62,15 +73,7 @@ echo "OLD_RUNNER_DIRECTORY_PRESERVED=$OLD_DIR"
 echo "Stopping only the old game-runner systemd unit..."
 systemctl stop "$OLD_SERVICE"
 systemctl disable "$OLD_SERVICE"
-SUCCESS=0
-rollback() {
-  if (( SUCCESS == 0 )); then
-    echo "NEW RUNNER DEPLOY FAILED. Restoring old game runner service..."
-    systemctl enable "$OLD_SERVICE" || true
-    systemctl start "$OLD_SERVICE" || true
-  fi
-}
-trap rollback EXIT
+SWITCH_STARTED=1
 echo "Registering isolated new RTS runner..."
 REINA_RTS_REGISTRATION_TOKEN_FILE="$STAGE/registration.token" bash "$STAGE/ops/vienna/install-runner.sh"
 echo "Starting local-only RTS bootstrap server..."
@@ -80,7 +83,6 @@ systemctl is-active --quiet reina-rts-bootstrap.service
 NEW_SERVICE="$(cat /opt/reina-rts/runner/.service)"
 systemctl is-active --quiet "$NEW_SERVICE"
 SUCCESS=1
-trap - EXIT
 echo "RTS_SERVICE_ACTIVE=reina-rts-bootstrap.service"
 echo "RTS_RUNNER_SERVICE_ACTIVE=$NEW_SERVICE"
 echo "OLD_GAME_SERVICE_STOPPED=$OLD_SERVICE"
