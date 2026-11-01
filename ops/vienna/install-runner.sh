@@ -31,11 +31,24 @@ GVER="$(godot --version)"
 test -x /opt/android-sdk/build-tools/36.1.0/apksigner || { echo "Missing Android SDK apksigner"; exit 1; }
 test -d /opt/android-sdk/platforms/android-36 || { echo "Missing Android SDK platform android-36"; exit 1; }
 
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
 TEMPLATE_SOURCE=""
-for candidate in /home/gameadmin/.local/share/godot/export_templates/4.7.2.stable/android_debug.apk /home/reinaadmin/.local/share/godot/export_templates/4.7.2.stable/android_debug.apk; do
+old_user_home="$(getent passwd reina-game-ci | cut -d: -f6 || true)"
+for base in "$old_user_home" /home/gameadmin /home/reinaadmin /var/lib/reina-game-ci /root; do
+  [[ -n "$base" ]] || continue
+  candidate="$base/.local/share/godot/export_templates/4.7.2.stable/android_debug.apk"
   if [[ -s "$candidate" ]]; then TEMPLATE_SOURCE="$candidate"; break; fi
 done
-[[ -n "$TEMPLATE_SOURCE" ]] || { echo "No Godot 4.7.2 export template found; stop, install templates manually"; exit 1; }
+if [[ -z "$TEMPLATE_SOURCE" ]]; then
+  echo "No local export template found. Fetching Godot 4.7.2 templates from official release."
+  curl --fail --location --retry 3 --silent --show-error \
+    "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz" \
+    --output "$tmp/godot-templates.tpz"
+  unzip -j -oq "$tmp/godot-templates.tpz" "templates/android_debug.apk" -d "$tmp"
+  TEMPLATE_SOURCE="$tmp/android_debug.apk"
+fi
+[[ -s "$TEMPLATE_SOURCE" ]] || { echo "Android debug template missing"; exit 1; }
 
 getent passwd "$USER" >/dev/null || useradd --system --create-home --home-dir /var/lib/reina-rts-ci --shell /bin/bash "$USER"
 if id -nG "$USER" | grep -Eq '(^| )(sudo|docker)( |$)'; then
@@ -43,8 +56,6 @@ if id -nG "$USER" | grep -Eq '(^| )(sudo|docker)( |$)'; then
   exit 1
 fi
 install -d -m 0750 -o "$USER" -g "$USER" "$DIR"
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
 curl --fail --location --retry 3 --silent --show-error "$URL" --output "$tmp/$ARCHIVE"
 echo "$SHA256  $tmp/$ARCHIVE" | sha256sum --check -
 tar -xzf "$tmp/$ARCHIVE" -C "$DIR"
@@ -53,9 +64,7 @@ TEMPLATE_TARGET="/var/lib/reina-rts-ci/.local/share/godot/export_templates/4.7.2
 install -d -m 0750 -o "$USER" -g "$USER" "$TEMPLATE_TARGET"
 install -m 0644 -o "$USER" -g "$USER" "$TEMPLATE_SOURCE" "$TEMPLATE_TARGET/android_debug.apk"
 
-echo "Get the one-hour token in Termux (separate session):"
-echo "gh api --method POST repos/Ncorror/reina-dead-signal-rts/actions/runners/registration-token --jq .token"
-echo "Never paste the token into ChatGPT."
+# Token supplied by one-shot Termux launcher, or read privately from terminal.
 if [[ -n "${REINA_RTS_REGISTRATION_TOKEN_FILE:-}" ]]; then
   [[ -r "$REINA_RTS_REGISTRATION_TOKEN_FILE" ]] || { echo "Registration-token file unreadable"; exit 1; }
   TOKEN="$(cat "$REINA_RTS_REGISTRATION_TOKEN_FILE")"
