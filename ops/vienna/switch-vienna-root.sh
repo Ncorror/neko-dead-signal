@@ -1,89 +1,74 @@
 #!/usr/bin/env bash
-# One-shot sudo-side switch. Receives private, staged files; never echoes tokens.
+# Switch orphaned old GAME runner -> separate REINA RTS CI runner on Vienna.
+# Does not touch the still-running old game server or its data.
 set -Eeuo pipefail
 umask 077
-[[ $(id -u) -eq 0 ]] || { echo "ERROR: sudo/root required"; exit 1; }
-STAGE="${1:?staging directory required}"
-[[ "$STAGE" == /tmp/reina-rts-switch-* ]] || { echo "ERROR: staging directory must be dedicated"; exit 1; }
-[[ -s "$STAGE/registration.token" ]] || { echo "ERROR: missing ephemeral registration token"; exit 1; }
-SUCCESS=0
-SWITCH_STARTED=0
-OLD_SERVICE=""
-cleanup() {
-  rm -f "$STAGE/registration.token" "$STAGE/package.tgz"
-  if (( SWITCH_STARTED && ! SUCCESS )); then
-    echo "NEW RUNNER DEPLOY FAILED. Restoring old game runner service..."
-    systemctl enable "$OLD_SERVICE" || true
-    systemctl start "$OLD_SERVICE" || true
-  fi
-}
+[[ $(id -u) -eq 0 ]] || { echo "Run via sudo"; exit 1; }
+STAGE="${1:?Usage: switch-vienna-root.sh /tmp/reina-rts-switch-XXXX}"
+[[ "$STAGE" == /tmp/reina-rts-switch-* && -d "$STAGE" ]] || { echo "Invalid staging path"; exit 1; }
+[[ "$(hostname -s)" == "shy-ivory" ]] || { echo "Unexpected host; abort"; exit 1; }
+[[ "$(uname -m)" == "x86_64" ]] || { echo "Unexpected architecture; abort"; exit 1; }
+OLD_SERVICE="actions.runner.Ncorror-reina-dead-signal.reina-game-ci-01.service"
+NEW_DIR="/opt/reina-rts/runner"
+SERVER_SERVICE="reina-rts-bootstrap.service"
+TOKEN_FILE="$STAGE/registration.token"
+cleanup() { rm -f "$TOKEN_FILE"; }
 trap cleanup EXIT
 
-HOST="$(hostname -s)"
-[[ "$HOST" == "shy-ivory" ]] || { echo "ERROR: unexpected host $HOST"; exit 1; }
-[[ $(uname -m) == x86_64 ]] || { echo "ERROR: architecture unsupported"; exit 1; }
+[[ -s "$TOKEN_FILE" ]] || { echo "Missing private registration token"; exit 1; }
+[[ -s "$STAGE/ops/vienna/install-runner.sh" ]]
+[[ -s "$STAGE/ops/vienna/install-server.sh" ]]
+[[ -s "$STAGE/server/control_api.py" ]]
+[[ -s "$STAGE/server/test_control_api.py" ]]
+python3 -m py_compile "$STAGE/server/control_api.py" "$STAGE/server/test_control_api.py"
+PYTHONPATH="$STAGE/server" python3 -m unittest discover -s "$STAGE/server" -p 'test_*.py' -v
 
-# Resolve exactly the old REINA GAME runner, not Reina core / other CI.
-OLD_DIR="$(python3 - <<'PY'
-from pathlib import Path
-import json
-found = []
-for base in ('/home/gameadmin', '/home/reinaadmin', '/opt/reina', '/opt'):
-    root = Path(base)
-    if not root.exists():
-        continue
-    for f in root.glob('**/.runner'):
-        if len(f.parts) > len(root.parts) + 7:
-            continue
-        try:
-            j = json.loads(f.read_text())
-        except (OSError, ValueError):
-            continue
-        if j.get('agentName') == 'reina-game-ci-01':
-            found.append(str(f.parent))
-found = sorted(set(found))
-if len(found) != 1:
-    raise SystemExit('ERROR: expected exactly one old game runner, found ' + str(len(found)) + ' — refusing to change services')
-print(found[0])
-PY
-)"
-OLD_SERVICE_FILE="$OLD_DIR/.service"
-[[ -f "$OLD_SERVICE_FILE" ]] || { echo "ERROR: old game runner has no .service"; exit 1; }
-OLD_SERVICE="$(cat "$OLD_SERVICE_FILE")"
-[[ "$OLD_SERVICE" =~ ^actions\.runner\.[a-zA-Z0-9_.-]+\.service$ ]] || { echo "ERROR: invalid service name"; exit 1; }
-[[ "$OLD_SERVICE" == *reina-dead-signal* && "$OLD_SERVICE" == *reina-game-ci-01* ]] || {
-  echo "ERROR: runner service does not match old GAME repository"; exit 1;
+# Preserve older game server, listener 27960/udp and all archived APK files.
+echo "LEGACY_GAME_SERVER: $(systemctl is-active reina-dead-signal.service 2>/dev/null || true) (will not touch)"
+echo "LEGACY_GAME_RUNNER: $(systemctl is-active "$OLD_SERVICE" 2>/dev/null || true)"
+echo "CAPACITY: $(free -h | awk '/^Mem:/ {print "RAM available " $7}')"
+echo "FREE_DISK: $(df -h / | awk 'NR==2 {print $4}')"
+
+# Fail closed on unexpected services / partially staged installations.
+if [[ -f "/etc/systemd/system/$SERVER_SERVICE" ]] && ! systemctl is-active --quiet "$SERVER_SERVICE"; then
+  echo "Existing RTS server unit not running; inspect before any changes."
+  exit 1
+fi
+if [[ -e "$NEW_DIR/.runner" ]]; then
+  echo "RTS runner already registered: skipping runner installation."
+else
+  echo "INSTALLING_NEW_RTS_RUNNER..."
+  REINA_RTS_REGISTRATION_TOKEN_FILE="$TOKEN_FILE" bash "$STAGE/ops/vienna/install-runner.sh"
+fi
+[[ -f "$NEW_DIR/.service" ]] || { echo "New RTS runner registration not complete"; exit 1; }
+NEW_SERVICE="$(cat "$NEW_DIR/.service")"
+[[ "$NEW_SERVICE" == actions.runner.Ncorror-reina-dead-signal-rts.*.service ]] || {
+  echo "Invalid RTS service name; abort"; exit 1;
 }
-systemctl cat "$OLD_SERVICE" >/dev/null || { echo "ERROR: game unit missing"; exit 1; }
-if [[ -e /opt/reina-rts/runner/.runner ]]; then
-  echo "ERROR: new RTS runner already registered. Refusing duplicate."; exit 1
-fi
+systemctl is-active --quiet "$NEW_SERVICE" || { echo "New RTS runner is not active"; exit 1; }
+echo "RTS_RUNNER_ACTIVE=$NEW_SERVICE"
 
-# Before changing anything, ensure tools and services are present.
-command -v curl >/dev/null
-command -v python3 >/dev/null
-test -s "$STAGE/ops/vienna/install-runner.sh"
-test -s "$STAGE/ops/vienna/install-server.sh"
-test -s "$STAGE/server/control_api.py"
-if ss -H -ltn '( sport = :18777 )' | grep -q .; then
-    echo "ERROR: RTS port already allocated; refusing migration"; exit 1
+if [[ ! -f "/etc/systemd/system/$SERVER_SERVICE" ]]; then
+  echo "INSTALLING_RTS_LOCAL_CONTROL_SERVER..."
+  bash "$STAGE/ops/vienna/install-server.sh"
 fi
-echo "OLD_GAME_RUNNER=$OLD_SERVICE"
-echo "OLD_RUNNER_DIRECTORY_PRESERVED=$OLD_DIR"
-echo "Stopping only the old game-runner systemd unit..."
-systemctl stop "$OLD_SERVICE"
-systemctl disable "$OLD_SERVICE"
-SWITCH_STARTED=1
-echo "Registering isolated new RTS runner..."
-REINA_RTS_REGISTRATION_TOKEN_FILE="$STAGE/registration.token" bash "$STAGE/ops/vienna/install-runner.sh"
-echo "Starting local-only RTS bootstrap server..."
-bash "$STAGE/ops/vienna/install-server.sh"
-systemctl is-active --quiet reina-rts-bootstrap.service
-[[ "$(curl -fsS --max-time 3 http://127.0.0.1:18777/healthz | python3 -c 'import json,sys; print(json.load(sys.stdin)["match_server"])')" == "False" ]]
-NEW_SERVICE="$(cat /opt/reina-rts/runner/.service)"
-systemctl is-active --quiet "$NEW_SERVICE"
-SUCCESS=1
-echo "RTS_SERVICE_ACTIVE=reina-rts-bootstrap.service"
-echo "RTS_RUNNER_SERVICE_ACTIVE=$NEW_SERVICE"
-echo "OLD_GAME_SERVICE_STOPPED=$OLD_SERVICE"
-echo "REINA_CORE_SERVICES_UNTOUCHED"
+systemctl is-active --quiet "$SERVER_SERVICE"
+curl -fsS --max-time 5 http://127.0.0.1:18777/healthz |
+  python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["healthy"] and x["match_server"] is False and x["online_gameplay"] is False'
+echo "RTS_CONTROL_SERVER_HEALTH_PASS (local bootstrap, NOT multiplayer)"
+
+# Repo already deleted: GitHub cannot issue old repo removal token.
+# Stop+disable ONLY the exact old runner unit. Do not touch files or game server.
+if systemctl cat "$OLD_SERVICE" >/dev/null 2>&1; then
+  if pgrep -u reina-game-ci -f 'Runner.Worker' >/dev/null 2>&1; then
+    echo "OLD_RUNNER_BUSY: left intact to avoid killing an active build; RTS still ready"
+  else
+    systemctl stop "$OLD_SERVICE"
+    systemctl disable "$OLD_SERVICE" >/dev/null
+    echo "OLD_RUNNER_STOPPED_DISABLED=$OLD_SERVICE"
+  fi
+else
+  echo "OLD_RUNNER_UNIT_ABSENT: nothing to stop"
+fi
+echo "OLD_GAME_SERVER_STILL_$(systemctl is-active reina-dead-signal.service 2>/dev/null || true)"
+echo "RTS_VIENNA_SWITCH_COMPLETE"
