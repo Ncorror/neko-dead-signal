@@ -1,0 +1,31 @@
+name: Legacy cleanup script lint
+
+on:
+  push:
+    branches:
+      - infra/vienna-runner-server
+    paths:
+      - ops/vienna/purge-legacy-game.sh
+      - .github/workflows/legacy-cleanup-lint.yml
+  pull_request:
+    paths:
+      - ops/vienna/purge-legacy-game.sh
+      - .github/workflows/legacy-cleanup-lint.yml
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Bash syntax without running destructive commands
+        run: |
+          set -Eeuo pipefail
+          bash -n ops/vienna/purge-legacy-game.sh
+          bash -n ops/vienna/deploy-one-shot-termux.sh
+          bash -n ops/vienna/install-runner.sh
+          bash -n ops/vienna/install-server.sh
+          echo 'BASH_SYNTAX_PASS'
