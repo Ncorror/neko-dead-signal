@@ -5,6 +5,7 @@ on:
     branches:
       - infra/vienna-runner-server
       - feat/orbital-command-ui
+      - feat/pure-rts-commanders
       - main
     paths:
       - 'client/**'
@@ -32,6 +33,12 @@ jobs:
         run: |
           set -Eeuo pipefail
           python3 -m unittest discover -s server -p 'test_*.py' -v
+
+      - name: Test RTS input and commander contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
       - name: Verify RTS toolchain
         shell: bash
