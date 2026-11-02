@@ -13,6 +13,8 @@ const ESCORT_SPEED := 4.7
 const CAMERA_MIN_ZOOM := 12.0
 const CAMERA_MAX_ZOOM := 37.0
 const TOUCH_DRAG_THRESHOLD := 16.0
+const TOUCH_PAN_MULTIPLIER := 0.0014
+const MAX_GESTURE_DELTA := 45.0
 
 var hero: Combatant
 var escort: Combatant
@@ -327,13 +329,21 @@ func _stop_selected_units() -> void:
     print("RTS_STOP count=", selected_units.size())
 
 func _zoom_in() -> void:
-    camera_zoom = clampf(camera_zoom - 4.0, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+    camera_zoom = clampf(camera_zoom - 3.0, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+    _clamp_camera_focus()
 
 func _zoom_out() -> void:
-    camera_zoom = clampf(camera_zoom + 4.0, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+    camera_zoom = clampf(camera_zoom + 3.0, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+    _clamp_camera_focus()
+
+func _clamp_camera_focus() -> void:
+    var limit: float = maxf(3.0, MAP_LIMIT - camera_zoom * 0.45)
+    camera_focus.x = clampf(camera_focus.x, -limit, limit)
+    camera_focus.z = clampf(camera_focus.z, -limit, limit)
 
 func _unhandled_input(event: InputEvent) -> void:
-    # Process each native gesture only once if a device also supplies emulated events.
+    # UI widgets consume their input before _unhandled_input. Never react to an
+    # Android emulated mouse event as if it were an independent finger gesture.
     if event.device == InputEvent.DEVICE_ID_EMULATION:
         return
     if event is InputEventScreenTouch:
@@ -342,6 +352,7 @@ func _unhandled_input(event: InputEvent) -> void:
             return
         if touch.canceled:
             touch_tracking = false
+            touch_dragged = false
             return
         if touch.pressed:
             touch_tracking = true
@@ -351,15 +362,21 @@ func _unhandled_input(event: InputEvent) -> void:
             touch_tracking = false
             if not touch_dragged:
                 _handle_tap(touch.position)
+            touch_dragged = false
             get_viewport().set_input_as_handled()
     elif event is InputEventScreenDrag:
         var drag := event as InputEventScreenDrag
         if drag.index == 0 and touch_tracking:
-            if drag.position.distance_to(touch_start) >= TOUCH_DRAG_THRESHOLD:
+            if not touch_dragged:
+                if drag.position.distance_to(touch_start) < TOUCH_DRAG_THRESHOLD:
+                    return
                 touch_dragged = true
-            if touch_dragged:
-                _pan_camera(drag.relative)
+                # Discard crossing-frame delta; it can include the entire
+                # finger travel since press on some mobile input backends.
                 get_viewport().set_input_as_handled()
+                return
+            _pan_camera(drag.relative)
+            get_viewport().set_input_as_handled()
     elif event is InputEventMouseButton:
         var mouse := event as InputEventMouseButton
         if mouse.pressed and mouse.button_index == MOUSE_BUTTON_LEFT:
@@ -378,9 +395,14 @@ func _unhandled_input(event: InputEvent) -> void:
             get_viewport().set_input_as_handled()
 
 func _pan_camera(delta_pixels: Vector2) -> void:
-    var speed: float = camera_zoom * 0.018
-    camera_focus.x = clampf(camera_focus.x - delta_pixels.x * speed, -MAP_LIMIT, MAP_LIMIT)
-    camera_focus.z = clampf(camera_focus.z - delta_pixels.y * speed, -MAP_LIMIT, MAP_LIMIT)
+    # Previous camera_zoom * 0.018 shifted ~80 world units per 200 px swipe:
+    # more than the entire 50-metre prototype map. Keep movement proportional
+    # to zoom but clamp input spikes and the visible map centre.
+    var clamped_delta: Vector2 = delta_pixels.limit_length(MAX_GESTURE_DELTA)
+    var speed: float = camera_zoom * TOUCH_PAN_MULTIPLIER
+    var focus_limit: float = maxf(3.0, MAP_LIMIT - camera_zoom * 0.45)
+    camera_focus.x = clampf(camera_focus.x - clamped_delta.x * speed, -focus_limit, focus_limit)
+    camera_focus.z = clampf(camera_focus.z - clamped_delta.y * speed, -focus_limit, focus_limit)
 
 func _handle_tap(screen_pos: Vector2) -> void:
     if outcome != Outcome.ACTIVE:
@@ -551,7 +573,7 @@ func _update_camera(delta: float) -> void:
     if view_camera == null:
         return
     var desired := camera_focus + Vector3(0, camera_zoom, camera_zoom * 0.95)
-    view_camera.global_position = view_camera.global_position.lerp(desired, minf(1.0, delta * 7.0))
+    view_camera.global_position = view_camera.global_position.lerp(desired, 1.0 - exp(-minf(delta, 0.10) * 7.0))
     view_camera.look_at(camera_focus + Vector3.UP, Vector3.UP)
 
 func _check_crates() -> void:
