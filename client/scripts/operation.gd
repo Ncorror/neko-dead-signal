@@ -3,6 +3,7 @@ extends Node3D
 ## Combat, remote commands, collision avoidance and mesh rigging are not implemented.
 
 const PATH_GRID := preload("res://scripts/rts_navigation.gd")
+const RIGGED_AMINA := "res://assets/characters/amina/amina_rigged.glb"
 
 const MAP_LIMIT := 24.0
 const OFFICER_SPEED := 5.8
@@ -20,6 +21,8 @@ var unit_paths: Dictionary = {}
 var unit_waypoint_index: Dictionary = {}
 var selection_rings: Dictionary = {}
 var navigation = PATH_GRID.new()
+var animation_players: Dictionary = {}
+var animation_state: Dictionary = {}
 var crates: Array[Node3D] = []
 var resources_collected: int = 0
 var camera_focus: Vector3 = Vector3.ZERO
@@ -91,8 +94,68 @@ func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool
     visual.position.y = 0.95 if is_commander else 0.825
     visual.material_override = _material(color)
     unit.add_child(visual)
+    if is_commander:
+        _attach_optional_rigged_amina(unit, visual)
     units.append(unit)
     return unit
+
+func _attach_optional_rigged_amina(unit: Node3D, placeholder: MeshInstance3D) -> void:
+    # Only a genuinely rigged model replaces the test capsule. The current
+    # Meshy Amina has no skin/animations, so it is never treated as ready.
+    if GameState.faction_index != 0 or GameState.officer_index != 0:
+        return
+    if not ResourceLoader.exists(RIGGED_AMINA):
+        print("RTS_AMINA_MODEL_PENDING: rigged GLB not installed")
+        return
+    var source: Resource = load(RIGGED_AMINA)
+    if not (source is PackedScene):
+        push_warning("Rigged Amina resource is not a PackedScene")
+        return
+    var packed: PackedScene = source as PackedScene
+    var visual_scene: Node = packed.instantiate()
+    if not (visual_scene is Node3D):
+        visual_scene.queue_free()
+        push_warning("Rigged Amina root is not Node3D")
+        return
+    unit.add_child(visual_scene)
+    var rig: Node3D = visual_scene as Node3D
+    rig.position = Vector3.ZERO
+    var players: Array[Node] = rig.find_children("*", "AnimationPlayer", true, false)
+    if players.is_empty():
+        print("RTS_AMINA_RIG_PENDING: no AnimationPlayer; keeping placeholder")
+        rig.queue_free()
+        return
+    var player: AnimationPlayer = players[0] as AnimationPlayer
+    if not _has_motion_clip(player, "idle") or not _has_motion_clip(player, "walk"):
+        print("RTS_AMINA_ANIMATIONS_PENDING: Idle/Walk clips missing")
+        rig.queue_free()
+        return
+    placeholder.hide()
+    animation_players[unit] = player
+    _set_unit_animation(unit, false)
+    print("RTS_AMINA_RIG_READY: ", player.get_animation_list())
+
+func _has_motion_clip(player: AnimationPlayer, keyword: String) -> bool:
+    for clip in player.get_animation_list():
+        if clip.to_lower().contains(keyword):
+            return true
+    return false
+
+func _set_unit_animation(unit: Node3D, moving: bool) -> void:
+    if not animation_players.has(unit):
+        return
+    var player: AnimationPlayer = animation_players[unit]
+    if not is_instance_valid(player):
+        return
+    var state := "walk" if moving else "idle"
+    if animation_state.get(unit, "") == state:
+        return
+    for clip in player.get_animation_list():
+        if clip.to_lower().contains(state):
+            player.play(clip)
+            animation_state[unit] = state
+            return
+
 
 func _material(color: Color) -> StandardMaterial3D:
     var mat := StandardMaterial3D.new()
@@ -312,6 +375,7 @@ func _issue_move(destination: Vector3) -> void:
 func _physics_process(delta: float) -> void:
     for unit in units:
         if not unit_paths.has(unit):
+            _set_unit_animation(unit, false)
             continue
         var planned: Array[Vector3] = unit_paths[unit]
         var index: int = int(unit_waypoint_index.get(unit, 0))
@@ -320,6 +384,7 @@ func _physics_process(delta: float) -> void:
             unit_waypoint_index.erase(unit)
             continue
         var speed: float = OFFICER_SPEED if unit == hero else ESCORT_SPEED
+        _set_unit_animation(unit, true)
         unit.position = unit.position.move_toward(planned[index], speed * delta)
         if unit.position.distance_to(planned[index]) < 0.07:
             index += 1
