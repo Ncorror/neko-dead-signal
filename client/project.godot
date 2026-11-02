@@ -5,6 +5,7 @@ config/name="REINA: DEAD SIGNAL — RTS"
 run/main_scene="res://scenes/main.tscn"
 
 [autoload]
+RTSDiagnostics="*res://scripts/rts_diagnostics.gd"
 GameState="*res://scripts/game_state.gd"
 
 [display]
@@ -16,6 +17,12 @@ window/stretch/aspect="expand"
 [input_devices]
 pointing/emulate_mouse_from_touch=false
 pointing/emulate_touch_from_mouse=false
+
+[debug]
+file_logging/enable_file_logging=false
+file_logging/enable_file_logging.debug=true
+file_logging/log_path="user://logs/godot.log"
+file_logging/max_log_files=3
 
 [rendering]
 textures/vram_compression/import_etc2_astc=true

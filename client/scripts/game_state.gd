@@ -21,7 +21,8 @@ func _ready() -> void:
     officers_by_faction[0] = clampi(int(cfg.get_value("commander", "human", 0)), 0, 3)
     officers_by_faction[1] = clampi(int(cfg.get_value("commander", "saari", 0)), 0, 1)
     officer_index = officers_by_faction[faction_index]
-    print("RTS_SELECTION_RESTORED faction=", faction_index, " officer=", officer_index)
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("commander", "selection_restored", {"faction": faction_index, "officer": officer_index})
 
 func set_selection(next_faction_index: int, next_officer_index: int, next_faction_name: String, next_officer_name: String) -> void:
     faction_index = clampi(next_faction_index, 0, 1)
@@ -36,7 +37,8 @@ func set_selection(next_faction_index: int, next_officer_index: int, next_factio
     var err := cfg.save(SELECTION_FILE)
     if err != OK:
         push_warning("RTS_SELECTION_SAVE_FAILED error=" + str(err))
-    print("RTS_SELECTION_SAVED faction=", faction_index, " officer=", officer_index)
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("commander", "selection_saved", {"faction": faction_index, "officer": officer_index})
 
 func configure(next_faction_index: int, next_officer_index: int, next_faction_name: String, next_officer_name: String) -> void:
     set_selection(next_faction_index, next_officer_index, next_faction_name, next_officer_name)

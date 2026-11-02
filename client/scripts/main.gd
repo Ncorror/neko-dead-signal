@@ -3,6 +3,8 @@ extends Control
 ## Textures/models are deliberately placeholders pending our original Meshy assets.
 
 const HOLOGRAM := preload("res://scripts/command_visuals.gd")
+const DIAGNOSTICS_UI := preload("res://scripts/rts_diagnostics_ui.gd")
+const COMMANDER_3D := preload("res://scripts/commander_3d_preview.gd")
 const BG := Color("#050f18")
 const PANEL := Color("#071a25")
 const EDGE := Color("#204351")
@@ -87,6 +89,7 @@ var faction_buttons: Array[Button] = []
 var officer_buttons: Array[Button] = []
 var hero_visual: Control
 var hero_portrait: TextureRect
+var hero_preview_3d: SubViewportContainer
 var portrait_cache: Dictionary = {}
 var officer_scroll: ScrollContainer
 var hero_name: Label
@@ -105,6 +108,8 @@ func _ready() -> void:
     officer_index = clampi(GameState.officer_index, 0, OFFICERS[faction_index].size() - 1)
     _build_screen()
     _refresh_selection()
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("ui", "orbital_open", {"faction": faction_index, "officer": officer_index})
     call_deferred("_reveal_selected_officer")
 
 func _build_screen() -> void:
@@ -171,6 +176,10 @@ func _build_header(parent: VBoxContainer) -> void:
     close_button.custom_minimum_size = Vector2(112, 52)
     close_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     close_button.pressed.connect(_confirm_exit)
+    if RTSDiagnostics.enabled:
+        var debug_panel := DIAGNOSTICS_UI.new()
+        add_child(debug_panel)
+        debug_panel.install(self, header)
     header.add_child(close_button)
 
 func _build_content(parent: VBoxContainer) -> void:
@@ -194,18 +203,33 @@ func _build_content(parent: VBoxContainer) -> void:
     left.add_child(faction_details)
     left.add_child(_rule())
     left.add_child(_label("02   /   КОМАНДИР ДЕСАНТА", 13, CYAN))
+    var roster_controls := HBoxContainer.new()
+    roster_controls.add_theme_constant_override("separation", 8)
+    left.add_child(roster_controls)
+    var previous := _button("◀ ПРЕД.", false, 38)
+    previous.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    previous.pressed.connect(_change_officer.bind(-1))
+    roster_controls.add_child(previous)
+    var next := _button("СЛЕД. ▶", false, 38)
+    next.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    next.pressed.connect(_change_officer.bind(1))
+    roster_controls.add_child(next)
     officer_scroll = ScrollContainer.new()
     var scroll := officer_scroll
     scroll.custom_minimum_size = Vector2(0, 136)
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
+    scroll.follow_focus = true
+    scroll.scroll_deadzone = 7
+    scroll.mouse_filter = Control.MOUSE_FILTER_STOP
     left.add_child(scroll)
     var officer_list := VBoxContainer.new()
     officer_list.add_theme_constant_override("separation", 6)
     officer_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll.add_child(officer_list)
     for i in range(OFFICERS[0].size()):
-        var b := _button("", false, 62)
+        var b := _button("", false, 51)
         b.alignment = HORIZONTAL_ALIGNMENT_LEFT
         b.pressed.connect(_select_officer.bind(i))
         officer_buttons.append(b)
@@ -239,6 +263,9 @@ func _build_content(parent: VBoxContainer) -> void:
     hero_portrait.visible = false
     portrait_holder.add_child(hero_portrait)
     hero_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    hero_preview_3d = COMMANDER_3D.new()
+    portrait_holder.add_child(hero_preview_3d)
+    hero_preview_3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
     hero_name = _label("", 27, WHITE, true)
     hero_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -379,6 +406,11 @@ func _select_faction(i: int) -> void:
     _refresh_selection()
     call_deferred("_reveal_selected_officer")
 
+func _change_officer(direction: int) -> void:
+    var count: int = OFFICERS[faction_index].size()
+    if count > 0:
+        _select_officer(posmod(officer_index + direction, count))
+
 func _select_officer(i: int) -> void:
     if i < 0 or i >= OFFICERS[faction_index].size():
         return
@@ -391,6 +423,8 @@ func _store_selected_commander() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
     var officer: Dictionary = OFFICERS[faction_index][officer_index]
     GameState.set_selection(faction_index, officer_index, faction["full"], officer["full"])
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("commander", "selected", {"faction": faction_index, "officer": officer_index})
 
 func _reveal_selected_officer() -> void:
     if officer_scroll != null and officer_index < officer_buttons.size():
@@ -434,6 +468,11 @@ func _refresh_selection() -> void:
     cta.add_theme_stylebox_override("hover", _style(faction["color"].lightened(0.2), faction["color"], 2))
 
 func _update_portrait() -> void:
+    var has_3d: bool = hero_preview_3d.set_commander(faction_index, officer_index)
+    hero_visual.visible = not has_3d
+    if has_3d:
+        hero_portrait.visible = false
+        return
     var portrait_id := ""
     if faction_index == 0:
         var portraits := ["amina", "reina", "mira_kade", "lyra_voss"]
@@ -453,6 +492,8 @@ func _update_portrait() -> void:
             var error := img.load_jpg_from_buffer(bytes)
             if error != OK:
                 push_warning("RTS_PORTRAIT_LOAD_FAILED id=" + portrait_id + " error=" + str(error))
+                if RTSDiagnostics.enabled:
+                    RTSDiagnostics.event("error", "portrait_decode_failed", {"id": portrait_id, "error": error})
                 portrait_cache[portrait_id] = null
             else:
                 portrait_cache[portrait_id] = ImageTexture.create_from_image(img)
@@ -464,5 +505,6 @@ func _deploy() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
     var officer: Dictionary = OFFICERS[faction_index][officer_index]
     GameState.configure(faction_index, officer_index, faction["full"], officer["full"])
-    print("ORBITAL_DEPLOY faction=", faction_index, " officer=", officer_index)
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("app", "deploy", {"faction": faction_index, "officer": officer_index})
     get_tree().change_scene_to_file("res://scenes/operation.tscn")
