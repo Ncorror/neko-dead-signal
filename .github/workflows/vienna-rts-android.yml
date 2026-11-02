@@ -9,6 +9,7 @@ on:
       - main
       - feat/rts-squads-grid-pathfinding
       - feat/rts-landing-skirmish
+      - fix/orbital-menu-touch-exit
     paths:
       - 'client/**'
       - '.github/workflows/vienna-rts-android.yml'
@@ -87,6 +88,15 @@ jobs:
           timeout 35s godot --headless --path client --script res://tests/test_rts_navigation.gd 2>&1 | tee build/rts-navigation-test.log
           grep -q 'RTS_NAV_TEST_PASS' build/rts-navigation-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-navigation-test.log; then
+            exit 1
+          fi
+      - name: Check visible menu layout and exit hitbox
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 40s godot --headless --path client res://tests/test_menu_layout.tscn 2>&1 | tee build/rts-menu-test.log
+          grep -q 'RTS_MENU_TEST_PASS' build/rts-menu-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-menu-test.log; then
             exit 1
           fi
       - name: Play the landing regression in Godot
