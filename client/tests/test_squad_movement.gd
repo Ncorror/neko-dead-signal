@@ -107,6 +107,17 @@ func _run() -> void:
     _check(not op.units.has(op.escort) and not op.unit_paths.has(op.escort)
         and not op.unit_move_speeds.has(op.escort) and not op.unit_blocked_seconds.has(op.escort),
         "casualty must release paths and movement state")
+    op = await _land()
+    op.hero.position = Vector3(0, 0, -12)
+    op.escort.position = Vector3(-6, 0, -12)
+    op._select_unit(op.hero)
+    op._issue_move(Vector3(4, 0, -8))
+    _advance(op, 10)
+    _check(absf(angle_difference(op.hero.rotation.y, PI / 4.0)) < 0.25,
+        "unit should face its diagonal movement")
+    op._issue_move(Vector3(-4, 0, -8))
+    _advance(op, 15)
+    _check(op.hero.rotation.y < -0.3, "new direction should turn the model")
     if failures == 0:
         print("RTS_SQUAD_TEST_PASS")
     get_tree().quit(0 if failures == 0 else 1)

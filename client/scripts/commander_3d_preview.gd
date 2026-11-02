@@ -3,7 +3,7 @@ extends SubViewportContainer
 ## Static GLB can be previewed without a rig. Animation is optional.
 const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
 const MENU_PREVIEW_HEIGHT := 2.75
-const MENU_FRONT_YAW_DEGREES := 90.0
+const MENU_FRONT_YAW_DEGREES := 0.0
 const MODELS := [
     ["res://assets/characters/amina/preview.glb",
      "res://assets/characters/reina/preview.glb",
@@ -14,10 +14,14 @@ const MODELS := [
 var preview: SubViewport
 var pivot: Node3D
 var active_model: Node3D
+var camera: Camera3D
+var model_bounds := AABB()
+var drag_touch := -1
+var drag_mouse := false
 
 func _ready() -> void:
     stretch = true
-    mouse_filter = Control.MOUSE_FILTER_IGNORE
+    mouse_filter = Control.MOUSE_FILTER_STOP
     preview = SubViewport.new()
     preview.transparent_bg = true
     preview.own_world_3d = true
@@ -36,13 +40,12 @@ func _ready() -> void:
     fill.position = Vector3(-2, 2, 3)
     fill.light_energy = 0.65
     world.add_child(fill)
-    var camera := Camera3D.new()
-    camera.position = Vector3(0, 1.55, 3.0)
-    camera.fov = 37.0
+    camera = Camera3D.new()
+    camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+    camera.keep_aspect = Camera3D.KEEP_HEIGHT
     world.add_child(camera)
-    camera.look_at(Vector3(0, 1.35, 0), Vector3.UP)
     camera.current = true
-    set_process(false)
+    preview.size_changed.connect(_frame_model)
     visible = false
 
 func set_commander(faction: int, officer: int) -> bool:
@@ -73,6 +76,10 @@ func set_commander(faction: int, officer: int) -> bool:
         active_model = null
         return _set_missing()
     pivot.rotation.y = deg_to_rad(MENU_FRONT_YAW_DEGREES)
+    drag_touch = -1
+    drag_mouse = false
+    model_bounds = fit["bounds"]
+    _frame_model()
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("visual", "menu_character_fit", {
             "target_height": fit["target_height"],
@@ -85,16 +92,54 @@ func set_commander(faction: int, officer: int) -> bool:
                 animation_player.play(clip)
                 break
     visible = true
-    set_process(true)
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("visual", "3d_preview_loaded", {"faction": faction, "officer": officer})
     return true
 
 func _set_missing() -> bool:
-    set_process(false)
+    drag_touch = -1
+    drag_mouse = false
     visible = false
     return false
 
-func _process(delta: float) -> void:
-    if active_model != null:
-        pivot.rotation.y += minf(delta, 0.1) * 0.20
+func _frame_model() -> void:
+    if camera == null or model_bounds.size.y <= 0.0:
+        return
+    var aspect := float(preview.size.x) / maxf(1.0, float(preview.size.y))
+    # A cylinder around the upright model fits every user-selected yaw.
+    var radius_x := maxf(absf(model_bounds.position.x), absf(model_bounds.end.x))
+    var radius_z := maxf(absf(model_bounds.position.z), absf(model_bounds.end.z))
+    var diameter := 2.0 * Vector2(radius_x, radius_z).length()
+    camera.size = maxf(model_bounds.size.y, diameter / aspect) * 1.14
+    var center_y := model_bounds.get_center().y
+    camera.position = Vector3(0.0, center_y, maxf(diameter, model_bounds.size.y) + 2.0)
+    camera.look_at(Vector3(0.0, center_y, 0.0), Vector3.UP)
+
+func _gui_input(event: InputEvent) -> void:
+    if active_model == null or event.device == InputEvent.DEVICE_ID_EMULATION:
+        return
+    if event is InputEventScreenTouch:
+        if event.canceled:
+            drag_touch = -1
+        elif event.pressed and drag_touch == -1:
+            drag_touch = event.index
+        elif event.index == drag_touch:
+            drag_touch = -1
+        accept_event()
+    elif event is InputEventScreenDrag and event.index == drag_touch:
+        _rotate_by_drag(event.relative.x)
+        accept_event()
+    elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+        drag_mouse = event.pressed
+        accept_event()
+    elif event is InputEventMouseMotion and drag_mouse:
+        _rotate_by_drag(event.relative.x)
+        accept_event()
+
+func _rotate_by_drag(delta_x: float) -> void:
+    pivot.rotation.y += delta_x * TAU / maxf(size.x, 1.0)
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+        drag_touch = -1
+        drag_mouse = false

@@ -242,7 +242,7 @@ func _build_content(parent: VBoxContainer) -> void:
     center.add_theme_constant_override("separation", 1)
     row.add_child(center)
 
-    center.add_child(_label("ПЕРСОНАЛЬНОЕ ДОСЬЕ     //     HOLO-01", 13, Color("#a8d6df")))
+    center.add_child(_label("ДОСЬЕ КОМАНДИРА  /  ПОВОРОТ СВАЙПОМ", 13, Color("#a8d6df")))
     var portrait_holder := Control.new()
     portrait_holder.custom_minimum_size = Vector2(245, 280)
     portrait_holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -314,7 +314,7 @@ func _build_footer(parent: VBoxContainer) -> void:
     parent.add_child(footer)
     footer.add_child(_label("REINA SYSTEMS  /  ОБЩИЙ ЭКСПЕДИЦИОННЫЙ ФЛОТ", 11, MUTED))
     footer.add_child(_stretch_horizontal())
-    footer.add_child(_label("ANDROID  •  PRE-ALPHA 0.0.6  •  RTS SQUAD TEST", 11, Color("#87b2bf")))
+    footer.add_child(_label("ANDROID  •  PRE-ALPHA 0.0.7  •  CAMERA & MOVEMENT", 11, Color("#87b2bf")))
 
 func _panel(parent: HBoxContainer, minimum_width: float) -> VBoxContainer:
     var outer := PanelContainer.new()

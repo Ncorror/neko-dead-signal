@@ -47,5 +47,6 @@ static func fit_to_height(model: Node3D, desired_height: float) -> Dictionary:
         "target_height": source_height * factor,
         "scale": factor,
         "mesh_count": meshes.size(),
-        "center": center
+        "center": center,
+        "bounds": model.transform * AABB(lower, upper - lower)
     }

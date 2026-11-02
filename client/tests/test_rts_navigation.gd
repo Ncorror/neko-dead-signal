@@ -53,5 +53,26 @@ func _test_paths() -> void:
         _fail("blocked destination was not resolved")
         return
 
+    var open_nav = NAV.new()
+    open_nav.configure(24.0, 1.0)
+    var start := Vector3(-7.7, 0, -6.2)
+    var goal := Vector3(8.2, 0, 5.1)
+    var direct: Array[Vector3] = open_nav.get_path(start, goal)
+    if direct.size() != 1 or not direct[0].is_equal_approx(goal):
+        _fail("open-ground order must be one straight segment")
+        return
+    # Independent geometry check against the inflated square of blocked cells.
+    var obstacle := AABB(Vector3(-2.5, -0.5, -2.5), Vector3(5, 1, 5))
+    var previous := Vector3(-9, 0, 0)
+    for point in route:
+        if obstacle.intersects_segment(previous, point) != null:
+            _fail("smoothed segment cuts a blocked obstacle corner")
+            return
+        previous = point
+    open_nav.grid.set_point_solid(Vector2i(0, -1), true)
+    if open_nav.has_walkable_segment(Vector3(-1, 0, -1), Vector3(1, 0, 1)):
+        _fail("diagonal corner cutting must remain blocked")
+        return
+
     print("RTS_NAV_TEST_PASS: obstacles, detour, bounds, blocked endpoints")
     quit(0)
