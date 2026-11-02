@@ -67,6 +67,10 @@ func _run() -> void:
         _check(menu.officer_index == 0, "next commander wraps to Amina")
         menu._change_officer(-1)
         _check(menu.officer_index == 3, "previous commander wraps to Lyra")
+        print("RTS_PORTRAIT_DEBUG faction=", menu.faction_index, " officer=", menu.officer_index,
+            " 2dvisible=", menu.hero_portrait.visible, " texture=", menu.hero_portrait.texture != null,
+            " preview3dvisible=", menu.hero_preview_3d.visible,
+            " cache=", menu.portrait_cache.keys())
         _check(menu.hero_portrait.visible or menu.hero_preview_3d.visible,
             "selected human commander has an active 2D/3D portrait")
         print("RTS_MENU_LAYOUT resolution=", resolution, " exit=", menu.close_button.get_global_rect(), " deploy=", menu.cta.get_global_rect())
