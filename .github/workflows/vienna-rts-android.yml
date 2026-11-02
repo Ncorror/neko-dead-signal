@@ -7,6 +7,7 @@ on:
       - feat/orbital-command-ui
       - feat/pure-rts-commanders
       - main
+      - feat/tester-diagnostics-3d-roster
       - feat/rts-squads-grid-pathfinding
       - feat/rts-landing-skirmish
       - fix/orbital-menu-touch-exit
@@ -89,6 +90,15 @@ jobs:
           timeout 35s godot --headless --path client --script res://tests/test_rts_navigation.gd 2>&1 | tee build/rts-navigation-test.log
           grep -q 'RTS_NAV_TEST_PASS' build/rts-navigation-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-navigation-test.log; then
+            exit 1
+          fi
+      - name: Test debug diagnostics JSONL and ZIP bundle
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 40s godot --headless --path client res://tests/test_diagnostics.tscn 2>&1 | tee build/rts-diagnostics-test.log
+          grep -q 'RTS_DIAGNOSTICS_TEST_PASS' build/rts-diagnostics-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-diagnostics-test.log; then
             exit 1
           fi
       - name: Check visible menu layout and exit hitbox
