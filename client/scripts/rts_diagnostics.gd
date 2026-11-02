@@ -41,6 +41,7 @@ func _ready() -> void:
     event("app", "session_start", {
         "session": _session,
         "build": "debug",
+        "version": ProjectSettings.get_setting("application/config/version", "dev"),
         "platform": OS.get_name(),
         "renderer": RenderingServer.get_current_rendering_method(),
         "viewport": str(get_viewport().get_visible_rect().size)
@@ -115,7 +116,7 @@ func report_preview() -> String:
     if not enabled:
         return "Диагностика отключена в релизной сборке."
     _flush()
-    var result := "REINA RTS DEBUG  |  session=" + _session + "\n"
+    var result := "REINA RTS DEBUG  |  version=" + str(ProjectSettings.get_setting("application/config/version", "dev")) + "  |  session=" + _session + "\n"
     result += "platform=" + OS.get_name() + "  fps=" + str(Engine.get_frames_per_second()) + "\n"
     result += "user_dir=" + OS.get_user_data_dir() + "\n\n"
     # Limit copied clipboard content even after long test sessions.
@@ -145,6 +146,7 @@ func make_report() -> String:
         return ""
     var manifest := {
         "project": "REINA: DEAD SIGNAL RTS",
+        "version": ProjectSettings.get_setting("application/config/version", "dev"),
         "session": _session,
         "created_utc": Time.get_datetime_string_from_system(true),
         "platform": OS.get_name(),

@@ -74,5 +74,14 @@ func _test_paths() -> void:
         _fail("diagonal corner cutting must remain blocked")
         return
 
+    var occupied := Vector3(6, 0, -5)
+    var near_ally: Array[Vector3] = open_nav.get_path(Vector3(10, 0, -12), Vector3(5.27, 0, -4.23), [occupied])
+    if near_ally.is_empty() or near_ally.back().distance_to(occupied) < open_nav.UNIT_SEPARATION:
+        _fail("off-grid destination must retain physical clearance from an ally")
+        return
+    if not open_nav.is_walkable(Vector2i(6, -5)):
+        _fail("destination validation leaked temporary occupancy")
+        return
+
     print("RTS_NAV_TEST_PASS: obstacles, detour, bounds, blocked endpoints")
     quit(0)
