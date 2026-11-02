@@ -223,7 +223,7 @@ func _build_content(parent: VBoxContainer) -> void:
     right.add_child(_rule())
     right.add_child(_gap(12))
     right.add_child(_label("РЕЖИМ ИСПЫТАНИЙ", 12, CYAN))
-    right.add_child(_label("Локальная 3D-карта. Управление героем и камерой RTS.", 13, WHITE))
+    right.add_child(_label("RTS: выделение командира, приказ движения, стратегическая камера.", 13, WHITE))
     right.add_child(_gap(10))
     cta = _button("НАЧАТЬ ВЫСАДКУ    ›", true, 67)
     cta.pressed.connect(_deploy)
