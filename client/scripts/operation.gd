@@ -39,8 +39,9 @@ func _ready() -> void:
 
 func _create_world() -> void:
     var ground := MeshInstance3D.new()
-    ground.mesh = PlaneMesh.new()
-    ground.mesh.size = Vector2(50, 50)
+    var plane := PlaneMesh.new()
+    plane.size = Vector2(50, 50)
+    ground.mesh = plane
     ground.material_override = _material(Color("#283b45"))
     add_child(ground)
 
