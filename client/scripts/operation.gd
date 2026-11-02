@@ -5,6 +5,7 @@ const Combatant := preload("res://scripts/combatant.gd")
 enum Outcome { ACTIVE, VICTORY, DEFEAT }
 
 const PATH_GRID := preload("res://scripts/rts_navigation.gd")
+const DIAGNOSTICS_UI := preload("res://scripts/rts_diagnostics_ui.gd")
 const RIGGED_AMINA := "res://assets/characters/amina/amina_rigged.glb"
 
 const MAP_LIMIT := 24.0
@@ -55,8 +56,11 @@ func _ready() -> void:
     camera_focus = hero.global_position
     _update_camera(1.0)
     _update_status()
-    print("RTS_OPERATION_START faction=", GameState.faction_name,
-        " officer=", GameState.officer_name, " input=ORDERS_ONLY")
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("app", "RTS_OPERATION_START", {
+            "faction": GameState.faction_index,
+            "officer": GameState.officer_index, "input": "ORDERS_ONLY"
+        })
 
 func _create_world() -> void:
     var ground := MeshInstance3D.new()
@@ -251,6 +255,10 @@ func _create_ui() -> void:
     _add_button(controls, "СТОП", _stop_selected_units)
     _add_button(controls, "−", _zoom_out)
     _add_button(controls, "+", _zoom_in)
+    if RTSDiagnostics.enabled:
+        var debug_panel := DIAGNOSTICS_UI.new()
+        add_child(debug_panel)
+        debug_panel.install(self, controls)
     _add_button(controls, "НА КОРАБЛЬ", _back_to_ship)
 
     var bottom := VBoxContainer.new()
@@ -319,22 +327,28 @@ func _select_units(new_selection: Array[Combatant]) -> void:
         selection_rings[unit] = indicator
     selected_unit = selected_units[0] if not selected_units.is_empty() else null
     _update_status()
-    print("RTS_SELECTED_COUNT=", selected_units.size())
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("units", "selection", {"count": selected_units.size()})
 
 func _stop_selected_units() -> void:
     for unit in selected_units:
         _clear_path(unit)
         attackers.erase(unit)
     _update_status()
-    print("RTS_STOP count=", selected_units.size())
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("units", "stop", {"count": selected_units.size()})
 
 func _zoom_in() -> void:
     camera_zoom = clampf(camera_zoom - 3.0, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
     _clamp_camera_focus()
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("camera", "zoom_in", {"zoom": camera_zoom})
 
 func _zoom_out() -> void:
     camera_zoom = clampf(camera_zoom + 3.0, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
     _clamp_camera_focus()
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("camera", "zoom_out", {"zoom": camera_zoom})
 
 func _clamp_camera_focus() -> void:
     var limit: float = maxf(3.0, MAP_LIMIT - camera_zoom * 0.45)
@@ -351,6 +365,8 @@ func _unhandled_input(event: InputEvent) -> void:
         if touch.index != 0:
             return
         if touch.canceled:
+            if RTSDiagnostics.enabled:
+                RTSDiagnostics.event("input", "touch_canceled")
             touch_tracking = false
             touch_dragged = false
             return
@@ -361,7 +377,13 @@ func _unhandled_input(event: InputEvent) -> void:
         elif touch_tracking:
             touch_tracking = false
             if not touch_dragged:
+                if RTSDiagnostics.enabled:
+                    RTSDiagnostics.event("input", "tap", {"at": str(touch.position)})
                 _handle_tap(touch.position)
+            elif RTSDiagnostics.enabled:
+                RTSDiagnostics.event("camera", "pan_end", {
+                    "focus": str(camera_focus), "zoom": camera_zoom
+                })
             touch_dragged = false
             get_viewport().set_input_as_handled()
     elif event is InputEventScreenDrag:
@@ -449,15 +471,20 @@ func _issue_move(destination: Vector3) -> void:
         var target := destination + Vector3(offset, 0.0, 0.0)
         var planned: Array[Vector3] = navigation.get_path(unit.position, target)
         if planned.is_empty():
-            print("RTS_PATH_BLOCKED unit=", unit.name, " target=", target)
+            if RTSDiagnostics.enabled:
+                RTSDiagnostics.event("path", "RTS_PATH_BLOCKED", {"unit": unit.name, "target": str(target)})
             continue
         attackers.erase(unit)
         unit_paths[unit] = planned
         unit_waypoint_index[unit] = 0
         accepted += 1
-        print("RTS_MOVE_ORDER unit=", unit.name, " target=", target, " waypoints=", planned.size())
+        if RTSDiagnostics.enabled:
+            RTSDiagnostics.event("units", "RTS_MOVE_ORDER", {
+                "unit": unit.name, "target": str(target), "waypoints": planned.size()
+            })
     _update_status()
-    print("RTS_GROUP_ORDER requested=", n, " accepted=", accepted)
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("units", "RTS_GROUP_ORDER", {"requested": n, "accepted": accepted})
 
 func _clear_path(unit: Combatant) -> void:
     unit_paths.erase(unit)
@@ -477,6 +504,8 @@ func _issue_attack() -> void:
             _clear_path(unit)
         if not attackers.has(unit):
             attackers.append(unit)
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("combat", "attack_order", {"count": attackers.size(), "target": "sentry"})
     _update_status()
 
 func _in_firing_position(shooter: Combatant, target: Combatant) -> bool:
@@ -485,6 +514,8 @@ func _in_firing_position(shooter: Combatant, target: Combatant) -> bool:
 func _shoot(shooter: Combatant, target: Combatant) -> void:
     if not shooter.fire_at(target):
         return
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("combat", "hit", {"from": shooter.name, "to": target.name, "health": target.hull})
     var origin := shooter.position + Vector3.UP
     var end := target.position + Vector3.UP
     var tracer := _make_box(Vector3.ZERO, Vector3(0.07, 0.07, origin.distance_to(end)),
@@ -536,7 +567,8 @@ func _physics_process(delta: float) -> void:
             if index >= planned.size():
                 unit_paths.erase(unit)
                 unit_waypoint_index.erase(unit)
-                print("RTS_ORDER_FINISHED unit=", unit.name)
+                if RTSDiagnostics.enabled:
+                    RTSDiagnostics.event("units", "order_finished", {"unit": unit.name})
             else:
                 unit_waypoint_index[unit] = index
     if sentry.hull > 0:
@@ -563,11 +595,14 @@ func _process(delta: float) -> void:
     perf_accumulated += delta
     if perf_accumulated >= 3.0:
         perf_accumulated = 0.0
-        print("RTS_PERF fps=", Engine.get_frames_per_second(),
-            " units=", units.size(),
-            " selected=", selected_units.size(),
-            " orders=", unit_paths.size(),
-            " resources=", resources_collected)
+        if RTSDiagnostics.enabled:
+            RTSDiagnostics.event("perf", "RTS_PERF", {
+                "fps": Engine.get_frames_per_second(),
+                "units": units.size(),
+                "selected": selected_units.size(),
+                "orders": unit_paths.size(),
+                "resources": resources_collected
+            })
 
 func _update_camera(delta: float) -> void:
     if view_camera == null:
@@ -585,7 +620,8 @@ func _check_crates() -> void:
                 crates.remove_at(i)
                 crate.queue_free()
                 resources_collected += 100
-                print("RTS_CRATE_COLLECTED resources=", resources_collected)
+                if RTSDiagnostics.enabled:
+                    RTSDiagnostics.event("resource", "RTS_CRATE_COLLECTED", {"resources": resources_collected})
                 _update_status()
                 break
 
@@ -597,7 +633,10 @@ func _finish(result: Outcome) -> void:
     for unit in units:
         _set_unit_animation(unit, false)
     _update_status()
-    print("RTS_LANDING_RESULT outcome=", Outcome.keys()[result], " resources=", resources_collected)
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("combat", "RTS_LANDING_RESULT", {
+            "outcome": Outcome.keys()[result], "resources": resources_collected
+        })
 
 func _result_text() -> String:
     if outcome == Outcome.VICTORY:
@@ -633,5 +672,6 @@ func _update_status() -> void:
 func _back_to_ship() -> void:
     GameState.last_report = "%s  ·  Припасы %d/3  ·  Ресурсы %d" % [
         _result_text(), 3 - crates.size(), resources_collected]
-    print("RTS_OPERATION_END collected=", resources_collected)
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("app", "RTS_OPERATION_END", {"collected": resources_collected})
     get_tree().change_scene_to_file("res://scenes/main.tscn")
