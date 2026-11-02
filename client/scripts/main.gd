@@ -447,7 +447,7 @@ func _update_portrait() -> void:
         if not FileAccess.file_exists(asset_path):
             portrait_cache[portrait_id] = null
         else:
-            var encoded := FileAccess.get_file_as_string(asset_path).strip_edges()
+            var encoded := FileAccess.get_file_as_string(asset_path).replace("\n", "").replace("\r", "").strip_edges()
             var bytes := Marshalls.base64_to_raw(encoded)
             var img := Image.new()
             var error := img.load_jpg_from_buffer(bytes)
