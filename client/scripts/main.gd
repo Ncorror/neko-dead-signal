@@ -86,6 +86,9 @@ var officer_index: int = 0
 var faction_buttons: Array[Button] = []
 var officer_buttons: Array[Button] = []
 var hero_visual: Control
+var hero_portrait: TextureRect
+var portrait_cache: Dictionary = {}
+var officer_scroll: ScrollContainer
 var hero_name: Label
 var hero_role: Label
 var hero_bio: Label
@@ -98,8 +101,8 @@ var close_button: Button
 var exit_dialog: ConfirmationDialog
 
 func _ready() -> void:
-    faction_index = GameState.faction_index
-    officer_index = GameState.officer_index
+    faction_index = clampi(GameState.faction_index, 0, FACTIONS.size() - 1)
+    officer_index = clampi(GameState.officer_index, 0, OFFICERS[faction_index].size() - 1)
     _build_screen()
     _refresh_selection()
 
@@ -190,7 +193,8 @@ func _build_content(parent: VBoxContainer) -> void:
     left.add_child(faction_details)
     left.add_child(_rule())
     left.add_child(_label("02   /   КОМАНДИР ДЕСАНТА", 13, CYAN))
-    var scroll := ScrollContainer.new()
+    officer_scroll = ScrollContainer.new()
+    var scroll := officer_scroll
     scroll.custom_minimum_size = Vector2(0, 136)
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -214,12 +218,26 @@ func _build_content(parent: VBoxContainer) -> void:
     row.add_child(center)
 
     center.add_child(_label("ПЕРСОНАЛЬНОЕ ДОСЬЕ     //     HOLO-01", 13, Color("#a8d6df")))
+    var portrait_holder := Control.new()
+    portrait_holder.custom_minimum_size = Vector2(245, 280)
+    portrait_holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    portrait_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    portrait_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    center.add_child(portrait_holder)
+
     hero_visual = HOLOGRAM.new()
     hero_visual.mode = 1
-    hero_visual.custom_minimum_size = Vector2(245, 280)
-    hero_visual.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    hero_visual.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    center.add_child(hero_visual)
+    hero_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    portrait_holder.add_child(hero_visual)
+    hero_visual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+    hero_portrait = TextureRect.new()
+    hero_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    hero_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+    hero_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    hero_portrait.visible = false
+    portrait_holder.add_child(hero_portrait)
+    hero_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
     hero_name = _label("", 27, WHITE, true)
     hero_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -351,13 +369,31 @@ func _stretch_horizontal() -> Control:
     return gap
 
 func _select_faction(i: int) -> void:
-    faction_index = i
-    officer_index = 0
+    if i < 0 or i >= FACTIONS.size():
+        return
+    if faction_index != i:
+        faction_index = i
+        officer_index = clampi(GameState.officers_by_faction[i], 0, OFFICERS[i].size() - 1)
+    _store_selected_commander()
     _refresh_selection()
+    call_deferred("_reveal_selected_officer")
 
 func _select_officer(i: int) -> void:
+    if i < 0 or i >= OFFICERS[faction_index].size():
+        return
     officer_index = i
+    _store_selected_commander()
     _refresh_selection()
+    call_deferred("_reveal_selected_officer")
+
+func _store_selected_commander() -> void:
+    var faction: Dictionary = FACTIONS[faction_index]
+    var officer: Dictionary = OFFICERS[faction_index][officer_index]
+    GameState.set_selection(faction_index, officer_index, faction["full"], officer["full"])
+
+func _reveal_selected_officer() -> void:
+    if officer_scroll != null and officer_index < officer_buttons.size():
+        officer_scroll.ensure_control_visible(officer_buttons[officer_index])
 
 func _refresh_selection() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
@@ -385,6 +421,7 @@ func _refresh_selection() -> void:
     hero_visual.faction_index = faction_index
     hero_visual.officer_index = officer_index
     hero_visual.queue_redraw()
+    _update_portrait()
     hero_name.text = officer["name"]
     hero_role.text = officer["role"]
     hero_bio.text = officer["bio"]
@@ -394,6 +431,33 @@ func _refresh_selection() -> void:
     selected_fleet.text = faction["fleet"]
     cta.add_theme_stylebox_override("normal", _style(faction["color"], faction["color"]))
     cta.add_theme_stylebox_override("hover", _style(faction["color"].lightened(0.2), faction["color"], 2))
+
+func _update_portrait() -> void:
+    var portrait_id := ""
+    if faction_index == 0:
+        var portraits := ["amina", "reina", "mira_kade", "lyra_voss"]
+        portrait_id = portraits[officer_index]
+    # The Saari portraits have not been approved or generated yet.
+    if portrait_id.is_empty():
+        hero_portrait.visible = false
+        return
+    if not portrait_cache.has(portrait_id):
+        var asset_path := "res://assets/portraits/" + portrait_id + ".jpg.b64"
+        if not FileAccess.file_exists(asset_path):
+            portrait_cache[portrait_id] = null
+        else:
+            var encoded := FileAccess.get_file_as_string(asset_path).strip_edges()
+            var bytes := Marshalls.base64_to_raw(encoded)
+            var img := Image.new()
+            var error := img.load_jpg_from_buffer(bytes)
+            if error != OK:
+                push_warning("RTS_PORTRAIT_LOAD_FAILED id=" + portrait_id + " error=" + str(error))
+                portrait_cache[portrait_id] = null
+            else:
+                portrait_cache[portrait_id] = ImageTexture.create_from_image(img)
+    var picture: Texture2D = portrait_cache[portrait_id]
+    hero_portrait.texture = picture
+    hero_portrait.visible = picture != null
 
 func _deploy() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
