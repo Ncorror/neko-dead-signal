@@ -287,7 +287,7 @@ func _build_footer(parent: VBoxContainer) -> void:
     parent.add_child(footer)
     footer.add_child(_label("REINA SYSTEMS  /  ОБЩИЙ ЭКСПЕДИЦИОННЫЙ ФЛОТ", 11, MUTED))
     footer.add_child(_stretch_horizontal())
-    footer.add_child(_label("ANDROID  •  PRE-ALPHA 0.0.3  •  FIRST LANDING", 11, Color("#87b2bf")))
+    footer.add_child(_label("ANDROID  •  PRE-ALPHA 0.0.4  •  RTS INPUT FIX", 11, Color("#87b2bf")))
 
 func _panel(parent: HBoxContainer, minimum_width: float) -> VBoxContainer:
     var outer := PanelContainer.new()
