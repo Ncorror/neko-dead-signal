@@ -83,7 +83,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          godot --headless --path client --script res://tests/test_rts_navigation.gd 2>&1 | tee build/rts-navigation-test.log
+          timeout 35s godot --headless --path client --script res://tests/test_rts_navigation.gd 2>&1 | tee build/rts-navigation-test.log
           grep -q 'RTS_NAV_TEST_PASS' build/rts-navigation-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-navigation-test.log; then
             exit 1
