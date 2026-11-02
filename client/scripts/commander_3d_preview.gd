@@ -1,6 +1,9 @@
 extends SubViewportContainer
 ## Lightweight 3D commander menu preview; hidden until an original GLB is installed.
 ## Static GLB can be previewed without a rig. Animation is optional.
+const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
+const MENU_PREVIEW_HEIGHT := 2.75
+const MENU_FRONT_YAW_DEGREES := 90.0
 const MODELS := [
     ["res://assets/characters/amina/preview.glb",
      "res://assets/characters/reina/preview.glb",
@@ -34,9 +37,10 @@ func _ready() -> void:
     fill.light_energy = 0.65
     world.add_child(fill)
     var camera := Camera3D.new()
-    camera.position = Vector3(0, 1.3, 3.2)
+    camera.position = Vector3(0, 1.55, 3.0)
+    camera.fov = 37.0
     world.add_child(camera)
-    camera.look_at(Vector3(0, 1.0, 0), Vector3.UP)
+    camera.look_at(Vector3(0, 1.35, 0), Vector3.UP)
     camera.current = true
     set_process(false)
     visible = false
@@ -62,9 +66,18 @@ func set_commander(faction: int, officer: int) -> bool:
         return _set_missing()
     pivot.add_child(model)
     active_model = model as Node3D
-    active_model.position = Vector3.ZERO
-    active_model.scale = Vector3.ONE * 1.65
-    pivot.rotation.y = 0.0
+    var fit: Dictionary = MODEL_FIT.fit_to_height(active_model, MENU_PREVIEW_HEIGHT)
+    if not bool(fit.get("ok", false)):
+        push_warning("RTS_MENU_3D_INVALID_BOUNDS")
+        active_model.queue_free()
+        active_model = null
+        return _set_missing()
+    pivot.rotation.y = deg_to_rad(MENU_FRONT_YAW_DEGREES)
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("visual", "menu_character_fit", {
+            "target_height": fit["target_height"],
+            "scale": fit["scale"]
+        })
     for child in active_model.find_children("*", "AnimationPlayer", true, false):
         var animation_player: AnimationPlayer = child as AnimationPlayer
         for clip in animation_player.get_animation_list():
