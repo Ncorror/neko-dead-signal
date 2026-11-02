@@ -3,6 +3,7 @@ extends Control
 ## Textures/models are deliberately placeholders pending our original Meshy assets.
 
 const HOLOGRAM := preload("res://scripts/command_visuals.gd")
+const DIAGNOSTICS_UI := preload("res://scripts/rts_diagnostics_ui.gd")
 const BG := Color("#050f18")
 const PANEL := Color("#071a25")
 const EDGE := Color("#204351")
@@ -105,6 +106,8 @@ func _ready() -> void:
     officer_index = clampi(GameState.officer_index, 0, OFFICERS[faction_index].size() - 1)
     _build_screen()
     _refresh_selection()
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("ui", "orbital_open", {"faction": faction_index, "officer": officer_index})
     call_deferred("_reveal_selected_officer")
 
 func _build_screen() -> void:
@@ -171,6 +174,10 @@ func _build_header(parent: VBoxContainer) -> void:
     close_button.custom_minimum_size = Vector2(112, 52)
     close_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     close_button.pressed.connect(_confirm_exit)
+    if RTSDiagnostics.enabled:
+        var debug_panel := DIAGNOSTICS_UI.new()
+        add_child(debug_panel)
+        debug_panel.install(self, header)
     header.add_child(close_button)
 
 func _build_content(parent: VBoxContainer) -> void:
@@ -391,6 +398,8 @@ func _store_selected_commander() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
     var officer: Dictionary = OFFICERS[faction_index][officer_index]
     GameState.set_selection(faction_index, officer_index, faction["full"], officer["full"])
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("commander", "selected", {"faction": faction_index, "officer": officer_index})
 
 func _reveal_selected_officer() -> void:
     if officer_scroll != null and officer_index < officer_buttons.size():
@@ -453,6 +462,8 @@ func _update_portrait() -> void:
             var error := img.load_jpg_from_buffer(bytes)
             if error != OK:
                 push_warning("RTS_PORTRAIT_LOAD_FAILED id=" + portrait_id + " error=" + str(error))
+            if RTSDiagnostics.enabled:
+                RTSDiagnostics.event("error", "portrait_decode_failed", {"id": portrait_id, "error": error})
                 portrait_cache[portrait_id] = null
             else:
                 portrait_cache[portrait_id] = ImageTexture.create_from_image(img)
@@ -464,5 +475,6 @@ func _deploy() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
     var officer: Dictionary = OFFICERS[faction_index][officer_index]
     GameState.configure(faction_index, officer_index, faction["full"], officer["full"])
-    print("ORBITAL_DEPLOY faction=", faction_index, " officer=", officer_index)
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("app", "deploy", {"faction": faction_index, "officer": officer_index})
     get_tree().change_scene_to_file("res://scenes/operation.tscn")
