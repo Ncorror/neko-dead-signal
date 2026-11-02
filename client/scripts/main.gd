@@ -105,6 +105,7 @@ func _ready() -> void:
     officer_index = clampi(GameState.officer_index, 0, OFFICERS[faction_index].size() - 1)
     _build_screen()
     _refresh_selection()
+    call_deferred("_reveal_selected_officer")
 
 func _build_screen() -> void:
     var background := HOLOGRAM.new()
