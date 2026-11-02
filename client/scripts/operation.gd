@@ -11,12 +11,12 @@ const RIGGED_AMINA := "res://assets/characters/amina/amina_rigged.glb"
 const STATIC_AMINA_PREVIEW := "res://assets/characters/amina/preview.glb"
 const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
 const STATIC_AMINA_WORLD_HEIGHT := 1.90
-const STATIC_AMINA_FRONT_YAW_DEGREES := 90.0
+const STATIC_AMINA_FRONT_YAW_DEGREES := 0.0
 
 const MAP_LIMIT := 24.0
 const OFFICER_SPEED := 5.8
 const ESCORT_SPEED := 4.7
-const CAMERA_MIN_ZOOM := 12.0
+const CAMERA_MIN_ZOOM := 4.0
 const CAMERA_MAX_ZOOM := 37.0
 const TOUCH_DRAG_THRESHOLD := 16.0
 const TOUCH_PAN_MULTIPLIER := 0.0014
@@ -51,6 +51,10 @@ var view_camera: Camera3D
 var status_label: Label
 var unit_label: Label
 
+var touch_points: Dictionary = {}
+var touch_index := -1
+var pinch_distance := 0.0
+var pinch_used := false
 var touch_start: Vector2 = Vector2.ZERO
 var touch_dragged: bool = false
 var touch_tracking: bool = false
@@ -326,7 +330,7 @@ func _create_ui() -> void:
     unit_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     bottom.add_child(unit_label)
     var hint := Label.new()
-    hint.text = "Касание по земле — идти, по стражу — атаковать. СТОП отменяет приказ. Свайп двигает камеру."
+    hint.text = "Касание — выбор/приказ. Свайп — камера. Два пальца — масштаб. СТОП — отмена."
     hint.add_theme_font_size_override("font_size", 14)
     hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
     bottom.add_child(hint)
@@ -424,44 +428,9 @@ func _unhandled_input(event: InputEvent) -> void:
     if event.device == InputEvent.DEVICE_ID_EMULATION:
         return
     if event is InputEventScreenTouch:
-        var touch := event as InputEventScreenTouch
-        if touch.index != 0:
-            return
-        if touch.canceled:
-            if RTSDiagnostics.enabled:
-                RTSDiagnostics.event("input", "touch_canceled")
-            touch_tracking = false
-            touch_dragged = false
-            return
-        if touch.pressed:
-            touch_tracking = true
-            touch_dragged = false
-            touch_start = touch.position
-        elif touch_tracking:
-            touch_tracking = false
-            if not touch_dragged:
-                if RTSDiagnostics.enabled:
-                    RTSDiagnostics.event("input", "tap", {"at": str(touch.position)})
-                _handle_tap(touch.position)
-            elif RTSDiagnostics.enabled:
-                RTSDiagnostics.event("camera", "pan_end", {
-                    "focus": str(camera_focus), "zoom": camera_zoom
-                })
-            touch_dragged = false
-            get_viewport().set_input_as_handled()
+        _handle_touch(event)
     elif event is InputEventScreenDrag:
-        var drag := event as InputEventScreenDrag
-        if drag.index == 0 and touch_tracking:
-            if not touch_dragged:
-                if drag.position.distance_to(touch_start) < TOUCH_DRAG_THRESHOLD:
-                    return
-                touch_dragged = true
-                # Discard crossing-frame delta; it can include the entire
-                # finger travel since press on some mobile input backends.
-                get_viewport().set_input_as_handled()
-                return
-            _pan_camera(drag.relative)
-            get_viewport().set_input_as_handled()
+        _handle_drag(event)
     elif event is InputEventMouseButton:
         var mouse := event as InputEventMouseButton
         if mouse.pressed and mouse.button_index == MOUSE_BUTTON_LEFT:
@@ -478,6 +447,74 @@ func _unhandled_input(event: InputEvent) -> void:
         if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
             _pan_camera(motion.relative)
             get_viewport().set_input_as_handled()
+
+func _handle_touch(touch: InputEventScreenTouch) -> void:
+    if touch.canceled and RTSDiagnostics.enabled:
+        RTSDiagnostics.event("input", "touch_canceled")
+    if touch.pressed and not touch.canceled:
+        touch_points[touch.index] = touch.position
+        if touch_points.size() == 1 and not pinch_used:
+            touch_index = touch.index
+            touch_tracking = true
+            touch_dragged = false
+            touch_start = touch.position
+        else:
+            pinch_used = true
+            touch_tracking = false
+            touch_dragged = false
+            var points := touch_points.values()
+            pinch_distance = points[0].distance_to(points[1])
+    else:
+        touch_points.erase(touch.index)
+        if touch.canceled or pinch_used:
+            touch_tracking = false
+            touch_dragged = false
+            pinch_distance = 0.0
+        elif touch_tracking and touch.index == touch_index:
+            touch_tracking = false
+            if not touch_dragged:
+                if RTSDiagnostics.enabled:
+                    RTSDiagnostics.event("input", "tap", {"at": str(touch.position)})
+                _handle_tap(touch.position)
+            elif RTSDiagnostics.enabled:
+                RTSDiagnostics.event("camera", "pan_end", {"focus": str(camera_focus), "zoom": camera_zoom})
+            touch_dragged = false
+        if touch_points.is_empty():
+            if pinch_used and RTSDiagnostics.enabled:
+                RTSDiagnostics.event("camera", "pinch_end", {"zoom": camera_zoom})
+            pinch_used = false
+            touch_index = -1
+    get_viewport().set_input_as_handled()
+
+func _handle_drag(drag: InputEventScreenDrag) -> void:
+    if not touch_points.has(drag.index):
+        return
+    touch_points[drag.index] = drag.position
+    if touch_points.size() >= 2:
+        var points := touch_points.values()
+        var distance: float = points[0].distance_to(points[1])
+        if pinch_distance > 8.0 and distance > 8.0:
+            camera_zoom = clampf(camera_zoom * pinch_distance / distance, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+            _clamp_camera_focus()
+        pinch_distance = distance
+    elif touch_tracking and drag.index == touch_index:
+        if not touch_dragged:
+            if drag.position.distance_to(touch_start) < TOUCH_DRAG_THRESHOLD:
+                return
+            touch_dragged = true
+            get_viewport().set_input_as_handled()
+            return
+        _pan_camera(drag.relative)
+    get_viewport().set_input_as_handled()
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+        touch_points.clear()
+        touch_index = -1
+        pinch_used = false
+        pinch_distance = 0.0
+        touch_tracking = false
+        touch_dragged = false
 
 func _pan_camera(delta_pixels: Vector2) -> void:
     # Previous camera_zoom * 0.018 shifted ~80 world units per 200 px swipe:
@@ -637,6 +674,11 @@ func _can_step(unit: Combatant, destination: Vector3) -> bool:
             return false
     return true
 
+func _face_direction(unit: Combatant, direction: Vector3, delta: float) -> void:
+    if direction.length_squared() > 0.000001:
+        var heading := atan2(direction.x, direction.z)
+        unit.rotation.y = lerp_angle(unit.rotation.y, heading, 1.0 - exp(-delta * 10.0))
+
 func _move_unit(unit: Combatant, delta: float) -> void:
     if not unit_paths.has(unit):
         _set_unit_animation(unit, false)
@@ -663,6 +705,7 @@ func _move_unit(unit: Combatant, delta: float) -> void:
                     RTSDiagnostics.event("path", "ally_repath", {"unit": unit.name, "accepted": not replacement.is_empty()})
             return
         var travelled := unit.position.distance_to(next)
+        _face_direction(unit, next - unit.position, delta)
         unit.position = next
         budget -= travelled
         moved = moved or travelled > 0.00001
@@ -684,6 +727,7 @@ func _physics_process(delta: float) -> void:
     for unit in units:
         unit.tick(delta)
         if attackers.has(unit) and _in_firing_position(unit, sentry):
+            _face_direction(unit, sentry.position - unit.position, delta)
             _clear_path(unit)
             _set_unit_animation(unit, false)
             _shoot(unit, sentry)

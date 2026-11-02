@@ -17,7 +17,7 @@ func configure(limit: float = 24.0, step: float = DEFAULT_STEP) -> void:
     grid = AStarGrid2D.new()
     grid.region = Rect2i(-radius, -radius, radius * 2 + 1, radius * 2 + 1)
     grid.cell_size = Vector2.ONE * cell_step
-    grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
+    grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
     grid.update()
 
 func world_to_cell(point: Vector3) -> Vector2i:
@@ -109,8 +109,57 @@ func _get_static_path(start: Vector3, requested_goal: Vector3) -> Array[Vector3]
     if cells.is_empty():
         return result
     for cell in cells:
-        if cell != from_id:
-            result.append(cell_to_world(cell))
+        var point := cell_to_world(cell)
+        if not point.is_equal_approx(start):
+            result.append(point)
     if to_id == world_to_cell(target) and (result.is_empty() or result.back().distance_to(target) > 0.05):
         result.append(target)
+    return _smooth_path(start, result)
+
+func has_walkable_segment(start: Vector3, finish: Vector3) -> bool:
+    var cell := world_to_cell(start)
+    var end_cell := world_to_cell(finish)
+    if not is_walkable(cell) or not is_walkable(end_cell):
+        return false
+    var from := Vector2(start.x, start.z) / cell_step
+    var delta := Vector2(finish.x - start.x, finish.z - start.z) / cell_step
+    var step := Vector2i(signi(end_cell.x - cell.x), signi(end_cell.y - cell.y))
+    var cross_x := INF
+    var cross_y := INF
+    var advance_x := INF
+    var advance_y := INF
+    if step.x != 0:
+        cross_x = (float(cell.x) + float(step.x) * 0.5 - from.x) / delta.x
+        advance_x = absf(1.0 / delta.x)
+    if step.y != 0:
+        cross_y = (float(cell.y) + float(step.y) * 0.5 - from.y) / delta.y
+        advance_y = absf(1.0 / delta.y)
+    while cell != end_cell:
+        if is_equal_approx(cross_x, cross_y):
+            if not is_walkable(cell + Vector2i(step.x, 0)) or not is_walkable(cell + Vector2i(0, step.y)):
+                return false
+            cell += step
+            cross_x += advance_x
+            cross_y += advance_y
+        elif cross_x < cross_y:
+            cell.x += step.x
+            cross_x += advance_x
+        else:
+            cell.y += step.y
+            cross_y += advance_y
+        if not is_walkable(cell):
+            return false
+    return true
+
+func _smooth_path(start: Vector3, route: Array[Vector3]) -> Array[Vector3]:
+    var result: Array[Vector3] = []
+    var anchor := start
+    var index := 0
+    while index < route.size():
+        var farthest := route.size() - 1
+        while farthest > index and not has_walkable_segment(anchor, route[farthest]):
+            farthest -= 1
+        result.append(route[farthest])
+        anchor = route[farthest]
+        index = farthest + 1
     return result

@@ -11,6 +11,25 @@ func _check(ok: bool, message: String) -> void:
         failures += 1
         push_error("RTS_AMINA_VISUAL_TEST_FAIL: " + message)
 
+func _check_full_model(preview_node) -> void:
+    var viewport_size: Vector2 = preview_node.preview.size
+    var frame := Rect2(Vector2.ONE * 2.0, viewport_size - Vector2.ONE * 4.0)
+    for mesh in preview_node.active_model.find_children("*", "MeshInstance3D", true, false):
+        if mesh.mesh == null:
+            continue
+        var box: AABB = mesh.mesh.get_aabb()
+        for corner in range(8):
+            var point: Vector3 = mesh.to_global(box.get_endpoint(corner))
+            if preview_node.camera.is_position_behind(point) or not frame.has_point(preview_node.camera.unproject_position(point)):
+                _check(false, "model clipped by preview frame")
+                return
+
+func _preview_touch(preview_node, pressed: bool, at: Vector2) -> void:
+    var touch := InputEventScreenTouch.new()
+    touch.position = at
+    touch.pressed = pressed
+    preview_node.get_viewport().push_input(touch, true)
+
 func _run() -> void:
     var tree := get_tree()
     tree.current_scene = null
@@ -27,6 +46,31 @@ func _run() -> void:
     if model != null:
         _check(model.scale.y > 2.0, "menu character must be normalized above original size")
         _check(model.position.y > 0.0, "mesh center should be raised to place feet at ground")
+    if model != null:
+        var preview_node = menu.hero_preview_3d
+        var original_yaw: float = preview_node.pivot.rotation.y
+        for frame in range(30):
+            await tree.process_frame
+        _check(is_equal_approx(original_yaw, preview_node.pivot.rotation.y), "preview must remain still without input")
+        var center: Vector2 = preview_node.get_global_rect().get_center()
+        _preview_touch(preview_node, true, center)
+        var drag := InputEventScreenDrag.new()
+        drag.position = center + Vector2(60, 0)
+        drag.relative = Vector2(60, 0)
+        preview_node.get_viewport().push_input(drag, true)
+        _preview_touch(preview_node, false, drag.position)
+        _check(absf(angle_difference(original_yaw, preview_node.pivot.rotation.y)) > 0.1, "touch drag must rotate the model")
+        var released_yaw: float = preview_node.pivot.rotation.y
+        for frame in range(20):
+            await tree.process_frame
+        _check(is_equal_approx(released_yaw, preview_node.pivot.rotation.y), "rotation must stop after finger release")
+        for resolution in [Vector2i(1280, 720), Vector2i(2048, 945), Vector2i(1024, 600)]:
+            tree.root.size = resolution
+            for frame in range(20):
+                await tree.process_frame
+            for angle in range(0, 360, 45):
+                preview_node.pivot.rotation.y = deg_to_rad(float(angle))
+                _check_full_model(preview_node)
     menu._deploy()
     await tree.scene_changed
     var op = tree.current_scene

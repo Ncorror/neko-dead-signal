@@ -7,6 +7,7 @@ on:
       - feat/orbital-command-ui
       - feat/pure-rts-commanders
       - main
+      - fix/manual-preview-smooth-paths-v007
       - feat/rts-formation-clearance-v006
       - feat/amina-static-landing-preview-v006
       - feat/tester-diagnostics-3d-roster
@@ -128,6 +129,15 @@ jobs:
           timeout 45s godot --headless --path client res://tests/test_amina_visual.tscn 2>&1 | tee build/rts-amina-visual-test.log
           grep -q 'RTS_AMINA_VISUAL_TEST_PASS' build/rts-amina-visual-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-amina-visual-test.log; then
+            exit 1
+          fi
+      - name: Test battlefield touch zoom and gesture cancellation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 40s godot --headless --path client res://tests/test_camera_gestures.tscn 2>&1 | tee build/rts-camera-test.log
+          grep -q 'RTS_CAMERA_TEST_PASS' build/rts-camera-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-camera-test.log; then
             exit 1
           fi
       - name: Play the landing regression in Godot
