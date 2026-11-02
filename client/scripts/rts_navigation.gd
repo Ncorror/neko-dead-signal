@@ -3,11 +3,13 @@ extends RefCounted
 ## Prototype implementation for deterministic path requests, not final MMO-scale navigation.
 
 const DEFAULT_STEP := 1.0
+var cover: Array[AABB] = []
 var grid: AStarGrid2D
 var cell_step: float = DEFAULT_STEP
 var world_limit: float = 24.0
 
 func configure(limit: float = 24.0, step: float = DEFAULT_STEP) -> void:
+    cover.clear()
     world_limit = limit
     cell_step = step
     var radius := ceili(world_limit / cell_step)
@@ -23,8 +25,11 @@ func world_to_cell(point: Vector3) -> Vector2i:
 func cell_to_world(cell: Vector2i) -> Vector3:
     return Vector3(float(cell.x) * cell_step, 0.0, float(cell.y) * cell_step)
 
-func set_blocked_box(center: Vector3, box_size: Vector3, clearance: float = 0.75) -> void:
+func set_blocked_box(center: Vector3, box_size: Vector3, clearance: float = 0.75, blocks_fire: bool = true) -> void:
     assert(grid != null)
+    if blocks_fire:
+        var corner := center - Vector3(box_size.x, 0.0, box_size.z) * 0.5
+        cover.append(AABB(corner, box_size))
     var min_x := ceili((center.x - box_size.x * 0.5 - clearance) / cell_step)
     var max_x := floori((center.x + box_size.x * 0.5 + clearance) / cell_step)
     var min_y := ceili((center.z - box_size.z * 0.5 - clearance) / cell_step)
@@ -34,6 +39,12 @@ func set_blocked_box(center: Vector3, box_size: Vector3, clearance: float = 0.75
             var cell := Vector2i(x, y)
             if grid.is_in_boundsv(cell):
                 grid.set_point_solid(cell, true)
+
+func has_clear_shot(start: Vector3, target: Vector3) -> bool:
+    for box in cover:
+        if box.intersects_segment(start + Vector3.UP, target + Vector3.UP) != null:
+            return false
+    return true
 
 func is_walkable(cell: Vector2i) -> bool:
     return grid != null and grid.is_in_boundsv(cell) and not grid.is_point_solid(cell)
