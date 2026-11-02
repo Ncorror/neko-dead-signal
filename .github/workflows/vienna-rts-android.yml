@@ -10,6 +10,7 @@ on:
       - feat/rts-squads-grid-pathfinding
       - feat/rts-landing-skirmish
       - fix/orbital-menu-touch-exit
+      - fix/selection-camera-and-portraits-v004
     paths:
       - 'client/**'
       - '.github/workflows/vienna-rts-android.yml'
