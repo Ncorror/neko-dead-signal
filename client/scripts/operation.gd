@@ -1,6 +1,8 @@
 extends Node3D
-## Pure RTS proof-of-concept. Units move by selection + orders; no direct control.
-## Local test only: no pathfinding, combat, fog, resource server or networking yet.
+## Local proof-of-concept: RTS-only group commands + obstacle-aware A* navigation.
+## Combat, remote commands, collision avoidance and mesh rigging are not implemented.
+
+const PATH_GRID := preload("res://scripts/rts_navigation.gd")
 
 const MAP_LIMIT := 24.0
 const OFFICER_SPEED := 5.8
@@ -12,8 +14,12 @@ const TOUCH_DRAG_THRESHOLD := 16.0
 var hero: Node3D
 var escort: Node3D
 var selected_unit: Node3D
+var selected_units: Array[Node3D] = []
 var units: Array[Node3D] = []
-var unit_targets: Dictionary = {}
+var unit_paths: Dictionary = {}
+var unit_waypoint_index: Dictionary = {}
+var selection_rings: Dictionary = {}
+var navigation = PATH_GRID.new()
 var crates: Array[Node3D] = []
 var resources_collected: int = 0
 var camera_focus: Vector3 = Vector3.ZERO
@@ -21,13 +27,13 @@ var camera_zoom: float = 22.0
 var view_camera: Camera3D
 var status_label: Label
 var unit_label: Label
-var selection_ring: MeshInstance3D
 
 var touch_start: Vector2 = Vector2.ZERO
 var touch_dragged: bool = false
 var touch_tracking: bool = false
 
 func _ready() -> void:
+    navigation.configure(MAP_LIMIT, 1.0)
     _create_world()
     _create_ui()
     _select_unit(hero)
@@ -55,22 +61,16 @@ func _create_world() -> void:
         true)
     escort = _make_unit("EscortUnit", Vector3(-3.0, 0, 1.0), Color("#8ab9a0"), false)
 
-    # Placeholder obstacles, not pathfinding or collision geometry.
+    # Path grid excludes each obstacle footprint with clearance for the capsule.
     for p in [Vector3(-12, 0, -8), Vector3(9, 0, 7), Vector3(16, 0, -12)]:
-        _make_box(p, Vector3(3, 1.5, 3), Color("#4f6269"))
+        var obstacle_size := Vector3(3, 1.5, 3)
+        _make_box(p, obstacle_size, Color("#4f6269"))
+        navigation.set_blocked_box(p, obstacle_size, 0.75)
 
     for p in [Vector3(5, 0, 2), Vector3(-8, 0, 11), Vector3(13, 0, -6)]:
         var crate := _make_box(p, Vector3(1.25, 1, 1.25), Color("#e7b65b"))
         crate.name = "PrototypeSupplyCrate"
         crates.append(crate)
-
-    selection_ring = MeshInstance3D.new()
-    var ring := TorusMesh.new()
-    ring.inner_radius = 0.72
-    ring.outer_radius = 0.84
-    selection_ring.mesh = ring
-    selection_ring.material_override = _material(Color("#62ecf0"))
-    add_child(selection_ring)
 
     view_camera = Camera3D.new()
     view_camera.current = true
@@ -144,6 +144,8 @@ func _create_ui() -> void:
 
     _add_button(controls, "ОФИЦЕР", _focus_hero)
     _add_button(controls, "ОТРЯД", _focus_escort)
+    _add_button(controls, "ВСЕ", _select_all_units)
+    _add_button(controls, "СТОП", _stop_selected_units)
     _add_button(controls, "−", _zoom_out)
     _add_button(controls, "+", _zoom_in)
     _add_button(controls, "НА КОРАБЛЬ", _back_to_ship)
@@ -164,7 +166,7 @@ func _create_ui() -> void:
     unit_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     bottom.add_child(unit_label)
     var hint := Label.new()
-    hint.text = "Касание: выбрать юнит / приказ движения. Перетаскивание: перемещение камеры."
+    hint.text = "Касание: выбор / приказ. ВСЕ: вся группа. СТОП: сброс приказов. Свайп: камера."
     hint.add_theme_font_size_override("font_size", 14)
     hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
     bottom.add_child(hint)
@@ -185,10 +187,39 @@ func _focus_escort() -> void:
     camera_focus = escort.global_position
 
 func _select_unit(unit: Node3D) -> void:
-    selected_unit = unit
-    selection_ring.position = unit.position + Vector3(0, 0.07, 0)
+    var just_one: Array[Node3D] = [unit]
+    _select_units(just_one)
+
+func _select_all_units() -> void:
+    _select_units(units.duplicate())
+
+func _select_units(new_selection: Array[Node3D]) -> void:
+    for old_ring in selection_rings.values():
+        old_ring.queue_free()
+    selection_rings.clear()
+    selected_units.clear()
+    for unit in new_selection:
+        if not is_instance_valid(unit) or selected_units.has(unit):
+            continue
+        selected_units.append(unit)
+        var indicator := MeshInstance3D.new()
+        var ring := TorusMesh.new()
+        ring.inner_radius = 0.72
+        ring.outer_radius = 0.84
+        indicator.mesh = ring
+        indicator.material_override = _material(Color("#62ecf0"))
+        indicator.position = unit.position + Vector3(0, 0.07, 0)
+        add_child(indicator)
+        selection_rings[unit] = indicator
+    selected_unit = selected_units[0] if not selected_units.is_empty() else null
     _update_status()
-    print("RTS_SELECTED ", unit.name)
+    print("RTS_SELECTED_COUNT=", selected_units.size())
+
+func _stop_selected_units() -> void:
+    for unit in selected_units:
+        unit_paths.erase(unit)
+        unit_waypoint_index.erase(unit)
+    print("RTS_STOP count=", selected_units.size())
 
 func _zoom_in() -> void:
     camera_zoom = clampf(camera_zoom - 4.0, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
@@ -259,26 +290,50 @@ func _screen_to_ground(screen_pos: Vector2) -> Variant:
     return ground_plane.intersects_ray(origin, direction)
 
 func _issue_move(destination: Vector3) -> void:
-    if selected_unit == null:
+    if selected_units.is_empty():
         return
-    destination.x = clampf(destination.x, -MAP_LIMIT, MAP_LIMIT)
-    destination.y = 0.0
-    destination.z = clampf(destination.z, -MAP_LIMIT, MAP_LIMIT)
-    unit_targets[selected_unit] = destination
-    print("RTS_MOVE_ORDER unit=", selected_unit.name, " target=", destination)
+    var n := selected_units.size()
+    var accepted := 0
+    for i in range(n):
+        var unit: Node3D = selected_units[i]
+        # Small slot offsets reduce pileups in this 2-unit RTS test.
+        var offset := (float(i) - (float(n - 1) * 0.5)) * 2.2
+        var target := destination + Vector3(offset, 0.0, 0.0)
+        var planned: Array[Vector3] = navigation.get_path(unit.position, target)
+        if planned.is_empty():
+            print("RTS_PATH_BLOCKED unit=", unit.name, " target=", target)
+            continue
+        unit_paths[unit] = planned
+        unit_waypoint_index[unit] = 0
+        accepted += 1
+        print("RTS_MOVE_ORDER unit=", unit.name, " target=", target, " waypoints=", planned.size())
+    print("RTS_GROUP_ORDER requested=", n, " accepted=", accepted)
 
 func _physics_process(delta: float) -> void:
     for unit in units:
-        if not unit_targets.has(unit):
+        if not unit_paths.has(unit):
             continue
-        var destination: Vector3 = unit_targets[unit]
+        var planned: Array[Vector3] = unit_paths[unit]
+        var index: int = int(unit_waypoint_index.get(unit, 0))
+        if index >= planned.size():
+            unit_paths.erase(unit)
+            unit_waypoint_index.erase(unit)
+            continue
         var speed: float = OFFICER_SPEED if unit == hero else ESCORT_SPEED
-        unit.position = unit.position.move_toward(destination, speed * delta)
-        if unit.position.distance_to(destination) < 0.07:
-            unit_targets.erase(unit)
+        unit.position = unit.position.move_toward(planned[index], speed * delta)
+        if unit.position.distance_to(planned[index]) < 0.07:
+            index += 1
+            if index >= planned.size():
+                unit_paths.erase(unit)
+                unit_waypoint_index.erase(unit)
+                print("RTS_ORDER_FINISHED unit=", unit.name)
+            else:
+                unit_waypoint_index[unit] = index
     _check_crates()
-    if selected_unit != null:
-        selection_ring.position = selected_unit.position + Vector3(0, 0.07, 0)
+    for unit in selected_units:
+        if selection_rings.has(unit):
+            var ring: MeshInstance3D = selection_rings[unit]
+            ring.position = unit.position + Vector3(0, 0.07, 0)
 
 func _process(delta: float) -> void:
     _update_camera(delta)
@@ -306,10 +361,14 @@ func _update_status() -> void:
     status_label.text = "%s  |  Контейнеры: %d/3  |  Ресурсы: %d  |  РЕЖИМ: RTS" % [
         GameState.faction_name, 3 - crates.size(), resources_collected
     ]
-    if selected_unit != null:
+    if selected_units.size() > 1:
+        unit_label.text = "ВЫДЕЛЕН ОТРЯД: %d юнита | общий приказ движения" % selected_units.size()
+    elif selected_unit != null:
         unit_label.text = "ВЫДЕЛЕН: %s" % (
             GameState.officer_name if selected_unit == hero else "Эскорт — стрелок"
         )
+    else:
+        unit_label.text = "НЕТ ВЫДЕЛЕННЫХ ЮНИТОВ"
 
 func _back_to_ship() -> void:
     print("RTS_OPERATION_END collected=", resources_collected)
