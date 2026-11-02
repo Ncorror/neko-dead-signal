@@ -7,6 +7,10 @@ enum Outcome { ACTIVE, VICTORY, DEFEAT }
 const PATH_GRID := preload("res://scripts/rts_navigation.gd")
 const DIAGNOSTICS_UI := preload("res://scripts/rts_diagnostics_ui.gd")
 const RIGGED_AMINA := "res://assets/characters/amina/amina_rigged.glb"
+const STATIC_AMINA_PREVIEW := "res://assets/characters/amina/preview.glb"
+const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
+const STATIC_AMINA_WORLD_HEIGHT := 1.90
+const STATIC_AMINA_FRONT_YAW_DEGREES := 90.0
 
 const MAP_LIMIT := 24.0
 const OFFICER_SPEED := 5.8
@@ -132,6 +136,10 @@ func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool
     unit.add_child(visual)
     if is_commander:
         _attach_optional_rigged_amina(unit, visual)
+        # A static Meshy mesh can be inspected on the battlefield, but it
+        # never impersonates a rigged, animated character.
+        if visual.visible:
+            _attach_optional_static_amina(unit, visual)
     units.append(unit)
     return unit
 
@@ -170,6 +178,42 @@ func _attach_optional_rigged_amina(unit: Node3D, placeholder: MeshInstance3D) ->
     animation_players[unit] = player
     _set_unit_animation(unit, false)
     print("RTS_AMINA_RIG_READY: ", player.get_animation_list())
+
+func _attach_optional_static_amina(unit: Node3D, placeholder: MeshInstance3D) -> void:
+    # Experimental visual-only landing test. Combat, AI, HP, navigation and
+    # selection stay on the original Combatant node.
+    if GameState.faction_index != 0 or GameState.officer_index != 0:
+        return
+    if not ResourceLoader.exists(STATIC_AMINA_PREVIEW):
+        return
+    var imported: Resource = load(STATIC_AMINA_PREVIEW)
+    if not (imported is PackedScene):
+        push_warning("RTS_STATIC_AMINA_NOT_PACKED_SCENE")
+        return
+    var packed: PackedScene = imported as PackedScene
+    var instance: Node = packed.instantiate()
+    if not (instance is Node3D):
+        instance.queue_free()
+        push_warning("RTS_STATIC_AMINA_WRONG_ROOT")
+        return
+    var mount := Node3D.new()
+    mount.name = "StaticCommanderPreview"
+    unit.add_child(mount)
+    mount.add_child(instance)
+    var static_model: Node3D = instance as Node3D
+    var fit: Dictionary = MODEL_FIT.fit_to_height(static_model, STATIC_AMINA_WORLD_HEIGHT)
+    if not bool(fit.get("ok", false)):
+        mount.queue_free()
+        push_warning("RTS_STATIC_AMINA_INVALID_BOUNDS")
+        return
+    # The source was generated from a side portrait, so set a test yaw.
+    mount.rotation.y = deg_to_rad(STATIC_AMINA_FRONT_YAW_DEGREES)
+    placeholder.hide()
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("visual", "static_amina_landing", {
+            "height": fit["target_height"], "scale": fit["scale"],
+            "note": "STATIC_NO_RIG_NO_ANIMATIONS"
+        })
 
 func _has_motion_clip(player: AnimationPlayer, keyword: String) -> bool:
     for clip in player.get_animation_list():
@@ -255,6 +299,8 @@ func _create_ui() -> void:
     _add_button(controls, "СТОП", _stop_selected_units)
     _add_button(controls, "−", _zoom_out)
     _add_button(controls, "+", _zoom_in)
+    if RTSDiagnostics.enabled and GameState.faction_index == 0 and GameState.officer_index == 0:
+        _add_button(controls, "ОСМОТР 3D", _inspect_commander)
     if RTSDiagnostics.enabled:
         var debug_panel := DIAGNOSTICS_UI.new()
         add_child(debug_panel)
@@ -294,6 +340,20 @@ func _focus_hero() -> void:
     if hero.hull > 0:
         _select_unit(hero)
         camera_focus = hero.global_position
+
+func _inspect_commander() -> void:
+    # Strategic camera zoom only. No direct-control/joystick mode.
+    if hero == null or hero.hull <= 0:
+        return
+    _select_unit(hero)
+    camera_focus = hero.global_position
+    camera_zoom = CAMERA_MIN_ZOOM
+    _clamp_camera_focus()
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("camera", "inspect_static_commander", {
+            "zoom": camera_zoom,
+            "is_static": hero.get_node_or_null("StaticCommanderPreview") != null
+        })
 
 func _focus_escort() -> void:
     if escort.hull > 0:
