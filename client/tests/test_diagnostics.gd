@@ -20,6 +20,9 @@ func _run() -> void:
     _check(bool(ProjectSettings.get_setting_with_override("debug/file_logging/enable_file_logging")),
         "Godot engine file logging should be enabled for debug")
     _check(FileAccess.file_exists("user://logs/godot.log"), "Godot engine output log missing")
+    _check(not bool(ProjectSettings.get_setting_with_override_and_custom_features(
+        "debug/file_logging/enable_file_logging", PackedStringArray(["release"]))),
+        "Godot engine logging must be disabled in release feature mode")
     logger.event("test", "diagnostics_smoke", {"unit": "Amina", "answer": 42})
     logger._flush()
     _check(FileAccess.file_exists("user://rts-diagnostics/events-0.jsonl"), "JSONL file not created")
