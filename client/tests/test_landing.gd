@@ -64,10 +64,17 @@ func _run() -> void:
     drag.position = start + Vector2(90, 0)
     drag.relative = Vector2(90, 0)
     get_viewport().push_input(drag, true)
+    var at_threshold: Vector3 = op.camera_focus
+    _check(at_threshold == before_drag, "first drag frame must not jump camera")
+    var drag2 := InputEventScreenDrag.new()
+    drag2.position = start + Vector2(118, 0)
+    drag2.relative = Vector2(28, 0)
+    get_viewport().push_input(drag2, true)
     var up := InputEventScreenTouch.new()
-    up.position = drag.position
+    up.position = drag2.position
     get_viewport().push_input(up, true)
     _check(op.unit_paths.is_empty() and op.camera_focus != before_drag, "drag pans without ordering movement")
+    _check(op.camera_focus.distance_to(before_drag) < 3.0, "camera pan must stay slow and bounded")
 
     op._select_all_units()
     var target_screen: Vector2 = op.view_camera.unproject_position(op.sentry.position + Vector3.UP)
@@ -109,6 +116,16 @@ func _run() -> void:
     await tree.scene_changed
     menu = tree.current_scene
     _check(menu.faction_index == 1 and menu.officer_index == 1, "roster selection survives return")
+    _check(GameState.officers_by_faction[1] == 1, "Saari commander remembered")
+    menu._select_faction(0)
+    menu._select_officer(3)
+    _check(GameState.faction_index == 0 and GameState.officer_index == 3,
+        "Lyra choice is saved immediately without deployment")
+    menu._select_faction(1)
+    _check(menu.officer_index == 1, "switching races restores that race commander")
+    menu._select_faction(0)
+    _check(menu.officer_index == 3, "human commander restored after race switch")
+    menu._select_faction(1)
     _check(GameState.last_report.contains("ПОБЕДА") and GameState.last_report.contains("300"), "ship shows debrief")
     menu._deploy()
     await tree.scene_changed
