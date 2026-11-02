@@ -492,8 +492,8 @@ func _update_portrait() -> void:
             var error := img.load_jpg_from_buffer(bytes)
             if error != OK:
                 push_warning("RTS_PORTRAIT_LOAD_FAILED id=" + portrait_id + " error=" + str(error))
-            if RTSDiagnostics.enabled:
-                RTSDiagnostics.event("error", "portrait_decode_failed", {"id": portrait_id, "error": error})
+                if RTSDiagnostics.enabled:
+                    RTSDiagnostics.event("error", "portrait_decode_failed", {"id": portrait_id, "error": error})
                 portrait_cache[portrait_id] = null
             else:
                 portrait_cache[portrait_id] = ImageTexture.create_from_image(img)
