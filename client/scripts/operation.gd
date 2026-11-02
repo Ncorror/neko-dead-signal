@@ -5,6 +5,7 @@ const Combatant := preload("res://scripts/combatant.gd")
 enum Outcome { ACTIVE, VICTORY, DEFEAT }
 
 const PATH_GRID := preload("res://scripts/rts_navigation.gd")
+const FORMATION := preload("res://scripts/rts_formation.gd")
 const DIAGNOSTICS_UI := preload("res://scripts/rts_diagnostics_ui.gd")
 const RIGGED_AMINA := "res://assets/characters/amina/amina_rigged.glb"
 const STATIC_AMINA_PREVIEW := "res://assets/characters/amina/preview.glb"
@@ -35,6 +36,8 @@ var officer_button: Button
 var escort_button: Button
 var unit_paths: Dictionary = {}
 var unit_waypoint_index: Dictionary = {}
+var unit_move_speeds: Dictionary = {}
+var unit_blocked_seconds: Dictionary = {}
 var selection_rings: Dictionary = {}
 var navigation = PATH_GRID.new()
 var animation_players: Dictionary = {}
@@ -523,41 +526,59 @@ func _issue_move(destination: Vector3) -> void:
     if selected_units.is_empty() or outcome != Outcome.ACTIVE:
         return
     var n := selected_units.size()
+    var ordered := selected_units.duplicate()
+    ordered.sort_custom(func(a: Combatant, b: Combatant) -> bool:
+        return a.get_instance_id() < b.get_instance_id())
+    var starts: Array[Vector3] = []
+    var occupied: Array[Vector3] = []
+    var group_speed := OFFICER_SPEED
+    for unit in ordered:
+        starts.append(unit.position)
+        group_speed = minf(group_speed, OFFICER_SPEED if unit == hero else ESCORT_SPEED)
+    for unit in units:
+        if not selected_units.has(unit):
+            occupied.append(unit.position)
+    var destinations: Array[Vector3] = FORMATION.destinations(navigation, starts, destination, occupied)
     var accepted := 0
-    for i in range(n):
-        var unit: Combatant = selected_units[i]
-        # Small slot offsets reduce pileups in this 2-unit RTS test.
-        var offset := (float(i) - (float(n - 1) * 0.5)) * 2.2
-        var target := destination + Vector3(offset, 0.0, 0.0)
-        var planned: Array[Vector3] = navigation.get_path(unit.position, target)
+    for i in range(destinations.size()):
+        var unit: Combatant = ordered[i]
+        var target := destinations[i]
+        var avoid := occupied
+        var planned: Array[Vector3] = navigation.get_path(unit.position, target, avoid)
         if planned.is_empty():
             if RTSDiagnostics.enabled:
                 RTSDiagnostics.event("path", "RTS_PATH_BLOCKED", {"unit": unit.name, "target": str(target)})
             continue
+        _clear_path(unit)
         attackers.erase(unit)
         unit_paths[unit] = planned
         unit_waypoint_index[unit] = 0
+        unit_move_speeds[unit] = group_speed
         accepted += 1
         if RTSDiagnostics.enabled:
             RTSDiagnostics.event("units", "RTS_MOVE_ORDER", {
-                "unit": unit.name, "target": str(target), "waypoints": planned.size()
+                "unit": unit.name, "target": str(planned.back()), "waypoints": planned.size(),
+                "group_speed": group_speed
             })
     _update_status()
     if RTSDiagnostics.enabled:
-        RTSDiagnostics.event("units", "RTS_GROUP_ORDER", {"requested": n, "accepted": accepted})
+        RTSDiagnostics.event("units", "RTS_GROUP_ORDER", {"requested": n, "accepted": accepted, "target": str(destination)})
 
 func _clear_path(unit: Combatant) -> void:
     unit_paths.erase(unit)
     unit_waypoint_index.erase(unit)
+    unit_move_speeds.erase(unit)
+    unit_blocked_seconds.erase(unit)
 
 func _issue_attack() -> void:
     if outcome != Outcome.ACTIVE or sentry.hull <= 0:
         return
     for unit in selected_units:
         if not _in_firing_position(unit, sentry):
-            var route: Array[Vector3] = navigation.get_path(unit.position, sentry.position)
+            var route: Array[Vector3] = navigation.get_path(unit.position, sentry.position, _other_unit_positions(unit))
             if route.is_empty():
                 continue
+            _clear_path(unit)
             unit_paths[unit] = route
             unit_waypoint_index[unit] = 0
         else:
@@ -600,6 +621,63 @@ func _shoot(shooter: Combatant, target: Combatant) -> void:
                 _select_units(units.duplicate())
     _update_status()
 
+func _other_unit_positions(unit: Combatant) -> Array[Vector3]:
+    var positions: Array[Vector3] = []
+    for other in units:
+        if other != unit:
+            positions.append(other.position)
+    return positions
+
+func _can_step(unit: Combatant, destination: Vector3) -> bool:
+    for other in units:
+        if other == unit:
+            continue
+        var closest := Geometry3D.get_closest_point_to_segment(other.position, unit.position, destination)
+        if closest.distance_to(other.position) < PATH_GRID.UNIT_SEPARATION:
+            return false
+    return true
+
+func _move_unit(unit: Combatant, delta: float) -> void:
+    if not unit_paths.has(unit):
+        _set_unit_animation(unit, false)
+        return
+    var planned: Array[Vector3] = unit_paths[unit]
+    var index: int = int(unit_waypoint_index.get(unit, 0))
+    var speed: float = unit_move_speeds.get(unit, OFFICER_SPEED if unit == hero else ESCORT_SPEED)
+    var budget := speed * delta
+    var moved := false
+    while index < planned.size() and budget > 0.0:
+        var next := unit.position.move_toward(planned[index], budget)
+        if not _can_step(unit, next):
+            unit_waypoint_index[unit] = index
+            _set_unit_animation(unit, false)
+            var blocked: float = unit_blocked_seconds.get(unit, 0.0) + delta
+            unit_blocked_seconds[unit] = blocked
+            if blocked >= 0.4:
+                var replacement: Array[Vector3] = navigation.get_path(unit.position, planned.back(), _other_unit_positions(unit))
+                unit_blocked_seconds[unit] = 0.0
+                if not replacement.is_empty():
+                    unit_paths[unit] = replacement
+                    unit_waypoint_index[unit] = 0
+                if RTSDiagnostics.enabled:
+                    RTSDiagnostics.event("path", "ally_repath", {"unit": unit.name, "accepted": not replacement.is_empty()})
+            return
+        var travelled := unit.position.distance_to(next)
+        unit.position = next
+        budget -= travelled
+        moved = moved or travelled > 0.00001
+        if unit.position.distance_to(planned[index]) > 0.00001:
+            break
+        index += 1
+    unit_blocked_seconds.erase(unit)
+    _set_unit_animation(unit, moved)
+    if index >= planned.size():
+        _clear_path(unit)
+        if RTSDiagnostics.enabled:
+            RTSDiagnostics.event("units", "order_finished", {"unit": unit.name})
+    else:
+        unit_waypoint_index[unit] = index
+
 func _physics_process(delta: float) -> void:
     if outcome != Outcome.ACTIVE:
         return
@@ -610,27 +688,7 @@ func _physics_process(delta: float) -> void:
             _set_unit_animation(unit, false)
             _shoot(unit, sentry)
             continue
-        if not unit_paths.has(unit):
-            _set_unit_animation(unit, false)
-            continue
-        var planned: Array[Vector3] = unit_paths[unit]
-        var index: int = int(unit_waypoint_index.get(unit, 0))
-        if index >= planned.size():
-            unit_paths.erase(unit)
-            unit_waypoint_index.erase(unit)
-            continue
-        var speed: float = OFFICER_SPEED if unit == hero else ESCORT_SPEED
-        _set_unit_animation(unit, true)
-        unit.position = unit.position.move_toward(planned[index], speed * delta)
-        if unit.position.distance_to(planned[index]) < 0.07:
-            index += 1
-            if index >= planned.size():
-                unit_paths.erase(unit)
-                unit_waypoint_index.erase(unit)
-                if RTSDiagnostics.enabled:
-                    RTSDiagnostics.event("units", "order_finished", {"unit": unit.name})
-            else:
-                unit_waypoint_index[unit] = index
+        _move_unit(unit, delta)
     if sentry.hull > 0:
         sentry.tick(delta)
         var closest: Combatant = null
@@ -689,6 +747,8 @@ func _finish(result: Outcome) -> void:
     outcome = result
     unit_paths.clear()
     unit_waypoint_index.clear()
+    unit_move_speeds.clear()
+    unit_blocked_seconds.clear()
     attackers.clear()
     for unit in units:
         _set_unit_animation(unit, false)

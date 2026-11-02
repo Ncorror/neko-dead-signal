@@ -31,7 +31,7 @@ class PureRTSContract(unittest.TestCase):
         self.assertIn('hero = _make_unit("StartingOfficer"', self.operation)
         self.assertIn('_select_unit(hero)', self.operation)
         self.assertIn("unit_paths[unit] = planned", self.operation)
-        self.assertIn("navigation.get_path(unit.position, target)", self.operation)
+        self.assertIn("navigation.get_path(unit.position, target, avoid)", self.operation)
         self.assertIn("func _select_all_units(", self.operation)
         self.assertIn("func _stop_selected_units(", self.operation)
         self.assertIn("func _physics_process(delta: float)", self.operation)
