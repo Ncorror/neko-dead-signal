@@ -7,6 +7,7 @@ on:
       - feat/orbital-command-ui
       - feat/pure-rts-commanders
       - main
+      - feat/rts-formation-clearance-v006
       - feat/amina-static-landing-preview-v006
       - feat/tester-diagnostics-3d-roster
       - feat/rts-squads-grid-pathfinding
@@ -91,6 +92,15 @@ jobs:
           timeout 35s godot --headless --path client --script res://tests/test_rts_navigation.gd 2>&1 | tee build/rts-navigation-test.log
           grep -q 'RTS_NAV_TEST_PASS' build/rts-navigation-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-navigation-test.log; then
+            exit 1
+          fi
+      - name: Test squad formation and allied clearance
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 40s godot --headless --path client res://tests/test_squad_movement.tscn 2>&1 | tee build/rts-squad-test.log
+          grep -q 'RTS_SQUAD_TEST_PASS' build/rts-squad-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-squad-test.log; then
             exit 1
           fi
       - name: Test debug diagnostics JSONL and ZIP bundle

@@ -3,6 +3,7 @@ extends RefCounted
 ## Prototype implementation for deterministic path requests, not final MMO-scale navigation.
 
 const DEFAULT_STEP := 1.0
+const UNIT_SEPARATION := 1.1
 var cover: Array[AABB] = []
 var grid: AStarGrid2D
 var cell_step: float = DEFAULT_STEP
@@ -68,7 +69,28 @@ func _nearest_free(cell: Vector2i, radius: int = 7) -> Vector2i:
             return best
     return best
 
-func get_path(start: Vector3, requested_goal: Vector3) -> Array[Vector3]:
+func get_path(start: Vector3, requested_goal: Vector3, avoid: Array[Vector3] = []) -> Array[Vector3]:
+    if grid == null:
+        return []
+    var temporary_blocks: Array[Vector2i] = []
+    var start_cell := world_to_cell(start)
+    for position in avoid:
+        var center := world_to_cell(position)
+        var radius := ceili(UNIT_SEPARATION / cell_step) + 1
+        for x in range(center.x - radius, center.x + radius + 1):
+            for y in range(center.y - radius, center.y + radius + 1):
+                var cell := Vector2i(x, y)
+                if cell == start_cell or not is_walkable(cell):
+                    continue
+                if cell_to_world(cell).distance_to(position) < UNIT_SEPARATION:
+                    grid.set_point_solid(cell, true)
+                    temporary_blocks.append(cell)
+    var route := _get_static_path(start, requested_goal)
+    for cell in temporary_blocks:
+        grid.set_point_solid(cell, false)
+    return route
+
+func _get_static_path(start: Vector3, requested_goal: Vector3) -> Array[Vector3]:
     var result: Array[Vector3] = []
     if grid == null:
         return result
