@@ -30,7 +30,10 @@ class PureRTSContract(unittest.TestCase):
     def test_commander_exists_at_start_and_is_selectable(self):
         self.assertIn('hero = _make_unit("StartingOfficer"', self.operation)
         self.assertIn('_select_unit(hero)', self.operation)
-        self.assertIn("unit_targets[selected_unit] = destination", self.operation)
+        self.assertIn("unit_paths[unit] = planned", self.operation)
+        self.assertIn("navigation.get_path(unit.position, target)", self.operation)
+        self.assertIn("func _select_all_units(", self.operation)
+        self.assertIn("func _stop_selected_units(", self.operation)
         self.assertIn("func _physics_process(delta: float)", self.operation)
 
     def test_android_input_does_not_duplicate_taps(self):
