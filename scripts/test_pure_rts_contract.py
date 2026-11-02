@@ -36,6 +36,18 @@ class PureRTSContract(unittest.TestCase):
         self.assertIn("func _stop_selected_units(", self.operation)
         self.assertIn("func _physics_process(delta: float)", self.operation)
 
+    def test_group_orders_and_animation_hook(self):
+        self.assertIn("var selected_units: Array[Node3D]", self.operation)
+        self.assertIn("func _select_all_units(", self.operation)
+        self.assertIn("func _stop_selected_units(", self.operation)
+        self.assertIn("navigation.set_blocked_box(", self.operation)
+        self.assertIn("RTS_GROUP_ORDER", self.operation)
+        self.assertIn("RTS_PERF", self.operation)
+        self.assertIn("amina_rigged.glb", self.operation)
+        self.assertIn('RTS_AMINA_ANIMATIONS_PENDING', self.operation)
+        self.assertIn('"name": "АМИНА"', self.menu)
+        self.assertIn('"name": "РЭЙНА"', self.menu)
+
     def test_android_input_does_not_duplicate_taps(self):
         self.assertIn("pointing/emulate_mouse_from_touch=false", self.project)
         self.assertIn("InputEventScreenTouch", self.operation)
