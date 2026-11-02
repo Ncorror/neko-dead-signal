@@ -1,0 +1,127 @@
+name: Vienna RTS Android Debug
+
+on:
+  push:
+    branches:
+      - infra/vienna-runner-server
+      - feat/orbital-command-ui
+      - feat/pure-rts-commanders
+      - main
+    paths:
+      - 'client/**'
+      - '.github/workflows/vienna-rts-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reina-rts-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-debug:
+    runs-on: [self-hosted, Linux, X64, reina-rts-ci]
+    timeout-minutes: 40
+    env:
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      ANDROID_HOME: /opt/android-sdk
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify local server API contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s server -p 'test_*.py' -v
+
+      - name: Test RTS input and commander contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
+      - name: Verify RTS toolchain
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$(godot --version)" == 4.7.2* ]]
+          test -s "$HOME/.local/share/godot/export_templates/4.7.2.stable/android_debug.apk"
+          test -x "$ANDROID_HOME/build-tools/36.1.0/apksigner"
+          test -d "$ANDROID_HOME/platforms/android-36"
+          java -version
+      - name: Prepare writable Godot XDG directories
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # Each workflow job uses isolated writable data/config/cache directories.
+          # The system runner home may have root-owned intermediate directories
+          # from first-time export template provisioning.
+          DATA_DIR="$RUNNER_TEMP/reina-rts-xdg-data"
+          CONFIG_DIR="$RUNNER_TEMP/reina-rts-xdg-config"
+          CACHE_DIR="$RUNNER_TEMP/reina-rts-xdg-cache"
+          mkdir -p "$DATA_DIR/godot" "$CONFIG_DIR" "$CACHE_DIR"
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates"
+          test -s "$TEMPLATE_DIR/4.7.2.stable/android_debug.apk"
+          ln -s "$TEMPLATE_DIR" "$DATA_DIR/godot/export_templates"
+          {
+            echo "XDG_DATA_HOME=$DATA_DIR"
+            echo "XDG_CONFIG_HOME=$CONFIG_DIR"
+            echo "XDG_CACHE_HOME=$CACHE_DIR"
+          } >> "$GITHUB_ENV"
+          test -w "$DATA_DIR/godot"
+      - name: Import and validate RTS project
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p build
+          godot --headless --path client --editor --import --quit 2>&1 | tee build/godot-import.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log; then
+            exit 1
+          fi
+      - name: Smoke-test orbital screen and landing scene
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          godot --headless --path client --quit-after 15 2>&1 | tee build/menu-smoke.log
+          godot --headless --path client res://scenes/operation.tscn --quit-after 15 2>&1 | tee build/landing-smoke.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/menu-smoke.log build/landing-smoke.log; then
+            exit 1
+          fi
+      - name: Create RTS-only debug signing key if missing
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          mkdir -p "$HOME/.android"
+          KEY="$HOME/.android/reina-rts-debug.keystore"
+          if [ ! -s "$KEY" ]; then
+            keytool -genkeypair -keystore "$KEY" -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 \
+              -dname 'CN=REINA RTS DEBUG, OU=CI, O=DEAD SIGNAL, C=AT' -noprompt
+          fi
+          chmod 600 "$KEY"
+      - name: Export Android ARM64 APK
+        shell: bash
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          set -Eeuo pipefail
+          export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$HOME/.android/reina-rts-debug.keystore"
+          mkdir -p client/build
+          godot --headless --path client --export-debug Android build/REINA_DEAD_SIGNAL_RTS-debug.apk 2>&1 | tee build/godot-export.log
+          test -s client/build/REINA_DEAD_SIGNAL_RTS-debug.apk
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" verify client/build/REINA_DEAD_SIGNAL_RTS-debug.apk
+          sha256sum client/build/REINA_DEAD_SIGNAL_RTS-debug.apk | tee client/build/SHA256SUMS
+      - name: Publish APK and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reina-rts-debug-${{ github.run_number }}
+          path: |
+            client/build/*.apk
+            client/build/SHA256SUMS
+            build/godot-*.log
+            build/*-smoke.log
+          retention-days: 14
+          if-no-files-found: warn

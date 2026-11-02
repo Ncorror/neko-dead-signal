@@ -1,0 +1,316 @@
+extends Node3D
+## Pure RTS proof-of-concept. Units move by selection + orders; no direct control.
+## Local test only: no pathfinding, combat, fog, resource server or networking yet.
+
+const MAP_LIMIT := 24.0
+const OFFICER_SPEED := 5.8
+const ESCORT_SPEED := 4.7
+const CAMERA_MIN_ZOOM := 12.0
+const CAMERA_MAX_ZOOM := 37.0
+const TOUCH_DRAG_THRESHOLD := 16.0
+
+var hero: Node3D
+var escort: Node3D
+var selected_unit: Node3D
+var units: Array[Node3D] = []
+var unit_targets: Dictionary = {}
+var crates: Array[Node3D] = []
+var resources_collected: int = 0
+var camera_focus: Vector3 = Vector3.ZERO
+var camera_zoom: float = 22.0
+var view_camera: Camera3D
+var status_label: Label
+var unit_label: Label
+var selection_ring: MeshInstance3D
+
+var touch_start: Vector2 = Vector2.ZERO
+var touch_dragged: bool = false
+var touch_tracking: bool = false
+
+func _ready() -> void:
+    _create_world()
+    _create_ui()
+    _select_unit(hero)
+    camera_focus = hero.global_position
+    _update_camera(1.0)
+    _update_status()
+    print("RTS_OPERATION_START faction=", GameState.faction_name,
+        " officer=", GameState.officer_name, " input=ORDERS_ONLY")
+
+func _create_world() -> void:
+    var ground := MeshInstance3D.new()
+    var plane := PlaneMesh.new()
+    plane.size = Vector2(50, 50)
+    ground.mesh = plane
+    ground.material_override = _material(Color("#283b45"))
+    add_child(ground)
+
+    var sunlight := DirectionalLight3D.new()
+    sunlight.rotation_degrees = Vector3(-52, 25, 0)
+    sunlight.light_energy = 1.6
+    add_child(sunlight)
+
+    hero = _make_unit("StartingOfficer", Vector3.ZERO,
+        Color("#75c8f1") if GameState.faction_index == 0 else Color("#c69efa"),
+        true)
+    escort = _make_unit("EscortUnit", Vector3(-3.0, 0, 1.0), Color("#8ab9a0"), false)
+
+    # Placeholder obstacles, not pathfinding or collision geometry.
+    for p in [Vector3(-12, 0, -8), Vector3(9, 0, 7), Vector3(16, 0, -12)]:
+        _make_box(p, Vector3(3, 1.5, 3), Color("#4f6269"))
+
+    for p in [Vector3(5, 0, 2), Vector3(-8, 0, 11), Vector3(13, 0, -6)]:
+        var crate := _make_box(p, Vector3(1.25, 1, 1.25), Color("#e7b65b"))
+        crate.name = "PrototypeSupplyCrate"
+        crates.append(crate)
+
+    selection_ring = MeshInstance3D.new()
+    var ring := TorusMesh.new()
+    ring.inner_radius = 0.72
+    ring.outer_radius = 0.84
+    selection_ring.mesh = ring
+    selection_ring.material_override = _material(Color("#62ecf0"))
+    add_child(selection_ring)
+
+    view_camera = Camera3D.new()
+    view_camera.current = true
+    view_camera.fov = 55.0
+    add_child(view_camera)
+    view_camera.global_position = Vector3(0, camera_zoom, camera_zoom)
+
+func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool) -> Node3D:
+    var unit := Node3D.new()
+    unit.name = unit_name
+    unit.position = at
+    add_child(unit)
+    var visual := MeshInstance3D.new()
+    var capsule := CapsuleMesh.new()
+    capsule.radius = 0.55 if is_commander else 0.43
+    capsule.height = 1.9 if is_commander else 1.65
+    visual.mesh = capsule
+    visual.position.y = 0.95 if is_commander else 0.825
+    visual.material_override = _material(color)
+    unit.add_child(visual)
+    units.append(unit)
+    return unit
+
+func _material(color: Color) -> StandardMaterial3D:
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = color
+    mat.roughness = 0.9
+    return mat
+
+func _make_box(at: Vector3, box_size: Vector3, color: Color) -> MeshInstance3D:
+    var part := MeshInstance3D.new()
+    var mesh := BoxMesh.new()
+    mesh.size = box_size
+    part.mesh = mesh
+    part.position = at + Vector3(0, box_size.y * 0.5, 0)
+    part.material_override = _material(color)
+    add_child(part)
+    return part
+
+func _create_ui() -> void:
+    var overlay := CanvasLayer.new()
+    add_child(overlay)
+    var root := Control.new()
+    root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    overlay.add_child(root)
+    root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+    var top := VBoxContainer.new()
+    top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    root.add_child(top)
+    top.anchor_right = 1.0
+    top.offset_left = 15.0
+    top.offset_right = -15.0
+    top.offset_top = 9.0
+
+    var title := Label.new()
+    title.text = "REINA: DEAD SIGNAL  /  RTS OPERATION"
+    title.add_theme_font_size_override("font_size", 22)
+    title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    top.add_child(title)
+
+    status_label = Label.new()
+    status_label.add_theme_font_size_override("font_size", 16)
+    status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    top.add_child(status_label)
+
+    var controls := HBoxContainer.new()
+    controls.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    controls.add_theme_constant_override("separation", 9)
+    top.add_child(controls)
+
+    _add_button(controls, "ОФИЦЕР", _focus_hero)
+    _add_button(controls, "ОТРЯД", _focus_escort)
+    _add_button(controls, "−", _zoom_out)
+    _add_button(controls, "+", _zoom_in)
+    _add_button(controls, "НА КОРАБЛЬ", _back_to_ship)
+
+    var bottom := VBoxContainer.new()
+    bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    root.add_child(bottom)
+    bottom.anchor_top = 1.0
+    bottom.anchor_bottom = 1.0
+    bottom.anchor_right = 1.0
+    bottom.offset_left = 15.0
+    bottom.offset_right = -15.0
+    bottom.offset_top = -71.0
+    bottom.offset_bottom = -8.0
+
+    unit_label = Label.new()
+    unit_label.add_theme_font_size_override("font_size", 17)
+    unit_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    bottom.add_child(unit_label)
+    var hint := Label.new()
+    hint.text = "Касание: выбрать юнит / приказ движения. Перетаскивание: перемещение камеры."
+    hint.add_theme_font_size_override("font_size", 14)
+    hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    bottom.add_child(hint)
+
+func _add_button(container: HBoxContainer, name: String, action: Callable) -> void:
+    var button := Button.new()
+    button.text = name
+    button.custom_minimum_size = Vector2(94, 47)
+    button.pressed.connect(action)
+    container.add_child(button)
+
+func _focus_hero() -> void:
+    _select_unit(hero)
+    camera_focus = hero.global_position
+
+func _focus_escort() -> void:
+    _select_unit(escort)
+    camera_focus = escort.global_position
+
+func _select_unit(unit: Node3D) -> void:
+    selected_unit = unit
+    selection_ring.position = unit.position + Vector3(0, 0.07, 0)
+    _update_status()
+    print("RTS_SELECTED ", unit.name)
+
+func _zoom_in() -> void:
+    camera_zoom = clampf(camera_zoom - 4.0, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+
+func _zoom_out() -> void:
+    camera_zoom = clampf(camera_zoom + 4.0, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+
+func _unhandled_input(event: InputEvent) -> void:
+    if event is InputEventScreenTouch:
+        var touch := event as InputEventScreenTouch
+        if touch.index != 0:
+            return
+        if touch.pressed:
+            touch_tracking = true
+            touch_dragged = false
+            touch_start = touch.position
+        elif touch_tracking:
+            touch_tracking = false
+            if not touch_dragged:
+                _handle_tap(touch.position)
+            get_viewport().set_input_as_handled()
+    elif event is InputEventScreenDrag:
+        var drag := event as InputEventScreenDrag
+        if drag.index == 0 and touch_tracking:
+            if drag.position.distance_to(touch_start) >= TOUCH_DRAG_THRESHOLD:
+                touch_dragged = true
+            if touch_dragged:
+                _pan_camera(drag.relative)
+                get_viewport().set_input_as_handled()
+    elif event is InputEventMouseButton:
+        var mouse := event as InputEventMouseButton
+        if mouse.pressed and mouse.button_index == MOUSE_BUTTON_LEFT:
+            _handle_tap(mouse.position)
+            get_viewport().set_input_as_handled()
+        elif mouse.pressed and mouse.button_index == MOUSE_BUTTON_WHEEL_UP:
+            _zoom_in()
+            get_viewport().set_input_as_handled()
+        elif mouse.pressed and mouse.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+            _zoom_out()
+            get_viewport().set_input_as_handled()
+    elif event is InputEventMouseMotion:
+        var motion := event as InputEventMouseMotion
+        if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+            _pan_camera(motion.relative)
+            get_viewport().set_input_as_handled()
+
+func _pan_camera(delta_pixels: Vector2) -> void:
+    var speed: float = camera_zoom * 0.018
+    camera_focus.x = clampf(camera_focus.x - delta_pixels.x * speed, -MAP_LIMIT, MAP_LIMIT)
+    camera_focus.z = clampf(camera_focus.z - delta_pixels.y * speed, -MAP_LIMIT, MAP_LIMIT)
+
+func _handle_tap(screen_pos: Vector2) -> void:
+    var world: Variant = _screen_to_ground(screen_pos)
+    if world == null:
+        return
+    var point: Vector3 = world
+    for unit in units:
+        if unit.position.distance_to(point) < 1.25:
+            _select_unit(unit)
+            return
+    if selected_unit != null:
+        _issue_move(point)
+
+func _screen_to_ground(screen_pos: Vector2) -> Variant:
+    var origin := view_camera.project_ray_origin(screen_pos)
+    var direction := view_camera.project_ray_normal(screen_pos)
+    var ground_plane := Plane(Vector3.UP, 0.0)
+    return ground_plane.intersects_ray(origin, direction)
+
+func _issue_move(destination: Vector3) -> void:
+    if selected_unit == null:
+        return
+    destination.x = clampf(destination.x, -MAP_LIMIT, MAP_LIMIT)
+    destination.y = 0.0
+    destination.z = clampf(destination.z, -MAP_LIMIT, MAP_LIMIT)
+    unit_targets[selected_unit] = destination
+    print("RTS_MOVE_ORDER unit=", selected_unit.name, " target=", destination)
+
+func _physics_process(delta: float) -> void:
+    for unit in units:
+        if not unit_targets.has(unit):
+            continue
+        var destination: Vector3 = unit_targets[unit]
+        var speed: float = OFFICER_SPEED if unit == hero else ESCORT_SPEED
+        unit.position = unit.position.move_toward(destination, speed * delta)
+        if unit.position.distance_to(destination) < 0.07:
+            unit_targets.erase(unit)
+    _check_crates()
+    if selected_unit != null:
+        selection_ring.position = selected_unit.position + Vector3(0, 0.07, 0)
+
+func _process(delta: float) -> void:
+    _update_camera(delta)
+
+func _update_camera(delta: float) -> void:
+    if view_camera == null:
+        return
+    var desired := camera_focus + Vector3(0, camera_zoom, camera_zoom * 0.95)
+    view_camera.global_position = view_camera.global_position.lerp(desired, minf(1.0, delta * 7.0))
+    view_camera.look_at(camera_focus + Vector3.UP, Vector3.UP)
+
+func _check_crates() -> void:
+    for crate in crates.duplicate():
+        var ground_pos := Vector3(crate.position.x, 0, crate.position.z)
+        if hero.position.distance_to(ground_pos) < 1.55:
+            crates.erase(crate)
+            crate.queue_free()
+            resources_collected += 100
+            print("RTS_CRATE_COLLECTED resources=", resources_collected)
+            _update_status()
+
+func _update_status() -> void:
+    if status_label == null or unit_label == null:
+        return
+    status_label.text = "%s  |  Контейнеры: %d/3  |  Ресурсы: %d  |  РЕЖИМ: RTS" % [
+        GameState.faction_name, 3 - crates.size(), resources_collected
+    ]
+    if selected_unit != null:
+        unit_label.text = "ВЫДЕЛЕН: %s" % (
+            GameState.officer_name if selected_unit == hero else "Эскорт — стрелок"
+        )
+
+func _back_to_ship() -> void:
+    print("RTS_OPERATION_END collected=", resources_collected)
+    get_tree().change_scene_to_file("res://scenes/main.tscn")
