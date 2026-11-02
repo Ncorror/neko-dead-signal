@@ -47,11 +47,29 @@ func has_clear_shot(start: Vector3, target: Vector3) -> bool:
             return false
     return true
 
+func has_clear_sight(start: Vector3, target: Vector3) -> bool:
+    # The obstacle itself can be discovered. Cells behind it remain hidden.
+    var eye := start + Vector3.UP
+    var destination := target + Vector3.UP
+    for box in cover:
+        if box.intersects_segment(eye, destination) != null and not box.has_point(destination):
+            return false
+    return true
+
 func is_walkable(cell: Vector2i) -> bool:
     return grid != null and grid.is_in_boundsv(cell) and not grid.is_point_solid(cell)
 
-func _nearest_free(cell: Vector2i, radius: int = 7) -> Vector2i:
-    if is_walkable(cell):
+func _destination_clear(cell: Vector2i, avoid: Array[Vector3]) -> bool:
+    if not is_walkable(cell):
+        return false
+    var point := cell_to_world(cell)
+    for position in avoid:
+        if point.distance_to(position) < UNIT_SEPARATION:
+            return false
+    return true
+
+func _nearest_free(cell: Vector2i, radius: int = 7, avoid: Array[Vector3] = []) -> Vector2i:
+    if _destination_clear(cell, avoid):
         return cell
     var best := Vector2i(100000, 100000)
     var best_dist := 999999
@@ -62,7 +80,7 @@ func _nearest_free(cell: Vector2i, radius: int = 7) -> Vector2i:
                 var d: int = absi(x - cell.x) + absi(y - cell.y)
                 if max(abs(x - cell.x), abs(y - cell.y)) != r:
                     continue
-                if is_walkable(candidate) and d < best_dist:
+                if _destination_clear(candidate, avoid) and d < best_dist:
                     best = candidate
                     best_dist = d
         if best_dist < 999999:
@@ -85,12 +103,12 @@ func get_path(start: Vector3, requested_goal: Vector3, avoid: Array[Vector3] = [
                 if cell_to_world(cell).distance_to(position) < UNIT_SEPARATION:
                     grid.set_point_solid(cell, true)
                     temporary_blocks.append(cell)
-    var route := _get_static_path(start, requested_goal)
+    var route := _get_static_path(start, requested_goal, avoid)
     for cell in temporary_blocks:
         grid.set_point_solid(cell, false)
     return route
 
-func _get_static_path(start: Vector3, requested_goal: Vector3) -> Array[Vector3]:
+func _get_static_path(start: Vector3, requested_goal: Vector3, avoid: Array[Vector3] = []) -> Array[Vector3]:
     var result: Array[Vector3] = []
     if grid == null:
         return result
@@ -102,7 +120,7 @@ func _get_static_path(start: Vector3, requested_goal: Vector3) -> Array[Vector3]
         0.0,
         clampf(requested_goal.z, -world_limit, world_limit)
     )
-    var to_id := _nearest_free(world_to_cell(target))
+    var to_id := _nearest_free(world_to_cell(target), 7, avoid)
     if not is_walkable(to_id):
         return result
     var cells: Array[Vector2i] = grid.get_id_path(from_id, to_id)
@@ -112,8 +130,15 @@ func _get_static_path(start: Vector3, requested_goal: Vector3) -> Array[Vector3]
         var point := cell_to_world(cell)
         if not point.is_equal_approx(start):
             result.append(point)
-    if to_id == world_to_cell(target) and (result.is_empty() or result.back().distance_to(target) > 0.05):
+    var exact_target_clear := true
+    for position in avoid:
+        if target.distance_to(position) < UNIT_SEPARATION:
+            exact_target_clear = false
+            break
+    if exact_target_clear and to_id == world_to_cell(target) and (result.is_empty() or result.back().distance_to(target) > 0.05):
         result.append(target)
+    elif result.is_empty():
+        result.append(cell_to_world(to_id))
     return _smooth_path(start, result)
 
 func has_walkable_segment(start: Vector3, finish: Vector3) -> bool:

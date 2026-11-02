@@ -118,6 +118,14 @@ func _run() -> void:
     op._issue_move(Vector3(-4, 0, -8))
     _advance(op, 15)
     _check(op.hero.rotation.y < -0.3, "new direction should turn the model")
+    op = await _land()
+    op.hero.position = Vector3(0, 0, -12)
+    op.escort.position = Vector3(-6, 0, -12)
+    op._select_unit(op.hero)
+    op._issue_move(Vector3(0, 0, -12.1))
+    _advance(op, 45)
+    _check(op.unit_paths.is_empty() and absf(angle_difference(op.hero.rotation.y, PI)) < 0.01,
+        "very short movement must finish turning after arrival")
     if failures == 0:
         print("RTS_SQUAD_TEST_PASS")
     get_tree().quit(0 if failures == 0 else 1)

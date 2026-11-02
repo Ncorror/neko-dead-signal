@@ -3,7 +3,7 @@ extends Node
 
 var popup: AcceptDialog
 
-func install(owner_node: Node, button_bar: HBoxContainer) -> void:
+func install(owner_node: Node, button_bar: Container) -> void:
     if not RTSDiagnostics.enabled:
         return
     popup = AcceptDialog.new()

@@ -8,6 +8,7 @@ on:
       - feat/pure-rts-commanders
       - main
       - fix/manual-preview-smooth-paths-v007
+      - feat/orders-and-recon-v008
       - feat/rts-formation-clearance-v006
       - feat/amina-static-landing-preview-v006
       - feat/tester-diagnostics-3d-roster
@@ -149,6 +150,33 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-landing-test.log; then
             exit 1
           fi
+      - name: Test queued movement, attack, stop and battlefield HUD
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 45s godot --headless --path client res://tests/test_order_queue.tscn 2>&1 | tee build/rts-queue-test.log
+          grep -q 'RTS_QUEUE_TEST_PASS' build/rts-queue-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-queue-test.log; then
+            exit 1
+          fi
+      - name: Test shared sight, cover, memory and hidden targets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 40s godot --headless --path client res://tests/test_visibility.tscn 2>&1 | tee build/rts-visibility-test.log
+          grep -q 'RTS_VISIBILITY_TEST_PASS' build/rts-visibility-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-visibility-test.log; then
+            exit 1
+          fi
+      - name: Run 96 seeded group routes with orders and shared sight
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 60s godot --headless --path client res://tests/test_operation_stress.tscn 2>&1 | tee build/rts-stress-test.log
+          grep -q 'RTS_STRESS_TEST_PASS' build/rts-stress-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-stress-test.log; then
+            exit 1
+          fi
       - name: Smoke-test orbital screen and landing scene
         shell: bash
         run: |
@@ -184,13 +212,26 @@ jobs:
           test -s client/build/REINA_DEAD_SIGNAL_RTS-debug.apk
           "$ANDROID_HOME/build-tools/36.1.0/apksigner" verify client/build/REINA_DEAD_SIGNAL_RTS-debug.apk
           sha256sum client/build/REINA_DEAD_SIGNAL_RTS-debug.apk | tee client/build/SHA256SUMS
-      - name: Publish APK and logs
-        if: always()
+      - name: Prepare APK and offline device testbook
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p build/tester-bundle
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.8-debug.apk
+          cp docs/DEVICE_TEST_RTS_008.html build/tester-bundle/REINA_RTS-0.0.8-testbook.html
+      - name: Publish APK and testbook
         uses: actions/upload-artifact@v4
         with:
           name: reina-rts-debug-${{ github.run_number }}
+          path: build/tester-bundle/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Preserve CI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reina-rts-ci-logs-${{ github.run_number }}
           path: |
-            client/build/*.apk
             client/build/SHA256SUMS
             build/godot-*.log
             build/*-smoke.log

@@ -10,6 +10,8 @@ const DIAGNOSTICS_UI := preload("res://scripts/rts_diagnostics_ui.gd")
 const RIGGED_AMINA := "res://assets/characters/amina/amina_rigged.glb"
 const STATIC_AMINA_PREVIEW := "res://assets/characters/amina/preview.glb"
 const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
+const VISIBILITY := preload("res://scripts/rts_visibility.gd")
+const FOG_SHADER := preload("res://shaders/ground_visibility.gdshader")
 const STATIC_AMINA_WORLD_HEIGHT := 1.90
 const STATIC_AMINA_FRONT_YAW_DEGREES := 0.0
 
@@ -21,6 +23,7 @@ const CAMERA_MAX_ZOOM := 37.0
 const TOUCH_DRAG_THRESHOLD := 16.0
 const TOUCH_PAN_MULTIPLIER := 0.0014
 const MAX_GESTURE_DELTA := 45.0
+const MAX_PENDING_ORDERS := 16
 
 var hero: Combatant
 var escort: Combatant
@@ -38,11 +41,25 @@ var unit_paths: Dictionary = {}
 var unit_waypoint_index: Dictionary = {}
 var unit_move_speeds: Dictionary = {}
 var unit_blocked_seconds: Dictionary = {}
+var unit_headings: Dictionary = {}
+var unit_pass_sides: Dictionary = {}
+var unit_orders: Dictionary = {}
+var append_orders := false
+var queue_button: Button
+var order_markers: Node3D
+var orders_ui_dirty := true
+var visibility = VISIBILITY.new()
+var sight_texture: ImageTexture
+var sight_timer := 0.0
+var world_obstacles: Array[MeshInstance3D] = []
+var explored_obstacles: Array[MeshInstance3D] = []
 var selection_rings: Dictionary = {}
 var navigation = PATH_GRID.new()
 var animation_players: Dictionary = {}
 var animation_state: Dictionary = {}
 var perf_accumulated: float = 0.0
+var perf_max_frame_ms := 0.0
+var perf_frames_over_40ms := 0
 var crates: Array[Node3D] = []
 var resources_collected: int = 0
 var camera_focus: Vector3 = Vector3.ZERO
@@ -62,11 +79,13 @@ var touch_tracking: bool = false
 func _ready() -> void:
     navigation.configure(MAP_LIMIT, 1.0)
     _create_world()
+    _create_visibility()
     _create_ui()
     _select_unit(hero)
     camera_focus = hero.global_position
     _update_camera(1.0)
     _update_status()
+    _update_visibility(0.0, true)
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("app", "RTS_OPERATION_START", {
             "faction": GameState.faction_index,
@@ -74,6 +93,12 @@ func _ready() -> void:
         })
 
 func _create_world() -> void:
+    var sky := WorldEnvironment.new()
+    var environment := Environment.new()
+    environment.background_mode = Environment.BG_COLOR
+    environment.background_color = Color("#030c11")
+    sky.environment = environment
+    add_child(sky)
     var ground := MeshInstance3D.new()
     var plane := PlaneMesh.new()
     plane.size = Vector2(50, 50)
@@ -94,7 +119,7 @@ func _create_world() -> void:
     # Path grid excludes each obstacle footprint with clearance for the capsule.
     for p in [Vector3(-12, 0, -8), Vector3(9, 0, 7), Vector3(16, 0, -12)]:
         var obstacle_size := Vector3(3, 1.5, 3)
-        _make_box(p, obstacle_size, Color("#4f6269"))
+        world_obstacles.append(_make_box(p, obstacle_size, Color("#4f6269")))
         navigation.set_blocked_box(p, obstacle_size, 0.75)
 
     for p in [Vector3(5, 0, 2), Vector3(-8, 0, 11), Vector3(13, 0, -6)]:
@@ -124,6 +149,56 @@ func _create_world() -> void:
     view_camera.fov = 55.0
     add_child(view_camera)
     view_camera.global_position = Vector3(0, camera_zoom, camera_zoom)
+    order_markers = Node3D.new()
+    order_markers.name = "OrderMarkers"
+    add_child(order_markers)
+
+func _create_visibility() -> void:
+    visibility.configure(Rect2(-25, -25, 50, 50))
+    sight_texture = ImageTexture.create_from_image(visibility.mask_image())
+    var fog := MeshInstance3D.new()
+    fog.name = "GroundFog"
+    var plane := PlaneMesh.new()
+    plane.size = visibility.bounds.size
+    fog.mesh = plane
+    fog.position.y = 0.035
+    var mat := ShaderMaterial.new()
+    mat.shader = FOG_SHADER
+    mat.render_priority = -10
+    mat.set_shader_parameter("sight_mask", sight_texture)
+    fog.material_override = mat
+    fog.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    add_child(fog)
+
+func _update_visibility(delta: float, force: bool = false) -> void:
+    sight_timer += delta
+    if force or sight_timer >= 0.15:
+        var observers: Array[Vector3] = []
+        for unit in units:
+            if unit.hull > 0:
+                observers.append(unit.position)
+        if force:
+            while visibility.scanning:
+                visibility.advance(navigation, 128)
+        visibility.request_snapshot(observers, force)
+        sight_timer = 0.0
+    var changed: bool = visibility.advance(navigation, 128)
+    if force:
+        while visibility.scanning:
+            changed = visibility.advance(navigation, 128) or changed
+    if not changed and not force:
+        return
+    sight_texture.update(visibility.mask_image())
+    var guardian_visible: bool = visibility.is_visible(sentry.position)
+    sentry.visible = guardian_visible or (sentry.hull == 0 and visibility.was_explored(sentry.position))
+    sentry_label.visible = guardian_visible
+    for crate in crates:
+        crate.visible = visibility.is_visible(crate.position)
+    for obstacle in world_obstacles:
+        if visibility.was_explored(obstacle.position) and not explored_obstacles.has(obstacle):
+            explored_obstacles.append(obstacle)
+        obstacle.visible = explored_obstacles.has(obstacle)
+    _update_status()
 
 func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool) -> Combatant:
     var unit := Combatant.new()
@@ -287,23 +362,30 @@ func _create_ui() -> void:
 
     status_label = Label.new()
     status_label.add_theme_font_size_override("font_size", 16)
+    status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     top.add_child(status_label)
 
     objective_label = Label.new()
     objective_label.add_theme_font_size_override("font_size", 17)
+    objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     top.add_child(objective_label)
 
-    var controls := HBoxContainer.new()
+    var controls := HFlowContainer.new()
     controls.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    controls.add_theme_constant_override("separation", 9)
+    controls.add_theme_constant_override("h_separation", 9)
+    controls.add_theme_constant_override("v_separation", 7)
     top.add_child(controls)
 
     officer_button = _add_button(controls, "ОФИЦЕР", _focus_hero)
     escort_button = _add_button(controls, "ЭСКОРТ", _focus_escort)
     _add_button(controls, "ВСЕ", _select_all_units)
     _add_button(controls, "СТОП", _stop_selected_units)
+    queue_button = _add_button(controls, "ОЧЕРЕДЬ", func() -> void: pass)
+    queue_button.toggle_mode = true
+    queue_button.tooltip_text = "Включи, чтобы добавлять точки и атаки после текущего приказа. СТОП отменяет всю очередь выделенных бойцов."
+    queue_button.toggled.connect(_set_queue_mode)
     _add_button(controls, "−", _zoom_out)
     _add_button(controls, "+", _zoom_in)
     if RTSDiagnostics.enabled and GameState.faction_index == 0 and GameState.officer_index == 0:
@@ -327,21 +409,30 @@ func _create_ui() -> void:
 
     unit_label = Label.new()
     unit_label.add_theme_font_size_override("font_size", 17)
+    unit_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     unit_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     bottom.add_child(unit_label)
     var hint := Label.new()
-    hint.text = "Касание — выбор/приказ. Свайп — камера. Два пальца — масштаб. СТОП — отмена."
+    hint.text = "Касание — приказ. Свайп — камера. Два пальца — масштаб. ОЧЕРЕДЬ — точки маршрута."
+    hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     hint.add_theme_font_size_override("font_size", 14)
     hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
     bottom.add_child(hint)
 
-func _add_button(container: HBoxContainer, name: String, action: Callable) -> Button:
+func _add_button(container: Container, name: String, action: Callable) -> Button:
     var button := Button.new()
     button.text = name
     button.custom_minimum_size = Vector2(94, 47)
     button.pressed.connect(action)
     container.add_child(button)
     return button
+
+func _set_queue_mode(enabled: bool) -> void:
+    append_orders = enabled
+    queue_button.text = "ОЧЕРЕДЬ: ВКЛ" if enabled else "ОЧЕРЕДЬ"
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("units", "queue_mode", {"append": enabled})
+    _update_status()
 
 func _focus_hero() -> void:
     if hero.hull > 0:
@@ -375,6 +466,7 @@ func _select_all_units() -> void:
     _select_units(units.duplicate())
 
 func _select_units(new_selection: Array[Combatant]) -> void:
+    orders_ui_dirty = true
     for old_ring in selection_rings.values():
         old_ring.queue_free()
     selection_rings.clear()
@@ -401,6 +493,9 @@ func _stop_selected_units() -> void:
     for unit in selected_units:
         _clear_path(unit)
         attackers.erase(unit)
+        unit_orders.erase(unit)
+        unit_headings.erase(unit)
+    orders_ui_dirty = true
     _update_status()
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("units", "stop", {"count": selected_units.size()})
@@ -532,7 +627,7 @@ func _handle_tap(screen_pos: Vector2) -> void:
     var nearest: Combatant = null
     var best := 28.0
     var candidates := units.duplicate()
-    if sentry.hull > 0:
+    if sentry.hull > 0 and visibility.is_visible(sentry.position):
         candidates.append(sentry)
     for actor in candidates:
         var center: Vector3 = actor.position + Vector3.UP
@@ -570,7 +665,7 @@ func _issue_move(destination: Vector3) -> void:
     var occupied: Array[Vector3] = []
     var group_speed := OFFICER_SPEED
     for unit in ordered:
-        starts.append(unit.position)
+        starts.append(_last_order_position(unit) if append_orders else unit.position)
         group_speed = minf(group_speed, OFFICER_SPEED if unit == hero else ESCORT_SPEED)
     for unit in units:
         if not selected_units.has(unit):
@@ -579,51 +674,114 @@ func _issue_move(destination: Vector3) -> void:
     var accepted := 0
     for i in range(destinations.size()):
         var unit: Combatant = ordered[i]
-        var target := destinations[i]
-        var avoid := occupied
-        var planned: Array[Vector3] = navigation.get_path(unit.position, target, avoid)
+        if _submit_order(unit, {"type": "move", "target": destinations[i], "speed": group_speed, "group": ordered}):
+            accepted += 1
+    _update_status()
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("units", "RTS_GROUP_ORDER", {
+            "requested": n, "accepted": accepted, "target": str(destination), "append": append_orders
+        })
+
+func _last_order_position(unit: Combatant) -> Vector3:
+    var pending: Array = unit_orders.get(unit, [])
+    for i in range(pending.size() - 1, -1, -1):
+        if pending[i]["type"] == "move":
+            return pending[i]["target"]
+    if unit_paths.has(unit):
+        return unit_paths[unit].back()
+    return unit.position
+
+func _submit_order(unit: Combatant, order: Dictionary) -> bool:
+    if append_orders and (unit_paths.has(unit) or attackers.has(unit) or unit_orders.has(unit)):
+        var pending: Array = unit_orders.get(unit, [])
+        if pending.size() >= MAX_PENDING_ORDERS:
+            if RTSDiagnostics.enabled:
+                RTSDiagnostics.event("units", "queue_full", {"unit": unit.name, "limit": MAX_PENDING_ORDERS})
+            return false
+        pending.append(order)
+        unit_orders[unit] = pending
+        orders_ui_dirty = true
+        if RTSDiagnostics.enabled:
+            RTSDiagnostics.event("units", "order_queued", {"unit": unit.name, "type": order["type"], "pending": pending.size()})
+        return true
+    if not _execute_order(unit, order):
+        return false
+    unit_orders.erase(unit)
+    return true
+
+func _execute_order(unit: Combatant, order: Dictionary) -> bool:
+    if unit.hull <= 0 or outcome != Outcome.ACTIVE:
+        return false
+    var is_attack: bool = order["type"] == "attack"
+    if is_attack and sentry.hull <= 0:
+        return false
+    var target: Vector3 = sentry.position if is_attack else order["target"]
+    var planned: Array[Vector3] = []
+    if not is_attack or not _in_firing_position(unit, sentry):
+        var avoid: Array[Vector3] = []
+        var moving_group: Array = order.get("group", [])
+        for other in units:
+            if other != unit and not moving_group.has(other):
+                avoid.append(other.position)
+        planned = navigation.get_path(unit.position, target, avoid)
         if planned.is_empty():
             if RTSDiagnostics.enabled:
                 RTSDiagnostics.event("path", "RTS_PATH_BLOCKED", {"unit": unit.name, "target": str(target)})
-            continue
-        _clear_path(unit)
-        attackers.erase(unit)
+            return false
+    _clear_path(unit)
+    attackers.erase(unit)
+    if not planned.is_empty():
         unit_paths[unit] = planned
         unit_waypoint_index[unit] = 0
-        unit_move_speeds[unit] = group_speed
-        accepted += 1
+        if not is_attack:
+            unit_move_speeds[unit] = order["speed"]
+            if RTSDiagnostics.enabled:
+                RTSDiagnostics.event("units", "RTS_MOVE_ORDER", {
+                    "unit": unit.name, "target": str(planned.back()), "waypoints": planned.size(),
+                    "group_speed": order["speed"]
+                })
+    if is_attack:
+        attackers.append(unit)
+    orders_ui_dirty = true
+    return true
+
+func _start_next_order(unit: Combatant) -> void:
+    if unit_paths.has(unit) or attackers.has(unit) or not unit_orders.has(unit):
+        return
+    var pending: Array = unit_orders[unit]
+    # Bounded by MAX_PENDING_ORDERS. A destroyed target or an unavailable
+    # destination cannot hold every later command in the queue forever.
+    while not pending.is_empty():
+        var order: Dictionary = pending.pop_front()
+        if pending.is_empty():
+            unit_orders.erase(unit)
+        var accepted := _execute_order(unit, order)
+        orders_ui_dirty = true
         if RTSDiagnostics.enabled:
-            RTSDiagnostics.event("units", "RTS_MOVE_ORDER", {
-                "unit": unit.name, "target": str(planned.back()), "waypoints": planned.size(),
-                "group_speed": group_speed
+            RTSDiagnostics.event("units", "queued_order_started" if accepted else "queued_order_skipped", {
+                "unit": unit.name, "type": order["type"], "pending": pending.size()
             })
-    _update_status()
-    if RTSDiagnostics.enabled:
-        RTSDiagnostics.event("units", "RTS_GROUP_ORDER", {"requested": n, "accepted": accepted, "target": str(destination)})
+        if accepted:
+            return
 
 func _clear_path(unit: Combatant) -> void:
+    if unit_paths.has(unit):
+        orders_ui_dirty = true
     unit_paths.erase(unit)
     unit_waypoint_index.erase(unit)
     unit_move_speeds.erase(unit)
     unit_blocked_seconds.erase(unit)
+    unit_pass_sides.erase(unit)
 
 func _issue_attack() -> void:
-    if outcome != Outcome.ACTIVE or sentry.hull <= 0:
+    if outcome != Outcome.ACTIVE or sentry.hull <= 0 or not visibility.is_visible(sentry.position):
         return
+    var accepted := 0
     for unit in selected_units:
-        if not _in_firing_position(unit, sentry):
-            var route: Array[Vector3] = navigation.get_path(unit.position, sentry.position, _other_unit_positions(unit))
-            if route.is_empty():
-                continue
-            _clear_path(unit)
-            unit_paths[unit] = route
-            unit_waypoint_index[unit] = 0
-        else:
-            _clear_path(unit)
-        if not attackers.has(unit):
-            attackers.append(unit)
+        if _submit_order(unit, {"type": "attack"}):
+            accepted += 1
     if RTSDiagnostics.enabled:
-        RTSDiagnostics.event("combat", "attack_order", {"count": attackers.size(), "target": "sentry"})
+        RTSDiagnostics.event("combat", "attack_order", {"count": accepted, "target": "sentry", "append": append_orders})
     _update_status()
 
 func _in_firing_position(shooter: Combatant, target: Combatant) -> bool:
@@ -644,6 +802,7 @@ func _shoot(shooter: Combatant, target: Combatant) -> void:
     fade.tween_interval(0.12)
     fade.tween_callback(tracer.queue_free)
     if target.hull == 0:
+        orders_ui_dirty = true
         if target == sentry:
             sentry.get_node("Beacon").hide()
             for unit in attackers:
@@ -654,6 +813,8 @@ func _shoot(shooter: Combatant, target: Combatant) -> void:
             units.erase(target)
             attackers.erase(target)
             _clear_path(target)
+            unit_orders.erase(target)
+            unit_headings.erase(target)
             if selected_units.has(target):
                 _select_units(units.duplicate())
     _update_status()
@@ -666,6 +827,8 @@ func _other_unit_positions(unit: Combatant) -> Array[Vector3]:
     return positions
 
 func _can_step(unit: Combatant, destination: Vector3) -> bool:
+    if not navigation.has_walkable_segment(unit.position, destination):
+        return false
     for other in units:
         if other == unit:
             continue
@@ -674,10 +837,28 @@ func _can_step(unit: Combatant, destination: Vector3) -> bool:
             return false
     return true
 
-func _face_direction(unit: Combatant, direction: Vector3, delta: float) -> void:
+func _passing_step(unit: Combatant, target: Vector3, distance: float) -> Variant:
+    var direction := (target - unit.position).normalized()
+    var preferred: float = unit_pass_sides.get(unit, 1.0)
+    # Both approaching actors first pass on the same side relative to their
+    # own heading. Every candidate checks the entire swept segment.
+    for side in [preferred, -preferred]:
+        for angle in [PI * 0.25, PI * 0.5, PI * 0.75]:
+            var candidate: Vector3 = unit.position + direction.rotated(Vector3.UP, angle * side) * distance
+            if absf(candidate.x) > MAP_LIMIT or absf(candidate.z) > MAP_LIMIT:
+                continue
+            if _can_step(unit, candidate):
+                unit_pass_sides[unit] = side
+                return candidate
+    return null
+
+func _face_direction(unit: Combatant, direction: Vector3) -> void:
     if direction.length_squared() > 0.000001:
-        var heading := atan2(direction.x, direction.z)
-        unit.rotation.y = lerp_angle(unit.rotation.y, heading, 1.0 - exp(-delta * 10.0))
+        unit_headings[unit] = atan2(direction.x, direction.z)
+
+func _turn_unit(unit: Combatant, delta: float) -> void:
+    if unit_headings.has(unit):
+        unit.rotation.y = lerp_angle(unit.rotation.y, unit_headings[unit], 1.0 - exp(-delta * 10.0))
 
 func _move_unit(unit: Combatant, delta: float) -> void:
     if not unit_paths.has(unit):
@@ -692,20 +873,27 @@ func _move_unit(unit: Combatant, delta: float) -> void:
         var next := unit.position.move_toward(planned[index], budget)
         if not _can_step(unit, next):
             unit_waypoint_index[unit] = index
-            _set_unit_animation(unit, false)
+            var passing: Variant = _passing_step(unit, planned[index], minf(budget, unit.position.distance_to(planned[index])))
+            if passing != null:
+                _face_direction(unit, passing - unit.position)
+                unit.position = passing
+            _set_unit_animation(unit, passing != null)
             var blocked: float = unit_blocked_seconds.get(unit, 0.0) + delta
             unit_blocked_seconds[unit] = blocked
             if blocked >= 0.4:
                 var replacement: Array[Vector3] = navigation.get_path(unit.position, planned.back(), _other_unit_positions(unit))
                 unit_blocked_seconds[unit] = 0.0
-                if not replacement.is_empty():
+                # A passing ally can temporarily occupy the destination. Keep
+                # the accepted goal instead of silently finishing elsewhere.
+                var same_goal: bool = not replacement.is_empty() and replacement.back().distance_to(planned.back()) < 0.05
+                if same_goal:
                     unit_paths[unit] = replacement
                     unit_waypoint_index[unit] = 0
                 if RTSDiagnostics.enabled:
-                    RTSDiagnostics.event("path", "ally_repath", {"unit": unit.name, "accepted": not replacement.is_empty()})
+                    RTSDiagnostics.event("path", "ally_repath", {"unit": unit.name, "accepted": same_goal})
             return
         var travelled := unit.position.distance_to(next)
-        _face_direction(unit, next - unit.position, delta)
+        _face_direction(unit, next - unit.position)
         unit.position = next
         budget -= travelled
         moved = moved or travelled > 0.00001
@@ -713,6 +901,7 @@ func _move_unit(unit: Combatant, delta: float) -> void:
             break
         index += 1
     unit_blocked_seconds.erase(unit)
+    unit_pass_sides.erase(unit)
     _set_unit_animation(unit, moved)
     if index >= planned.size():
         _clear_path(unit)
@@ -726,13 +915,15 @@ func _physics_process(delta: float) -> void:
         return
     for unit in units:
         unit.tick(delta)
+        _start_next_order(unit)
         if attackers.has(unit) and _in_firing_position(unit, sentry):
-            _face_direction(unit, sentry.position - unit.position, delta)
+            _face_direction(unit, sentry.position - unit.position)
             _clear_path(unit)
             _set_unit_animation(unit, false)
             _shoot(unit, sentry)
-            continue
-        _move_unit(unit, delta)
+        else:
+            _move_unit(unit, delta)
+        _turn_unit(unit, delta)
     if sentry.hull > 0:
         sentry.tick(delta)
         var closest: Combatant = null
@@ -743,6 +934,7 @@ func _physics_process(delta: float) -> void:
         if closest != null:
             _shoot(sentry, closest)
     _check_crates()
+    _update_visibility(delta)
     if units.is_empty():
         _finish(Outcome.DEFEAT)
     elif crates.is_empty() and sentry.hull == 0:
@@ -754,17 +946,31 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
     _update_camera(delta)
+    if orders_ui_dirty:
+        orders_ui_dirty = false
+        _refresh_order_markers()
+        _update_status()
     perf_accumulated += delta
+    perf_max_frame_ms = maxf(perf_max_frame_ms, delta * 1000.0)
+    if delta > 0.04:
+        perf_frames_over_40ms += 1
     if perf_accumulated >= 3.0:
         perf_accumulated = 0.0
         if RTSDiagnostics.enabled:
             RTSDiagnostics.event("perf", "RTS_PERF", {
                 "fps": Engine.get_frames_per_second(),
+                "max_frame_ms": snappedf(perf_max_frame_ms, 0.1),
+                "frames_over_40ms": perf_frames_over_40ms,
                 "units": units.size(),
                 "selected": selected_units.size(),
                 "orders": unit_paths.size(),
+                "queued_orders": _pending_order_count(),
+                "sight_revision": visibility.revision,
+                "sight_checks": visibility.last_step_checks,
                 "resources": resources_collected
             })
+        perf_max_frame_ms = 0.0
+        perf_frames_over_40ms = 0
 
 func _update_camera(delta: float) -> void:
     if view_camera == null:
@@ -793,7 +999,11 @@ func _finish(result: Outcome) -> void:
     unit_waypoint_index.clear()
     unit_move_speeds.clear()
     unit_blocked_seconds.clear()
+    unit_headings.clear()
+    unit_pass_sides.clear()
+    unit_orders.clear()
     attackers.clear()
+    orders_ui_dirty = true
     for unit in units:
         _set_unit_animation(unit, false)
     _update_status()
@@ -820,8 +1030,10 @@ func _update_status() -> void:
     ]
     if outcome != Outcome.ACTIVE:
         objective_label.text = "%s  ·  НА КОРАБЛЬ для разбора операции" % _result_text()
-    elif sentry.hull > 0:
+    elif sentry.hull > 0 and visibility.is_visible(sentry.position):
         objective_label.text = "Цель: уничтожь оранжевого стража (%d ОЗ) и собери три золотых контейнера." % sentry.hull
+    elif sentry.hull > 0:
+        objective_label.text = "Разведай планету. Найди стража и три контейнера. Обзор отряда общий."
     else:
         objective_label.text = "Страж уничтожен. Доставь отряд к оставшимся контейнерам."
     if selected_units.size() > 1:
@@ -832,6 +1044,75 @@ func _update_status() -> void:
         unit_label.text = "НЕТ ВЫДЕЛЕННЫХ ЮНИТОВ"
     if selected_units.any(func(unit: Combatant) -> bool: return attackers.has(unit)):
         unit_label.text += "  ·  ПРИКАЗ: АТАКА"
+    elif selected_units.any(func(unit: Combatant) -> bool: return unit_paths.has(unit)):
+        unit_label.text += "  ·  ПРИКАЗ: ДВИЖЕНИЕ"
+    var longest_queue := 0
+    for unit in selected_units:
+        var pending: Array = unit_orders.get(unit, [])
+        longest_queue = maxi(longest_queue, pending.size())
+    if longest_queue > 0:
+        unit_label.text += "  ·  ОЧЕРЕДЬ: %d/%d" % [longest_queue, MAX_PENDING_ORDERS]
+
+func _pending_order_count() -> int:
+    var count := 0
+    for pending in unit_orders.values():
+        count += pending.size()
+    return count
+
+func _refresh_order_markers() -> void:
+    if order_markers == null:
+        return
+    for marker in order_markers.get_children():
+        order_markers.remove_child(marker)
+        marker.queue_free()
+    if outcome != Outcome.ACTIVE:
+        return
+    for unit in selected_units:
+        var number := 1
+        if attackers.has(unit):
+            _make_order_marker(sentry.position, number, Color("#ff9257"))
+            number += 1
+        elif unit_paths.has(unit):
+            _make_order_marker(unit_paths[unit].back(), number, Color("#62ecf0"))
+            number += 1
+        var pending: Array = unit_orders.get(unit, [])
+        for order in pending:
+            var target: Vector3 = sentry.position if order["type"] == "attack" else order["target"]
+            _make_order_marker(target, number, Color("#e7b65b"))
+            number += 1
+
+func _make_order_marker(at: Vector3, number: int, color: Color) -> void:
+    for existing in order_markers.get_children():
+        if existing.position.distance_to(at) < 0.1:
+            var sequence: Label3D = existing.get_node("Sequence")
+            if not sequence.text.split(" · ").has(str(number)):
+                sequence.text += " · " + str(number)
+            return
+    var marker := Node3D.new()
+    marker.position = at
+    order_markers.add_child(marker)
+    var ring := MeshInstance3D.new()
+    var mesh := TorusMesh.new()
+    mesh.inner_radius = 0.38
+    mesh.outer_radius = 0.50
+    mesh.rings = 12
+    mesh.ring_segments = 8
+    ring.mesh = mesh
+    var mat := _material(color)
+    mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    ring.material_override = mat
+    ring.position.y = 0.06
+    marker.add_child(ring)
+    var label := Label3D.new()
+    label.name = "Sequence"
+    label.text = str(number)
+    label.modulate = color
+    label.font_size = 36
+    label.pixel_size = 0.018
+    label.outline_size = 4
+    label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+    label.position.y = 0.65
+    marker.add_child(label)
 
 func _back_to_ship() -> void:
     GameState.last_report = "%s  ·  Припасы %d/3  ·  Ресурсы %d" % [
