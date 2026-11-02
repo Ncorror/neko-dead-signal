@@ -94,6 +94,8 @@ var hero_call: Label
 var faction_details: Label
 var selected_fleet: Label
 var cta: Button
+var close_button: Button
+var exit_dialog: ConfirmationDialog
 
 func _ready() -> void:
     faction_index = GameState.faction_index
@@ -125,9 +127,22 @@ func _build_screen() -> void:
     var root := VBoxContainer.new()
     root.add_theme_constant_override("separation", 15)
     margins.add_child(root)
+    _build_exit_dialog()
     _build_header(root)
     _build_content(root)
     _build_footer(root)
+
+func _build_exit_dialog() -> void:
+    exit_dialog = ConfirmationDialog.new()
+    exit_dialog.title = "Выход из игры"
+    exit_dialog.dialog_text = "Завершить игру?"
+    exit_dialog.ok_button_text = "Выйти"
+    exit_dialog.cancel_button_text = "Остаться"
+    exit_dialog.confirmed.connect(func() -> void: get_tree().quit())
+    add_child(exit_dialog)
+
+func _confirm_exit() -> void:
+    exit_dialog.popup_centered(Vector2i(420, 180))
 
 func _build_header(parent: VBoxContainer) -> void:
     var header := HBoxContainer.new()
@@ -136,13 +151,11 @@ func _build_header(parent: VBoxContainer) -> void:
     parent.add_child(header)
 
     var brand := VBoxContainer.new()
+    brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     brand.add_theme_constant_override("separation", 0)
     header.add_child(brand)
     brand.add_child(_label("REINA: DEAD SIGNAL", 29, WHITE, true))
     brand.add_child(_label("ORBITAL COMMAND  /  ПРЕДВАРИТЕЛЬНЫЙ ПРОТОТИП", 12, CYAN))
-    var stretch := Control.new()
-    stretch.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    header.add_child(stretch)
 
     var status := VBoxContainer.new()
     status.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -150,9 +163,10 @@ func _build_header(parent: VBoxContainer) -> void:
     status.add_child(_label("●  ЛОКАЛЬНАЯ СЕССИЯ", 13, Color("#a5d5cb")))
     status.add_child(_label("Серверный бой ещё не подключён", 11, MUTED))
 
-    var close_button := _button("ВЫХОД", false, 82)
+    close_button = _button("ВЫХОД", false, 52)
     close_button.custom_minimum_size = Vector2(112, 52)
-    close_button.pressed.connect(func() -> void: get_tree().quit())
+    close_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    close_button.pressed.connect(_confirm_exit)
     header.add_child(close_button)
 
 func _build_content(parent: VBoxContainer) -> void:
@@ -163,9 +177,7 @@ func _build_content(parent: VBoxContainer) -> void:
 
     var left := _panel(row, 304)
     left.add_child(_label("01   /   СТОРОНА КОНФЛИКТА", 13, CYAN))
-    left.add_child(_gap(5))
     left.add_child(_label("ВЫБЕРИ РАСУ", 22, WHITE, true))
-    left.add_child(_gap(7))
     for i in range(FACTIONS.size()):
         var b := _button("", false, 72)
         b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -174,14 +186,10 @@ func _build_content(parent: VBoxContainer) -> void:
         left.add_child(b)
     faction_details = _label("", 13, MUTED)
     faction_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    faction_details.custom_minimum_size.y = 50
+    faction_details.custom_minimum_size.y = 42
     left.add_child(faction_details)
-    left.add_child(_gap(7))
     left.add_child(_rule())
-    left.add_child(_gap(10))
     left.add_child(_label("02   /   КОМАНДИР ДЕСАНТА", 13, CYAN))
-    left.add_child(_label("ОФИЦЕР", 21, WHITE, true))
-    left.add_child(_gap(7))
     var scroll := ScrollContainer.new()
     scroll.custom_minimum_size = Vector2(0, 136)
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -197,7 +205,7 @@ func _build_content(parent: VBoxContainer) -> void:
         b.pressed.connect(_select_officer.bind(i))
         officer_buttons.append(b)
         officer_list.add_child(b)
-    left.add_child(_label("Командир высаживается вместе с первым десантом.", 12, MUTED))
+    left.add_child(_label("Командир высаживается вместе с первым десантом.", 12, MUTED, false, true))
 
     var center := VBoxContainer.new()
     center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -226,35 +234,28 @@ func _build_content(parent: VBoxContainer) -> void:
 
     var right := _panel(row, 338)
     right.add_child(_label("03   /   ПАРАМЕТРЫ ВЫСАДКИ", 13, CYAN))
-    right.add_child(_gap(5))
     right.add_child(_label("ОПЕРАЦИЯ 001", 24, WHITE, true))
     right.add_child(_label("НЕИЗВЕДАННАЯ ПЛАНЕТА", 13, Color("#95c7d5")))
-    right.add_child(_gap(13))
     right.add_child(_rule())
-    right.add_child(_gap(14))
     right.add_child(_label("ФЛОТИЛИЯ", 12, MUTED))
     selected_fleet = _label("", 16, WHITE)
     right.add_child(selected_fleet)
-    right.add_child(_gap(15))
     right.add_child(_label("ПРОФИЛЬ КОМАНДИРА", 12, MUTED))
     hero_bio = _label("", 14, WHITE)
     hero_bio.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    hero_bio.custom_minimum_size.y = 89
+    hero_bio.custom_minimum_size.y = 70
     right.add_child(hero_bio)
-    right.add_child(_gap(7))
     right.add_child(_label("СПЕЦИАЛИЗАЦИЯ", 12, MUTED))
     hero_perk = _label("", 15, CYAN, true)
     right.add_child(hero_perk)
     right.add_child(_stretch())
     right.add_child(_rule())
-    right.add_child(_gap(12))
     if GameState.last_report.is_empty():
         right.add_child(_label("ЗАДАЧА ДЕСАНТА", 12, CYAN))
-        right.add_child(_label("Уничтожь стража и собери три контейнера. Эскорт тоже подбирает припасы.", 13, WHITE))
+        right.add_child(_label("Уничтожь стража и собери три контейнера. Эскорт тоже подбирает припасы.", 13, WHITE, false, true))
     else:
         right.add_child(_label("ИТОГ ПОСЛЕДНЕЙ ВЫСАДКИ", 12, CYAN))
-        right.add_child(_label(GameState.last_report, 13, WHITE))
-    right.add_child(_gap(10))
+        right.add_child(_label(GameState.last_report, 13, WHITE, false, true))
     cta = _button("НАЧАТЬ ВЫСАДКУ    ›", true, 67)
     cta.pressed.connect(_deploy)
     right.add_child(cta)
@@ -267,13 +268,15 @@ func _build_footer(parent: VBoxContainer) -> void:
     parent.add_child(footer)
     footer.add_child(_label("REINA SYSTEMS  /  ОБЩИЙ ЭКСПЕДИЦИОННЫЙ ФЛОТ", 11, MUTED))
     footer.add_child(_stretch_horizontal())
-    footer.add_child(_label("ANDROID  •  PRE-ALPHA 0.0.2  •  FIRST LANDING", 11, Color("#87b2bf")))
+    footer.add_child(_label("ANDROID  •  PRE-ALPHA 0.0.3  •  FIRST LANDING", 11, Color("#87b2bf")))
 
 func _panel(parent: HBoxContainer, minimum_width: float) -> VBoxContainer:
     var outer := PanelContainer.new()
     outer.custom_minimum_size.x = minimum_width
     outer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    outer.add_theme_stylebox_override("panel", _style(Color(0.015, 0.09, 0.125, 0.88), Color("#2a5864"), 1))
+    var panel_style := _style(Color(0.015, 0.09, 0.125, 0.88), Color("#2a5864"), 1)
+    panel_style.set_content_margin_all(0.0)
+    outer.add_theme_stylebox_override("panel", panel_style)
     parent.add_child(outer)
     var inset := MarginContainer.new()
     for side in ["left", "top", "right", "bottom"]:
@@ -311,12 +314,12 @@ func _button(caption: String, primary: bool = false, min_height: float = 56.0) -
     b.add_theme_stylebox_override("focus", _style(Color.TRANSPARENT, CYAN, 2))
     return b
 
-func _label(caption: String, font_size: int, color: Color, strong: bool = false) -> Label:
+func _label(caption: String, font_size: int, color: Color, strong: bool = false, wrap: bool = false) -> Label:
     var l := Label.new()
     l.text = caption
     l.add_theme_font_size_override("font_size", font_size)
     l.add_theme_color_override("font_color", color)
-    l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
     if strong:
         l.add_theme_constant_override("outline_size", 1)
         l.add_theme_color_override("font_outline_color", Color("#081522"))

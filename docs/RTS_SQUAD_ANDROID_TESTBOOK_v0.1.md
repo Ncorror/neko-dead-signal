@@ -1,6 +1,6 @@
 # RTS Squad Test — Android alpha checkpoint
 
-2026-11-02 · Android pre-alpha 0.0.2 · First landing
+2026-11-02 · Android pre-alpha 0.0.3 · First landing
 
 ## Implemented
 
@@ -19,6 +19,12 @@
 - One local sentry encounter supports attack orders, line of sight, range, cooldowns and casualties. Production, skills, networking, fog of war and mobile enemy AI are pending.
 - Amina's current Meshy GLB is **unrigged**. No real character animations until a rigged GLB is supplied. Game has no paid Meshy assets bundled.
 - Headless CI confirms source import, scripted navigation and Android APK signing; it does not prove touch responsiveness or visual quality on your phone.
+
+## Menu regression · 0.0.3
+
+- The title, both fleet buttons and deploy button should be visible immediately in landscape. The title stays on one line.
+- Tap the right side below the header. The game should remain open.
+- Tap the small exit button in the top right, then cancel. The menu should remain open. Confirming the exit closes the game.
 
 ## Android test book
 

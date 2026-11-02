@@ -16,6 +16,9 @@ func _advance(op, frames: int) -> void:
         op._physics_process(1.0 / 60.0)
 
 func _touch(pos: Vector2) -> void:
+    if not get_viewport().get_visible_rect().has_point(pos):
+        _check(false, "tap target is outside the visible viewport " + str(pos))
+        return
     for down in [true, false]:
         var tap := InputEventScreenTouch.new()
         tap.index = 0
@@ -26,10 +29,12 @@ func _touch(pos: Vector2) -> void:
 func _run() -> void:
     var tree := get_tree()
     # Keep this driver alive while the actual game scenes change.
+    tree.root.size = Vector2i(1280, 720)
     tree.current_scene = null
     tree.change_scene_to_file("res://scenes/main.tscn")
     await tree.scene_changed
-    await tree.process_frame
+    for frame in range(20):
+        await tree.process_frame
     var menu = tree.current_scene
     _touch(menu.faction_buttons[1].get_global_rect().get_center())
     _check(menu.faction_index == 1, "touch must select the Saari fleet")
