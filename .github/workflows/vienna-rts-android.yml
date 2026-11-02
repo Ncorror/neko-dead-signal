@@ -7,6 +7,7 @@ on:
       - feat/orbital-command-ui
       - feat/pure-rts-commanders
       - main
+      - feat/amina-static-landing-preview-v006
       - feat/tester-diagnostics-3d-roster
       - feat/rts-squads-grid-pathfinding
       - feat/rts-landing-skirmish
@@ -108,6 +109,15 @@ jobs:
           timeout 40s godot --headless --path client res://tests/test_menu_layout.tscn 2>&1 | tee build/rts-menu-test.log
           grep -q 'RTS_MENU_TEST_PASS' build/rts-menu-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-menu-test.log; then
+            exit 1
+          fi
+      - name: Validate imported Amina on orbital menu and RTS battlefield
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 45s godot --headless --path client res://tests/test_amina_visual.tscn 2>&1 | tee build/rts-amina-visual-test.log
+          grep -q 'RTS_AMINA_VISUAL_TEST_PASS' build/rts-amina-visual-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-amina-visual-test.log; then
             exit 1
           fi
       - name: Play the landing regression in Godot
