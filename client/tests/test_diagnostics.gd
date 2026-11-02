@@ -17,7 +17,7 @@ func _run() -> void:
     if not logger.enabled:
         get_tree().quit(1)
         return
-    _check(bool(ProjectSettings.get_setting("debug/file_logging/enable_file_logging", false)),
+    _check(bool(ProjectSettings.get_setting_with_override("debug/file_logging/enable_file_logging")),
         "Godot engine file logging should be enabled for debug")
     _check(FileAccess.file_exists("user://logs/godot.log"), "Godot engine output log missing")
     logger.event("test", "diagnostics_smoke", {"unit": "Amina", "answer": 42})
