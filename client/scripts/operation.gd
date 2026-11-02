@@ -23,6 +23,7 @@ var selection_rings: Dictionary = {}
 var navigation = PATH_GRID.new()
 var animation_players: Dictionary = {}
 var animation_state: Dictionary = {}
+var perf_accumulated: float = 0.0
 var crates: Array[Node3D] = []
 var resources_collected: int = 0
 var camera_focus: Vector3 = Vector3.ZERO
@@ -402,6 +403,14 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
     _update_camera(delta)
+    perf_accumulated += delta
+    if perf_accumulated >= 3.0:
+        perf_accumulated = 0.0
+        print("RTS_PERF fps=", Engine.get_frames_per_second(),
+            " units=", units.size(),
+            " selected=", selected_units.size(),
+            " orders=", unit_paths.size(),
+            " resources=", resources_collected)
 
 func _update_camera(delta: float) -> void:
     if view_camera == null:
