@@ -49,7 +49,7 @@ class PureRTSContract(unittest.TestCase):
         self.assertIn('"name": "РЭЙНА"', self.menu)
 
     def test_android_input_does_not_duplicate_taps(self):
-        self.assertIn("pointing/emulate_mouse_from_touch=true", self.project)
+        self.assertIn("pointing/emulate_mouse_from_touch=false", self.project)
         self.assertIn("InputEvent.DEVICE_ID_EMULATION", self.operation)
         self.assertIn("InputEventScreenTouch", self.operation)
         self.assertIn("InputEventScreenDrag", self.operation)

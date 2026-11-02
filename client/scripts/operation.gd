@@ -333,7 +333,7 @@ func _zoom_out() -> void:
     camera_zoom = clampf(camera_zoom + 4.0, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
 
 func _unhandled_input(event: InputEvent) -> void:
-    # Controls receive touch-emulated clicks. The battlefield uses native touches.
+    # Process each native gesture only once if a device also supplies emulated events.
     if event.device == InputEvent.DEVICE_ID_EMULATION:
         return
     if event is InputEventScreenTouch:

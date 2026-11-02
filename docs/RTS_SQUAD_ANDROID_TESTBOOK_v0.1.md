@@ -8,7 +8,7 @@
 - A local map with **two placeholder units**, commander and escort, plus obstructing boxes.
 - Tap unit to select it; `ОФИЦЕР` and `ЭСКОРТ` select individual units; `ВСЕ` selects both; `СТОП` clears their movement orders. Tap ground to assign per-unit formation destinations.
 - `AStarGrid2D` grid computes alternate paths around static boxes (1 metre cell, orthogonal adjacency; 0.75 m obstacle clearance).
-- Single-finger drag pans the RTS camera. `+`/`−` zoom. Godot buttons use touch-emulated clicks. The battlefield ignores the emulated copy and handles the native gesture. No manual hero joystick.
+- Single-finger drag pans the RTS camera. `+`/`−` zoom. Controls and the battlefield use native touches. Touch-to-mouse emulation stays disabled. No manual hero joystick.
 - Every ~3 seconds local log line `RTS_PERF fps=... units=... selected=... orders=...` for tester reporting.
 - Optional Amina model import hook: game reads `res://assets/characters/amina/amina_rigged.glb` only when she is selected and resource exists. It requires a valid `AnimationPlayer` with identifiable `Idle` and `Walk` clips. Otherwise it **keeps the working placeholder**.
 

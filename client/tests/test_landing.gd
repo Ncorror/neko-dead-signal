@@ -21,8 +21,7 @@ func _touch(pos: Vector2) -> void:
         tap.index = 0
         tap.position = pos
         tap.pressed = down
-        Input.parse_input_event(tap)
-        Input.flush_buffered_events()
+        get_viewport().push_input(tap, true)
 
 func _run() -> void:
     var tree := get_tree()
@@ -49,21 +48,21 @@ func _run() -> void:
     _check(op.sentry.hull == 100 and op.unit_paths.is_empty(), "fresh landing")
     _touch(op.escort_button.get_global_rect().get_center())
     _check(op.selected_unit == op.escort and op.unit_paths.is_empty(), "HUD tap selected escort without moving")
-    # One physical gesture: mouse emulation must not turn a camera drag into a move order.
+    # Deliver viewport-local events through GUI hit testing and unhandled input.
+    var before_drag: Vector3 = op.camera_focus
     var start := Vector2(650, 400)
     var down := InputEventScreenTouch.new()
     down.position = start
     down.pressed = true
-    Input.parse_input_event(down)
+    get_viewport().push_input(down, true)
     var drag := InputEventScreenDrag.new()
     drag.position = start + Vector2(90, 0)
     drag.relative = Vector2(90, 0)
-    Input.parse_input_event(drag)
+    get_viewport().push_input(drag, true)
     var up := InputEventScreenTouch.new()
     up.position = drag.position
-    Input.parse_input_event(up)
-    Input.flush_buffered_events()
-    _check(op.unit_paths.is_empty() and op.camera_focus != op.escort.position, "drag pans without ordering movement")
+    get_viewport().push_input(up, true)
+    _check(op.unit_paths.is_empty() and op.camera_focus != before_drag, "drag pans without ordering movement")
 
     op._select_all_units()
     var target_screen: Vector2 = op.view_camera.unproject_position(op.sentry.position + Vector3.UP)

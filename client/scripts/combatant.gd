@@ -1,3 +1,4 @@
+class_name LandingCombatant
 extends Node3D
 ## Weapon and hull for one actor in the local landing encounter.
 
@@ -10,7 +11,7 @@ var cooldown := 0.0
 func tick(delta: float) -> void:
     cooldown = maxf(0.0, cooldown - delta)
 
-func fire_at(target) -> bool:
+func fire_at(target: LandingCombatant) -> bool:
     if hull <= 0 or target.hull <= 0 or cooldown > 0.0:
         return false
     if position.distance_to(target.position) > weapon_range:
