@@ -4,6 +4,7 @@ extends Control
 
 const HOLOGRAM := preload("res://scripts/command_visuals.gd")
 const DIAGNOSTICS_UI := preload("res://scripts/rts_diagnostics_ui.gd")
+const COMMANDER_3D := preload("res://scripts/commander_3d_preview.gd")
 const BG := Color("#050f18")
 const PANEL := Color("#071a25")
 const EDGE := Color("#204351")
@@ -88,6 +89,7 @@ var faction_buttons: Array[Button] = []
 var officer_buttons: Array[Button] = []
 var hero_visual: Control
 var hero_portrait: TextureRect
+var hero_preview_3d: SubViewportContainer
 var portrait_cache: Dictionary = {}
 var officer_scroll: ScrollContainer
 var hero_name: Label
@@ -261,6 +263,9 @@ func _build_content(parent: VBoxContainer) -> void:
     hero_portrait.visible = false
     portrait_holder.add_child(hero_portrait)
     hero_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    hero_preview_3d = COMMANDER_3D.new()
+    portrait_holder.add_child(hero_preview_3d)
+    hero_preview_3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
     hero_name = _label("", 27, WHITE, true)
     hero_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -463,6 +468,11 @@ func _refresh_selection() -> void:
     cta.add_theme_stylebox_override("hover", _style(faction["color"].lightened(0.2), faction["color"], 2))
 
 func _update_portrait() -> void:
+    var has_3d: bool = hero_preview_3d.set_commander(faction_index, officer_index)
+    hero_visual.visible = not has_3d
+    if has_3d:
+        hero_portrait.visible = false
+        return
     var portrait_id := ""
     if faction_index == 0:
         var portraits := ["amina", "reina", "mira_kade", "lyra_voss"]
