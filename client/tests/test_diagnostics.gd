@@ -17,6 +17,9 @@ func _run() -> void:
     if not logger.enabled:
         get_tree().quit(1)
         return
+    _check(bool(ProjectSettings.get_setting("debug/file_logging/enable_file_logging", false)),
+        "Godot engine file logging should be enabled for debug")
+    _check(FileAccess.file_exists("user://logs/godot.log"), "Godot engine output log missing")
     logger.event("test", "diagnostics_smoke", {"unit": "Amina", "answer": 42})
     logger._flush()
     _check(FileAccess.file_exists("user://rts-diagnostics/events-0.jsonl"), "JSONL file not created")
