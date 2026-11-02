@@ -8,6 +8,7 @@ on:
       - feat/pure-rts-commanders
       - main
       - feat/rts-squads-grid-pathfinding
+      - feat/rts-landing-skirmish
     paths:
       - 'client/**'
       - '.github/workflows/vienna-rts-android.yml'
@@ -88,6 +89,15 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-navigation-test.log; then
             exit 1
           fi
+      - name: Play the landing regression in Godot
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 40s godot --headless --resolution 1280x720 --path client res://tests/test_landing.tscn 2>&1 | tee build/rts-landing-test.log
+          grep -q 'RTS_LANDING_TEST_PASS' build/rts-landing-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-landing-test.log; then
+            exit 1
+          fi
       - name: Smoke-test orbital screen and landing scene
         shell: bash
         run: |
@@ -133,6 +143,6 @@ jobs:
             client/build/SHA256SUMS
             build/godot-*.log
             build/*-smoke.log
-            build/rts-navigation-test.log
+            build/rts-*-test.log
           retention-days: 14
           if-no-files-found: warn

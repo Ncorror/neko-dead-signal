@@ -37,7 +37,7 @@ class PureRTSContract(unittest.TestCase):
         self.assertIn("func _physics_process(delta: float)", self.operation)
 
     def test_group_orders_and_animation_hook(self):
-        self.assertIn("var selected_units: Array[Node3D]", self.operation)
+        self.assertIn("var selected_units: Array[Combatant]", self.operation)
         self.assertIn("func _select_all_units(", self.operation)
         self.assertIn("func _stop_selected_units(", self.operation)
         self.assertIn("navigation.set_blocked_box(", self.operation)
@@ -49,7 +49,8 @@ class PureRTSContract(unittest.TestCase):
         self.assertIn('"name": "РЭЙНА"', self.menu)
 
     def test_android_input_does_not_duplicate_taps(self):
-        self.assertIn("pointing/emulate_mouse_from_touch=false", self.project)
+        self.assertIn("pointing/emulate_mouse_from_touch=true", self.project)
+        self.assertIn("InputEvent.DEVICE_ID_EMULATION", self.operation)
         self.assertIn("InputEventScreenTouch", self.operation)
         self.assertIn("InputEventScreenDrag", self.operation)
         self.assertIn("InputEventMouseButton", self.operation)

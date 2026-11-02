@@ -96,6 +96,8 @@ var selected_fleet: Label
 var cta: Button
 
 func _ready() -> void:
+    faction_index = GameState.faction_index
+    officer_index = GameState.officer_index
     _build_screen()
     _refresh_selection()
 
@@ -246,8 +248,12 @@ func _build_content(parent: VBoxContainer) -> void:
     right.add_child(_stretch())
     right.add_child(_rule())
     right.add_child(_gap(12))
-    right.add_child(_label("РЕЖИМ ИСПЫТАНИЙ", 12, CYAN))
-    right.add_child(_label("RTS: выделение командира, приказ движения, стратегическая камера.", 13, WHITE))
+    if GameState.last_report.is_empty():
+        right.add_child(_label("ЗАДАЧА ДЕСАНТА", 12, CYAN))
+        right.add_child(_label("Уничтожь стража и собери три контейнера. Эскорт тоже подбирает припасы.", 13, WHITE))
+    else:
+        right.add_child(_label("ИТОГ ПОСЛЕДНЕЙ ВЫСАДКИ", 12, CYAN))
+        right.add_child(_label(GameState.last_report, 13, WHITE))
     right.add_child(_gap(10))
     cta = _button("НАЧАТЬ ВЫСАДКУ    ›", true, 67)
     cta.pressed.connect(_deploy)
@@ -261,7 +267,7 @@ func _build_footer(parent: VBoxContainer) -> void:
     parent.add_child(footer)
     footer.add_child(_label("REINA SYSTEMS  /  ОБЩИЙ ЭКСПЕДИЦИОННЫЙ ФЛОТ", 11, MUTED))
     footer.add_child(_stretch_horizontal())
-    footer.add_child(_label("ANDROID  •  PRE-ALPHA 0.0.1  •  GAMEPLAY TEST", 11, Color("#87b2bf")))
+    footer.add_child(_label("ANDROID  •  PRE-ALPHA 0.0.2  •  FIRST LANDING", 11, Color("#87b2bf")))
 
 func _panel(parent: HBoxContainer, minimum_width: float) -> VBoxContainer:
     var outer := PanelContainer.new()
