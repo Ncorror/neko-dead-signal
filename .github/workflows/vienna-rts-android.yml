@@ -7,6 +7,7 @@ on:
       - feat/orbital-command-ui
       - feat/pure-rts-commanders
       - main
+      - feat/rts-squads-grid-pathfinding
     paths:
       - 'client/**'
       - '.github/workflows/vienna-rts-android.yml'
@@ -78,6 +79,15 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log; then
             exit 1
           fi
+      - name: Run AStar navigation regression in Godot
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 35s godot --headless --path client --script res://tests/test_rts_navigation.gd 2>&1 | tee build/rts-navigation-test.log
+          grep -q 'RTS_NAV_TEST_PASS' build/rts-navigation-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-navigation-test.log; then
+            exit 1
+          fi
       - name: Smoke-test orbital screen and landing scene
         shell: bash
         run: |
@@ -123,5 +133,6 @@ jobs:
             client/build/SHA256SUMS
             build/godot-*.log
             build/*-smoke.log
+            build/rts-navigation-test.log
           retention-days: 14
           if-no-files-found: warn

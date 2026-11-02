@@ -29,6 +29,22 @@ const FACTIONS := [
 const OFFICERS := [
     [
         {
+            "name": "АМИНА",
+            "full": "Амина — разведка и дроны",
+            "role": "РАЗВЕДКА / ДРОНЫ",
+            "bio": "Кошачьи наушники, лёгкая экспедиционная экипировка. Находит скрытые ресурсы и ведёт дроны.",
+            "perk": "ОРБИТАЛЬНОЕ СКАНИРОВАНИЕ",
+            "call": "E-03"
+        },
+        {
+            "name": "РЭЙНА",
+            "full": "Рэйна — командование",
+            "role": "КОМАНДОВАНИЕ / КООРДИНАЦИЯ",
+            "bio": "Командир десантной группы. Координирует строй, тактическую связь и поддержку отрядов.",
+            "perk": "ТАКТИЧЕСКИЙ ПРИКАЗ",
+            "call": "E-04"
+        },
+        {
             "name": "МИРА КЕЙД",
             "full": "Мира Кейд — инженер",
             "role": "ИНЖЕНЕР / ПОДДЕРЖКА",
@@ -164,13 +180,21 @@ func _build_content(parent: VBoxContainer) -> void:
     left.add_child(_label("02   /   КОМАНДИР ДЕСАНТА", 13, CYAN))
     left.add_child(_label("ОФИЦЕР", 21, WHITE, true))
     left.add_child(_gap(7))
-    for i in range(2):
-        var b := _button("", false, 63)
+    var scroll := ScrollContainer.new()
+    scroll.custom_minimum_size = Vector2(0, 136)
+    scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    left.add_child(scroll)
+    var officer_list := VBoxContainer.new()
+    officer_list.add_theme_constant_override("separation", 6)
+    officer_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    scroll.add_child(officer_list)
+    for i in range(OFFICERS[0].size()):
+        var b := _button("", false, 62)
         b.alignment = HORIZONTAL_ALIGNMENT_LEFT
         b.pressed.connect(_select_officer.bind(i))
         officer_buttons.append(b)
-        left.add_child(b)
-    left.add_child(_stretch())
+        officer_list.add_child(b)
     left.add_child(_label("Командир высаживается вместе с первым десантом.", 12, MUTED))
 
     var center := VBoxContainer.new()
@@ -338,9 +362,12 @@ func _refresh_selection() -> void:
         b.add_theme_color_override("font_color", f["color"] if active else WHITE)
         b.add_theme_font_size_override("font_size", 14)
     for i in range(officer_buttons.size()):
+        var b := officer_buttons[i]
+        b.visible = i < OFFICERS[faction_index].size()
+        if not b.visible:
+            continue
         var active: bool = i == officer_index
         var p: Dictionary = OFFICERS[faction_index][i]
-        var b := officer_buttons[i]
         b.text = ("◆   " if active else "◇   ") + p["name"] + "\n      " + p["role"]
         b.add_theme_stylebox_override("normal", _style(Color("#183843") if active else Color("#0a2530"), faction["color"] if active else EDGE, 2 if active else 1))
         b.add_theme_color_override("font_color", faction["color"] if active else WHITE)
