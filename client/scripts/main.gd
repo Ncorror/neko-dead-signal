@@ -201,18 +201,33 @@ func _build_content(parent: VBoxContainer) -> void:
     left.add_child(faction_details)
     left.add_child(_rule())
     left.add_child(_label("02   /   КОМАНДИР ДЕСАНТА", 13, CYAN))
+    var roster_controls := HBoxContainer.new()
+    roster_controls.add_theme_constant_override("separation", 8)
+    left.add_child(roster_controls)
+    var previous := _button("◀ ПРЕД.", false, 38)
+    previous.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    previous.pressed.connect(_change_officer.bind(-1))
+    roster_controls.add_child(previous)
+    var next := _button("СЛЕД. ▶", false, 38)
+    next.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    next.pressed.connect(_change_officer.bind(1))
+    roster_controls.add_child(next)
     officer_scroll = ScrollContainer.new()
     var scroll := officer_scroll
     scroll.custom_minimum_size = Vector2(0, 136)
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
+    scroll.follow_focus = true
+    scroll.scroll_deadzone = 7
+    scroll.mouse_filter = Control.MOUSE_FILTER_STOP
     left.add_child(scroll)
     var officer_list := VBoxContainer.new()
     officer_list.add_theme_constant_override("separation", 6)
     officer_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll.add_child(officer_list)
     for i in range(OFFICERS[0].size()):
-        var b := _button("", false, 62)
+        var b := _button("", false, 51)
         b.alignment = HORIZONTAL_ALIGNMENT_LEFT
         b.pressed.connect(_select_officer.bind(i))
         officer_buttons.append(b)
@@ -385,6 +400,11 @@ func _select_faction(i: int) -> void:
     _store_selected_commander()
     _refresh_selection()
     call_deferred("_reveal_selected_officer")
+
+func _change_officer(direction: int) -> void:
+    var count: int = OFFICERS[faction_index].size()
+    if count > 0:
+        _select_officer(posmod(officer_index + direction, count))
 
 func _select_officer(i: int) -> void:
     if i < 0 or i >= OFFICERS[faction_index].size():
