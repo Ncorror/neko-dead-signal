@@ -10,15 +10,9 @@
 ## Why portraits use base64 text assets
 The connected GitHub write integration accepts UTF-8 text, not PNG/JPEG bytes. The installable, SHA-indexed asset ZIP contains the *four real original PNG files* and four optimized JPEGs encoded as UTF-8 `.jpg.b64`. The latter are explicitly included with Godot's Android `include_filter`. This is a bootstrap transport format, **not** a long-term art pipeline; once binary uploads are possible, commit ordinary optimized JPG/PNG and simplify loading.
 
-**IMPORTANT:** GitHub doesn't yet contain the newly packaged image payloads. Download `REINA_RTS_PORTRAITS_v004.zip` from the conversation and publish from Termux:
+**UPLOAD COMPLETED — 2026-11-02:** All four original commander PNG dossiers and all four optimized `.jpg.b64` portraits have been pushed to `main` by Termux in commit `871601bc2a0e7c886e7a3719f1792c7770dc3c28`. The upload script printed `PORTRAITS_PUBLISHED_TO_MAIN`. GitHub file existence was separately verified.
 
-```bash
-pkg install -y git gh unzip
-unzip -n ~/storage/downloads/REINA_RTS_PORTRAITS_v004.zip -d ~
-bash ~/REINA_RTS_PORTRAITS_v004/publish_to_github.sh
-```
-
-The script makes a fresh temporary clone, adds only the 4 portraits and 4 art sheets, verifies no preexisting file is overwritten with different bytes, commits and pushes to `main`. It doesn't touch live Vienna services, game data or legacy projects. Until that push is complete, APK exports have holographic placeholders.
+**Vienna rebuild:** [Android Debug #28](https://github.com/Ncorror/reina-dead-signal-rts/actions/runs/41522996901) — **CI SUCCESS**, artifact `reina-rts-debug-28`, signed ARM64 APK. This run includes the art push and passed menu, landing and export checks. Real Android visual QA remains outstanding.
 
 ## Android manual retest
 - In the orbital UI, select **Амина → Рэйна → Мира → Лира**, check each active highlight and portrait changes after assets are present.
@@ -29,4 +23,4 @@ The script makes a fresh temporary clone, adds only the 4 portraits and 4 art sh
 - Test +/− zoom and map-edge panning, tap to attack enemy, all-unit movement and collection; no regressions.
 
 ## What CI proves
-The Vienna Runner validates Python source contracts, headless Godot menu/landing regressions, A* navigation, Android export and signing. It **cannot simulate full Android touchscreen timing**, and cannot test portraits in APK until their source files are uploaded. Device recordings remain authoritative.
+The Vienna Runner validates Python source contracts, headless Godot menu/landing regressions, A* navigation, Android export and signing. It **cannot simulate full Android touchscreen timing**, and cannot prove portraits render correctly on a physical device even after the source files are uploaded. Device recordings remain authoritative.
