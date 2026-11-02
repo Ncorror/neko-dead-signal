@@ -47,7 +47,7 @@ func _nearest_free(cell: Vector2i, radius: int = 7) -> Vector2i:
         for x in range(cell.x - r, cell.x + r + 1):
             for y in range(cell.y - r, cell.y + r + 1):
                 var candidate := Vector2i(x, y)
-                var d := abs(x - cell.x) + abs(y - cell.y)
+                var d: int = absi(x - cell.x) + absi(y - cell.y)
                 if max(abs(x - cell.x), abs(y - cell.y)) != r:
                     continue
                 if is_walkable(candidate) and d < best_dist:
