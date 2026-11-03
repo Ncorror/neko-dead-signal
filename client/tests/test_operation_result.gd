@@ -33,6 +33,15 @@ func _tap(button: Button) -> void:
         touch.pressed = down
         viewport.push_input(touch, true)
 
+func _check_layout(op) -> void:
+    var frame: Rect2 = op.get_viewport().get_visible_rect()
+    var popup: Rect2 = Rect2(Vector2(op.result_dialog.position), Vector2(op.result_dialog.size))
+    _check(frame.encloses(popup) and popup.size.y <= 480,
+        "embedded result window exceeds screen: " + str(popup) + " in " + str(frame))
+    var inner: Rect2 = op.result_dialog.get_visible_rect()
+    for control in [op.result_heading, op.result_summary, op.result_dialog.get_ok_button(), op.result_dialog.get_cancel_button()]:
+        _check(inner.encloses(control.get_global_rect()), "result content or action clipped by its viewport")
+
 func _lose(op, pending_snapshot: bool) -> void:
     op.hero.position = Vector3(5, 0, -4)
     op.escort.position = Vector3(5, 0, -2)
@@ -57,6 +66,7 @@ func _lose(op, pending_snapshot: bool) -> void:
 
 func _run() -> void:
     var tree := get_tree()
+    tree.root.gui_embed_subwindows = true
     tree.current_scene = null
     GameState.set_selection(1, 0, "Саари", "Сэйра Нэл")
     for pending in [false, true]:
@@ -77,6 +87,7 @@ func _run() -> void:
             and op.order_markers.get_child_count() == 0, "defeat must release orders, selection and markers")
         _check(op.result_dialog.visible and op.result_heading.text == "ПОРАЖЕНИЕ",
             "a prominent defeat dialog must appear automatically")
+        _check_layout(op)
         var revision: int = op.visibility.revision
         for frame in range(30):
             op._physics_process(1.0 / 60.0)
@@ -105,6 +116,7 @@ func _run() -> void:
         _lose(op, true)
         await _settle()
         _check(op.result_dialog.visible, "defeat dialog missing at " + str(resolution))
+        _check_layout(op)
         _tap(op.result_dialog.get_cancel_button())
         await _settle()
         _check(not op.result_dialog.visible, "visible cancel action failed at " + str(resolution))

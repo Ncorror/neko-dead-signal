@@ -455,6 +455,9 @@ func _create_result_dialog() -> void:
     result_heading.add_theme_font_size_override("font_size", 40)
     content.add_child(result_heading)
     result_summary = Label.new()
+    # An embedded Window asks for minimum height before its VBox is sorted.
+    # Give wrapped text a real width on that first layout pass.
+    result_summary.custom_minimum_size.x = 560.0
     result_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     result_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     result_summary.add_theme_font_size_override("font_size", 20)
