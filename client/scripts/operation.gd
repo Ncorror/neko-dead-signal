@@ -79,6 +79,10 @@ var supply_caches: Array[Node3D] = []
 var resources_collected: int = 0
 var camera_focus: Vector3 = Vector3.ZERO
 var camera_zoom: float = 22.0
+var camera_render_focus: Vector3 = Vector3.ZERO
+var camera_focus_velocity: Vector3 = Vector3.ZERO
+var camera_render_zoom: float = 22.0
+var camera_pose_initialized := false
 var view_camera: Camera3D
 var status_label: Label
 var unit_label: Label
@@ -732,6 +736,9 @@ func _unhandled_input(event: InputEvent) -> void:
         elif mouse.pressed and mouse.button_index == MOUSE_BUTTON_WHEEL_DOWN:
             _zoom_out()
             get_viewport().set_input_as_handled()
+        elif mouse.pressed and mouse.button_index == MOUSE_BUTTON_RIGHT:
+            _stop_camera_travel()
+            get_viewport().set_input_as_handled()
     elif event is InputEventMouseMotion:
         var motion := event as InputEventMouseMotion
         if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
@@ -749,6 +756,7 @@ func _handle_touch(touch: InputEventScreenTouch) -> void:
             touch_dragged = false
             touch_start = touch.position
         else:
+            _stop_camera_travel()
             pinch_used = true
             touch_tracking = false
             touch_dragged = false
@@ -791,6 +799,7 @@ func _handle_drag(drag: InputEventScreenDrag) -> void:
         if not touch_dragged:
             if drag.position.distance_to(touch_start) < TOUCH_DRAG_THRESHOLD:
                 return
+            _stop_camera_travel()
             touch_dragged = true
             get_viewport().set_input_as_handled()
             return
@@ -800,6 +809,14 @@ func _handle_drag(drag: InputEventScreenDrag) -> void:
 func _notification(what: int) -> void:
     if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
         _reset_touch_state()
+        _stop_camera_travel()
+
+func _stop_camera_travel() -> void:
+    # A deliberate pan takes over from the visible location, not the distant
+    # minimap destination. Release of a normal minimap tap still eases to it.
+    if camera_pose_initialized:
+        camera_focus = camera_render_focus
+        camera_focus_velocity = Vector3.ZERO
 
 func _reset_touch_state() -> void:
     touch_points.clear()
@@ -1192,9 +1209,25 @@ func _process(delta: float) -> void:
 func _update_camera(delta: float) -> void:
     if view_camera == null:
         return
-    var desired := camera_focus + Vector3(0, camera_zoom, camera_zoom * 0.95)
-    view_camera.global_position = view_camera.global_position.lerp(desired, 1.0 - exp(-minf(delta, 0.10) * 7.0))
-    view_camera.look_at(camera_focus + Vector3.UP, Vector3.UP)
+    if not camera_pose_initialized:
+        camera_render_focus = camera_focus
+        camera_render_zoom = camera_zoom
+        camera_pose_initialized = true
+    else:
+        var step := clampf(delta, 0.0, 0.10)
+        # Exact critically damped step: gentle acceleration, continuous velocity
+        # on retarget, and the same response at 30/60/120 FPS.
+        var offset := camera_render_focus - camera_focus
+        var change := camera_focus_velocity + offset * 10.0
+        var decay := exp(-step * 10.0)
+        camera_render_focus = camera_focus + (offset + change * step) * decay
+        camera_focus_velocity = (camera_focus_velocity - change * (10.0 * step)) * decay
+        var weight := 1.0 - exp(-step * 7.0)
+        camera_render_zoom = lerpf(camera_render_zoom, camera_zoom, weight)
+    # Position and look target share one eased centre. Looking at the final
+    # destination while position was still travelling made the view swivel.
+    view_camera.global_position = camera_render_focus + Vector3(0, camera_render_zoom, camera_render_zoom * 0.95)
+    view_camera.look_at(camera_render_focus + Vector3.UP, Vector3.UP)
 
 func _check_crates() -> void:
     _collect_supplies(crates, true)
