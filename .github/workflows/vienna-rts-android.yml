@@ -10,6 +10,7 @@ on:
       - fix/manual-preview-smooth-paths-v007
       - feat/orders-and-recon-v008
       - fix/defeat-sight-report-v009
+      - fix/embedded-result-layout-v009
       - feat/rts-formation-clearance-v006
       - feat/amina-static-landing-preview-v006
       - feat/tester-diagnostics-3d-roster
