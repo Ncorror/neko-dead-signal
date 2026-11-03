@@ -37,6 +37,11 @@ var outcome := Outcome.ACTIVE
 var objective_label: Label
 var officer_button: Button
 var escort_button: Button
+var result_dialog: ConfirmationDialog
+var result_heading: Label
+var result_summary: Label
+var result_button: Button
+var diagnostics_panel: Node
 var unit_paths: Dictionary = {}
 var unit_waypoint_index: Dictionary = {}
 var unit_move_speeds: Dictionary = {}
@@ -188,6 +193,9 @@ func _update_visibility(delta: float, force: bool = false) -> void:
             changed = visibility.advance(navigation, 128) or changed
     if not changed and not force:
         return
+    _apply_visibility()
+
+func _apply_visibility() -> void:
     sight_texture.update(visibility.mask_image())
     var guardian_visible: bool = visibility.is_visible(sentry.position)
     sentry.visible = guardian_visible or (sentry.hull == 0 and visibility.was_explored(sentry.position))
@@ -391,9 +399,11 @@ func _create_ui() -> void:
     if RTSDiagnostics.enabled and GameState.faction_index == 0 and GameState.officer_index == 0:
         _add_button(controls, "ОСМОТР 3D", _inspect_commander)
     if RTSDiagnostics.enabled:
-        var debug_panel := DIAGNOSTICS_UI.new()
-        add_child(debug_panel)
-        debug_panel.install(self, controls)
+        diagnostics_panel = DIAGNOSTICS_UI.new()
+        add_child(diagnostics_panel)
+        diagnostics_panel.install(self, controls)
+    result_button = _add_button(controls, "ИТОГ", _show_result)
+    result_button.hide()
     _add_button(controls, "НА КОРАБЛЬ", _back_to_ship)
 
     var bottom := VBoxContainer.new()
@@ -418,6 +428,53 @@ func _create_ui() -> void:
     hint.add_theme_font_size_override("font_size", 14)
     hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
     bottom.add_child(hint)
+    _create_result_dialog()
+
+func _create_result_dialog() -> void:
+    result_dialog = ConfirmationDialog.new()
+    result_dialog.title = "REINA RTS · Итог операции"
+    result_dialog.min_size = Vector2i(640, 300)
+    result_dialog.get_ok_button().text = "НА КОРАБЛЬ"
+    result_dialog.get_cancel_button().text = "КАРТА"
+    for button in [result_dialog.get_ok_button(), result_dialog.get_cancel_button()]:
+        button.custom_minimum_size = Vector2(150, 48)
+        button.add_theme_font_size_override("font_size", 18)
+    result_dialog.confirmed.connect(_back_to_ship)
+    if RTSDiagnostics.enabled:
+        var logs_button := result_dialog.add_button("ЛОГИ", true, "logs")
+        logs_button.custom_minimum_size = Vector2(110, 48)
+        result_dialog.custom_action.connect(_result_action)
+    add_child(result_dialog)
+    var content := VBoxContainer.new()
+    content.custom_minimum_size = Vector2(580, 210)
+    content.alignment = BoxContainer.ALIGNMENT_CENTER
+    content.add_theme_constant_override("separation", 18)
+    result_dialog.add_child(content)
+    result_heading = Label.new()
+    result_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    result_heading.add_theme_font_size_override("font_size", 40)
+    content.add_child(result_heading)
+    result_summary = Label.new()
+    result_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    result_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    result_summary.add_theme_font_size_override("font_size", 20)
+    content.add_child(result_summary)
+
+func _show_result() -> void:
+    if outcome == Outcome.ACTIVE or result_dialog == null:
+        return
+    _reset_touch_state()
+    result_heading.text = _result_text()
+    result_heading.add_theme_color_override("font_color", Color("#ff9c96") if outcome == Outcome.DEFEAT else Color("#62ecf0"))
+    var explanation := "Весь отряд потерян. Текущий обзор закрыт." if outcome == Outcome.DEFEAT else "Страж уничтожен. Все контейнеры собраны."
+    result_summary.text = "%s\nПрипасы %d/3  ·  Ресурсы %d\nВернись на корабль или осмотри карту и сохрани логи." % [
+        explanation, 3 - crates.size(), resources_collected]
+    result_dialog.popup_centered(Vector2i(680, 330))
+
+func _result_action(action: StringName) -> void:
+    if action == &"logs" and diagnostics_panel != null:
+        result_dialog.hide()
+        diagnostics_panel._open()
 
 func _add_button(container: Container, name: String, action: Callable) -> Button:
     var button := Button.new()
@@ -604,12 +661,15 @@ func _handle_drag(drag: InputEventScreenDrag) -> void:
 
 func _notification(what: int) -> void:
     if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
-        touch_points.clear()
-        touch_index = -1
-        pinch_used = false
-        pinch_distance = 0.0
-        touch_tracking = false
-        touch_dragged = false
+        _reset_touch_state()
+
+func _reset_touch_state() -> void:
+    touch_points.clear()
+    touch_index = -1
+    pinch_used = false
+    pinch_distance = 0.0
+    touch_tracking = false
+    touch_dragged = false
 
 func _pan_camera(delta_pixels: Vector2) -> void:
     # Previous camera_zoom * 0.018 shifted ~80 world units per 200 px swipe:
@@ -994,6 +1054,8 @@ func _check_crates() -> void:
                 break
 
 func _finish(result: Outcome) -> void:
+    if outcome != Outcome.ACTIVE:
+        return
     outcome = result
     unit_paths.clear()
     unit_waypoint_index.clear()
@@ -1006,7 +1068,15 @@ func _finish(result: Outcome) -> void:
     orders_ui_dirty = true
     for unit in units:
         _set_unit_animation(unit, false)
+    if result == Outcome.DEFEAT:
+        visibility.clear_current()
+        _apply_visibility()
+        var empty_selection: Array[Combatant] = []
+        _select_units(empty_selection)
+    _refresh_order_markers()
+    result_button.show()
     _update_status()
+    _show_result()
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("combat", "RTS_LANDING_RESULT", {
             "outcome": Outcome.keys()[result], "resources": resources_collected
@@ -1016,7 +1086,7 @@ func _result_text() -> String:
     if outcome == Outcome.VICTORY:
         return "ПОБЕДА"
     if outcome == Outcome.DEFEAT:
-        return "ОТРЯД ПОТЕРЯН"
+        return "ПОРАЖЕНИЕ"
     return "ОПЕРАЦИЯ ПРЕРВАНА"
 
 func _update_status() -> void:
