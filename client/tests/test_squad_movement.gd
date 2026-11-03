@@ -17,6 +17,7 @@ func _land():
     var op = get_tree().current_scene
     op.set_physics_process(false)
     op.sentry.damage = 0
+    op.enemy_ai.movement_enabled = false # Keep the formation fixture stationary.
     return op
 
 func _advance(op, frames: int) -> void:

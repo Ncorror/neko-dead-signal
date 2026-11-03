@@ -61,6 +61,7 @@ func _navigate(at: Vector2) -> void:
     ratio = ratio.clamp(Vector2.ZERO, Vector2.ONE)
     var bounds: Rect2 = operation.visibility.bounds
     var point := bounds.position + ratio * bounds.size
+    operation.camera_focus_response = operation.CAMERA_MINIMAP_RESPONSE
     operation.camera_focus = Vector3(point.x, 0, point.y)
     operation._clamp_camera_focus()
     queue_redraw()

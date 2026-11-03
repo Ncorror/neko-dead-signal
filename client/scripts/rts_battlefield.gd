@@ -7,6 +7,8 @@ const FACTORY_POSITION := Vector3(-6, 0, 7)
 const FACTORY_SIZE := Vector3(3.2, 1.6, 3.2)
 const FACTORY_EXIT := Vector3(-2, 0, 7)
 const RALLY_POINT := Vector3(-2, 0, 3)
+const GUARD_HOME := Vector3(8, 0, -4)
+const GUARD_PATROL := [GUARD_HOME, Vector3(18, 0, -4), Vector3(18, 0, 4), Vector3(4, 0, -12)]
 const MISSION_SUPPLIES := [Vector3(5, 0, 2), Vector3(-8, 0, 11), Vector3(13, 0, -6)]
 const REMOTE_SUPPLIES := [Vector3(-58, 0, -42), Vector3(62, 0, -54),
     Vector3(-64, 0, 54), Vector3(60, 0, 58), Vector3(8, 0, -72), Vector3(-76, 0, 10)]

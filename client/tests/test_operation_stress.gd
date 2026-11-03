@@ -26,6 +26,8 @@ func _run() -> void:
     var op = get_tree().current_scene
     op.set_physics_process(false)
     op.sentry.damage = 0
+    op.enemy_ai.movement_enabled = false
+    op.sentry.position = Vector3(80, 0, 80) # Keep the route benchmark outside the enemy body.
     op.queue_button.button_pressed = true
     var rng := RandomNumberGenerator.new()
     rng.seed = 41835

@@ -11,6 +11,7 @@ on:
       - feat/orders-and-recon-v008
       - fix/defeat-sight-report-v009
       - fix/embedded-result-layout-v009
+      - feat/mobile-guardian-v012
       - fix/smooth-minimap-v011
       - feat/production-large-map-v010
       - feat/rts-formation-clearance-v006
@@ -172,6 +173,15 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-visibility-test.log; then
             exit 1
           fi
+      - name: Test mobile guardian perception, chase, fog and attack queues
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 60s godot --headless --path client res://tests/test_enemy_ai.tscn 2>&1 | tee build/rts-enemy-test.log
+          grep -q 'RTS_ENEMY_TEST_PASS' build/rts-enemy-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-enemy-test.log; then
+            exit 1
+          fi
       - name: Run 96 seeded group routes with orders and shared sight
         shell: bash
         run: |
@@ -248,7 +258,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.11-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.12-debug.apk
           cp docs/DEVICE_TEST_RTS_008.html build/tester-bundle/REINA_RTS-testbook.html
       - name: Publish APK and testbook
         uses: actions/upload-artifact@v4

@@ -28,6 +28,7 @@ func _land(faction: int = 0):
     var op = get_tree().current_scene
     op.set_physics_process(false)
     op.sentry.damage = 0
+    op.enemy_ai.movement_enabled = false # Isolate factory timing and army routing.
     await _settle()
     return op
 

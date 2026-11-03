@@ -17,6 +17,7 @@ func _land():
     var op = get_tree().current_scene
     op.set_physics_process(false)
     op.sentry.damage = 0
+    op.enemy_ai.movement_enabled = false # Mobile-target queues are covered in test_enemy_ai.
     for frame in range(20):
         await get_tree().process_frame
     return op
