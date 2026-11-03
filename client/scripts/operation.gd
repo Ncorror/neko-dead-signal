@@ -17,6 +17,7 @@ const PRODUCTION := preload("res://scripts/rts_production.gd")
 const PRODUCTION_PANEL := preload("res://scripts/rts_production_panel.gd")
 const MINIMAP := preload("res://scripts/rts_minimap.gd")
 const ENEMY_AI := preload("res://scripts/rts_enemy_ai.gd")
+const AUTO_FIRE := preload("res://scripts/rts_auto_fire.gd")
 const STATIC_AMINA_WORLD_HEIGHT := 1.90
 const STATIC_AMINA_FRONT_YAW_DEGREES := 0.0
 
@@ -44,6 +45,8 @@ var attack_last_seen: Dictionary = {}
 var attack_repath_age: Dictionary = {}
 var attack_lost_age: Dictionary = {}
 var enemy_ai = ENEMY_AI.new()
+var auto_fire = AUTO_FIRE.new()
+var auto_fire_button: Button
 var outcome := Outcome.ACTIVE
 var objective_label: Label
 var officer_button: Button
@@ -531,6 +534,11 @@ func _create_ui() -> void:
     _add_button(controls, "ВСЕ", _select_all_units)
     _add_button(controls, "БАЗА", _open_factory)
     _add_button(controls, "СТОП", _stop_selected_units)
+    auto_fire_button = _add_button(controls, "ОГОНЬ: АВТО", func() -> void: pass)
+    auto_fire_button.toggle_mode = true
+    auto_fire_button.button_pressed = true
+    auto_fire_button.tooltip_text = "Режим всего отряда. Авто: ответный огонь и стрельба на ходу. Ручной: только твои приказы атаки."
+    auto_fire_button.toggled.connect(_set_auto_fire)
     queue_button = _add_button(controls, "ОЧЕРЕДЬ", func() -> void: pass)
     queue_button.toggle_mode = true
     queue_button.tooltip_text = "Включи, чтобы добавлять точки и атаки после текущего приказа. СТОП отменяет всю очередь выделенных бойцов."
@@ -652,6 +660,13 @@ func _set_queue_mode(enabled: bool) -> void:
         RTSDiagnostics.event("units", "queue_mode", {"append": enabled})
     _update_status()
 
+func _set_auto_fire(enabled: bool) -> void:
+    auto_fire.set_enabled(enabled, self)
+    auto_fire_button.set_pressed_no_signal(enabled)
+    _update_status()
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("combat", "auto_fire_mode", {"enabled": enabled})
+
 func _focus_hero() -> void:
     if hero.hull > 0:
         _select_unit(hero)
@@ -712,6 +727,7 @@ func _select_units(new_selection: Array[Combatant]) -> void:
 
 func _stop_selected_units() -> void:
     for unit in selected_units:
+        auto_fire.cancel(unit, self)
         _clear_path(unit)
         _clear_attack(unit)
         unit_orders.erase(unit)
@@ -934,6 +950,8 @@ func _issue_move(destination: Vector3) -> void:
         })
 
 func _last_order_position(unit: Combatant) -> Vector3:
+    if auto_fire.moving.has(unit):
+        return unit.position
     var pending: Array = unit_orders.get(unit, [])
     for i in range(pending.size() - 1, -1, -1):
         if pending[i]["type"] == "move":
@@ -943,7 +961,7 @@ func _last_order_position(unit: Combatant) -> Vector3:
     return unit.position
 
 func _submit_order(unit: Combatant, order: Dictionary) -> bool:
-    if append_orders and (unit_paths.has(unit) or attackers.has(unit) or unit_orders.has(unit)):
+    if append_orders and not auto_fire.moving.has(unit) and (unit_paths.has(unit) or attackers.has(unit) or unit_orders.has(unit)):
         var pending: Array = unit_orders.get(unit, [])
         if pending.size() >= MAX_PENDING_ORDERS:
             if RTSDiagnostics.enabled:
@@ -981,6 +999,7 @@ func _execute_order(unit: Combatant, order: Dictionary) -> bool:
             if RTSDiagnostics.enabled:
                 RTSDiagnostics.event("path", "RTS_PATH_BLOCKED", {"unit": unit.name, "target": str(target)})
             return false
+    auto_fire.cancel(unit, self)
     _clear_path(unit)
     _clear_attack(unit)
     if not planned.is_empty():
@@ -1085,11 +1104,14 @@ func _update_attack_order(unit: Combatant, delta: float) -> bool:
         orders_ui_dirty = true
     return false
 
-func _shoot(shooter: Combatant, target: Combatant) -> void:
+func _shoot(shooter: Combatant, target: Combatant, reason: StringName = &"order") -> void:
+    var previous_hull: int = target.hull
     if not shooter.fire_at(target):
         return
+    if shooter == sentry and target.hull > 0 and target.hull < previous_hull:
+        auto_fire.record_hit(target, shooter, self)
     if RTSDiagnostics.enabled:
-        RTSDiagnostics.event("combat", "hit", {"from": shooter.name, "to": target.name, "health": target.hull})
+        RTSDiagnostics.event("combat", "hit", {"from": shooter.name, "to": target.name, "health": target.hull, "reason": str(reason)})
     var origin := shooter.position + Vector3.UP
     var end := target.position + Vector3.UP
     var tracer := _make_box(Vector3.ZERO, Vector3(0.07, 0.07, origin.distance_to(end)),
@@ -1110,9 +1132,11 @@ func _shoot(shooter: Combatant, target: Combatant) -> void:
             attack_repath_age.clear()
             attack_lost_age.clear()
             enemy_ai.stop(true)
+            auto_fire.stop(self)
         else:
             target.hide()
             units.erase(target)
+            auto_fire.cancel(target, self)
             _clear_attack(target)
             _clear_path(target)
             unit_orders.erase(target)
@@ -1239,8 +1263,13 @@ func _physics_process(delta: float) -> void:
     for unit in units:
         unit.tick(delta)
         _start_next_order(unit)
-        if not attackers.has(unit) or not _update_attack_order(unit, delta):
+        if attackers.has(unit):
+            if not _update_attack_order(unit, delta):
+                _move_unit(unit, delta)
+        else:
+            auto_fire.update_motion(unit, delta, self)
             _move_unit(unit, delta)
+            auto_fire.try_fire(unit, self)
         _turn_unit(unit, delta)
     if sentry.hull > 0:
         sentry.tick(delta)
@@ -1344,6 +1373,7 @@ func _finish(result: Outcome) -> void:
     outcome = result
     var refunded: int = production.stop()
     enemy_ai.stop(sentry.hull <= 0)
+    auto_fire.stop(self)
     production_panel.hide()
     unit_paths.clear()
     unit_waypoint_index.clear()
@@ -1386,6 +1416,8 @@ func _update_status() -> void:
     sentry_label.text = ("СТРАЖ · %d\n%s" % [sentry.hull, enemy_ai.state_text()]) if sentry.hull > 0 else "ОБЛОМКИ"
     officer_button.disabled = hero.hull == 0
     escort_button.disabled = escort.hull == 0
+    auto_fire_button.text = "ОГОНЬ: АВТО" if auto_fire.enabled else "ОГОНЬ: РУЧНОЙ"
+    auto_fire_button.disabled = outcome != Outcome.ACTIVE
     status_label.text = "%s  |  Припасы %d/3  |  Ресурсы %d  |  Офицер %d ОЗ  ·  Эскорт %d ОЗ" % [
         GameState.faction_name, 3 - crates.size(), production.balance, hero.hull, escort.hull
     ]
@@ -1408,6 +1440,8 @@ func _update_status() -> void:
         unit_label.text = "НЕТ ВЫДЕЛЕННЫХ ЮНИТОВ"
     if selected_units.any(func(unit: Combatant) -> bool: return attackers.has(unit)):
         unit_label.text += "  ·  ПРИКАЗ: АТАКА"
+    elif selected_units.any(func(unit: Combatant) -> bool: return auto_fire.moving.has(unit)):
+        unit_label.text += "  ·  ОТВЕТНЫЙ ОГОНЬ"
     elif selected_units.any(func(unit: Combatant) -> bool: return unit_paths.has(unit)):
         unit_label.text += "  ·  ПРИКАЗ: ДВИЖЕНИЕ"
     var longest_queue := 0
@@ -1440,7 +1474,11 @@ func _refresh_order_markers() -> void:
                 number, Color("#ff9257"), true)
             number += 1
         elif unit_paths.has(unit):
-            _make_order_marker(unit_paths[unit].back(), number, Color("#62ecf0"))
+            if auto_fire.moving.has(unit):
+                var known: Vector3 = sentry.position if visibility.is_visible(sentry.position) else unit_paths[unit].back()
+                _make_order_marker(known, number, Color("#ff9257"), true)
+            else:
+                _make_order_marker(unit_paths[unit].back(), number, Color("#62ecf0"))
             number += 1
         var pending: Array = unit_orders.get(unit, [])
         for order in pending:
@@ -1490,6 +1528,7 @@ func _make_order_marker(at: Vector3, number: int, color: Color, tracks_enemy: bo
 func _back_to_ship() -> void:
     production.stop()
     enemy_ai.stop(sentry.hull <= 0)
+    auto_fire.stop(self)
     GameState.last_report = "%s  ·  Припасы %d/3  ·  Ресурсы %d" % [
         _result_text(), 3 - crates.size(), production.balance]
     if RTSDiagnostics.enabled:
