@@ -1,17 +1,24 @@
-# Commander art — approved style reference v1
+# REINA: DEAD SIGNAL RTS — Character source art
 
-**REINA: DEAD SIGNAL RTS.** Reference asset manifest for Amina, Reina, Lyra Voss and Mira Kade.
+Four human commander references are preserved in this private repository: **Amina, Reina, Lyra Voss, Mira Kade**. These are original 2D references, not automatically rigged game-ready models.
 
-The files listed in `ASSETS.json` are prepared in a separate downloadable ZIP (20 MB). **GitHub currently stores this index, NOT the binary PNG/GLB files.** The user can upload them using the bundled Termux script from that ZIP.
+## Already uploaded and verified
 
-- **Amina** — pink cat headset, silver/pink twin ponytails, reconnaissance.
-- **Reina** — purple/black, dark long hair, command.
-- **Lyra Voss** — short silver hair, stealth.
-- **Mira Kade** — warm blonde, yellow engineer outfit.
-- **Saari** commander concepts still need distinct designs.
+- `characters/amina_dossier.png`
+- `characters/reina_dossier.png`
+- `characters/lyra_voss_dossier.png`
+- `characters/mira_kade_dossier.png`
 
-Art is reference material; simulated HUD labels are not final UI copy. Use clean cropped portraits for 2D UI, optimized rigged GLB for 3D playable commander units.
+The existing `client/assets/portraits/*.jpg.b64` are low-weight in-game orbital portraits, separate from these source images. `client/assets/characters/amina/preview.glb` is an **unrigged 3D experiment**: it has no skin or animation.
 
-`amina_neon_neko_cadet_unrigged.glb` is unrigged (**0 skins, 0 animations**). Do not treat it as an animated unit.
+## New full-body and turnaround references
 
-No files are to be deleted or overwritten in the existing game branches. Original archive SHA-256 values are in `ASSETS.json`.
+See **[MODELING_SOURCES_v2.md](MODELING_SOURCES_v2.md)** for the six newly collected image paths, original dimensions and SHA-256 checksums. The additional binary PNG files are packaged for a safe one-time Termux upload; listing a path in documentation does not imply the binary is already on GitHub.
+
+## Modeling pipeline
+
+Amina and Mira have clean full-body and multi-view references. Reina and Lyra are approved concepts but still need a high-quality *standalone, symmetric, front-facing A-pose* before production rigging.
+
+For Meshy single-image conversion, submit **one isolated character**, not a four-panel sheet. Use multiple orthographic views only through an explicitly supported multi-image workflow. Save the untouched original and a versioned 3D export, verify the skeleton/animation count before using a GLB in battle.
+
+Do not overwrite existing art or change game code merely to upload character references.
