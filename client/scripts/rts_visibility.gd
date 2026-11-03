@@ -14,6 +14,9 @@ var _observers: Array[Vector3] = []
 var _jobs: Array[Vector3i] = []
 var _job_index := 0
 var _next_visible := PackedByteArray()
+var _mask := PackedByteArray()
+var _visible_indices: Array[int] = []
+var _next_indices: Array[int] = []
 
 func configure(area: Rect2, step: float = 1.0, radius: float = 8.0) -> void:
     bounds = area
@@ -23,6 +26,9 @@ func configure(area: Rect2, step: float = 1.0, radius: float = 8.0) -> void:
     visible.resize(dimensions.x * dimensions.y)
     visible.fill(0)
     explored = visible.duplicate()
+    _mask = visible.duplicate()
+    _visible_indices = []
+    _next_indices = []
     _observers.clear()
     _jobs.clear()
     _job_index = 0
@@ -60,6 +66,7 @@ func request_snapshot(observers: Array[Vector3], force: bool = false) -> bool:
     _next_visible = PackedByteArray()
     _next_visible.resize(visible.size())
     _next_visible.fill(0)
+    _next_indices = []
     _jobs.clear()
     _job_index = 0
     var radius_cells := ceili(sight_radius / cell_step) + 1
@@ -80,29 +87,30 @@ func advance(navigation, budget: int = 128) -> bool:
     while _job_index < _jobs.size() and last_step_checks < budget:
         var job := _jobs[_job_index]
         var index := job.y * dimensions.x + job.x
-        if _next_visible[index] == 0 and navigation.has_clear_sight(_observers[job.z], cell_to_world(Vector2i(job.x, job.y))):
-            _next_visible[index] = 1
+        if _next_visible[index] == 0:
+            last_step_checks += 1
+            if navigation.has_clear_sight(_observers[job.z], cell_to_world(Vector2i(job.x, job.y))):
+                _next_visible[index] = 1
+                _next_indices.append(index)
         _job_index += 1
-        last_step_checks += 1
     if _job_index < _jobs.size():
         return false
     scanning = false
     _jobs.clear()
     if visible == _next_visible:
         return false
+    for index in _visible_indices:
+        _mask[index] = 100
+    for index in _next_indices:
+        explored[index] = 1
+        _mask[index] = 255
     visible = _next_visible
-    for i in range(explored.size()):
-        if visible[i] != 0:
-            explored[i] = 1
+    _visible_indices = _next_indices
     revision += 1
     return true
 
 func mask_image() -> Image:
-    var pixels := PackedByteArray()
-    pixels.resize(visible.size())
-    for i in range(pixels.size()):
-        pixels[i] = 255 if visible[i] != 0 else (100 if explored[i] != 0 else 0)
-    return Image.create_from_data(dimensions.x, dimensions.y, false, Image.FORMAT_L8, pixels)
+    return Image.create_from_data(dimensions.x, dimensions.y, false, Image.FORMAT_L8, _mask)
 
 func clear_current() -> void:
     # Mission defeat cancels queued sight work before physics stops. Never let
@@ -112,6 +120,10 @@ func clear_current() -> void:
     _job_index = 0
     _observers.clear()
     _next_visible = PackedByteArray()
+    for index in _visible_indices:
+        _mask[index] = 100
+    _visible_indices = []
+    _next_indices = []
     visible.fill(0)
     last_step_checks = 0
     revision += 1
