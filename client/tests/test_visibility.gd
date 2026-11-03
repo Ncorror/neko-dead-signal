@@ -62,6 +62,12 @@ func _run() -> void:
     _check(sight.is_visible(Vector3(-4, 0, 5)), "open side of observer should remain visible")
     var mask: Image = sight.mask_image()
     _check(mask.get_width() == 24 and mask.get_height() == 24, "mask must match the map")
+    sight.request_snapshot([Vector3(4, 0, 0)])
+    sight.advance(nav, 1)
+    sight.clear_current()
+    sight.advance(nav, 10000)
+    _check(not sight.scanning and sight.visible.count(1) == 0 and sight.was_explored(Vector3.ZERO),
+        "clearing sight must cancel an in-progress snapshot without erasing history")
 
     get_tree().current_scene = null
     get_tree().root.size = Vector2i(1280, 720)

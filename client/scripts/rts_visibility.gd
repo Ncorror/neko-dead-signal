@@ -103,3 +103,15 @@ func mask_image() -> Image:
     for i in range(pixels.size()):
         pixels[i] = 255 if visible[i] != 0 else (100 if explored[i] != 0 else 0)
     return Image.create_from_data(dimensions.x, dimensions.y, false, Image.FORMAT_L8, pixels)
+
+func clear_current() -> void:
+    # Mission defeat cancels queued sight work before physics stops. Never let
+    # a snapshot from a dead observer republish its former visible circle.
+    scanning = false
+    _jobs.clear()
+    _job_index = 0
+    _observers.clear()
+    _next_visible = PackedByteArray()
+    visible.fill(0)
+    last_step_checks = 0
+    revision += 1
