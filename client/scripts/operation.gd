@@ -57,6 +57,7 @@ var result_dialog: ConfirmationDialog
 var result_heading: Label
 var result_summary: Label
 var result_button: Button
+var return_dialog: ConfirmationDialog
 var diagnostics_panel: Node
 var production = PRODUCTION.new()
 var construction = CONSTRUCTION.new()
@@ -658,6 +659,13 @@ func _create_ui() -> void:
     build_panel.install(self)
     build_panel.hide()
     _create_result_dialog()
+    return_dialog = ConfirmationDialog.new()
+    return_dialog.title = "Вернуться на корабль?"
+    return_dialog.dialog_text = "Текущая операция завершится. Вернуться на корабль?"
+    return_dialog.ok_button_text = "На корабль"
+    return_dialog.cancel_button_text = "Остаться"
+    return_dialog.confirmed.connect(_back_to_ship)
+    add_child(return_dialog)
 
 func _create_result_dialog() -> void:
     result_dialog = ConfirmationDialog.new()
@@ -822,7 +830,10 @@ func _unhandled_input(event: InputEvent) -> void:
     # Android emulated mouse event as if it were an independent finger gesture.
     if event.device == InputEvent.DEVICE_ID_EMULATION:
         return
-    if event is InputEventScreenTouch:
+    if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+        _handle_back()
+        get_viewport().set_input_as_handled()
+    elif event is InputEventScreenTouch:
         _handle_touch(event)
     elif event is InputEventScreenDrag:
         _handle_drag(event)
@@ -911,6 +922,24 @@ func _notification(what: int) -> void:
     if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
         _reset_touch_state()
         _stop_camera_travel()
+    elif what == NOTIFICATION_WM_GO_BACK_REQUEST and return_dialog != null:
+        _handle_back()
+
+func _handle_back() -> void:
+    _reset_touch_state()
+    _stop_camera_travel()
+    if return_dialog.visible:
+        return_dialog.hide()
+    elif diagnostics_panel != null and diagnostics_panel.popup.visible:
+        diagnostics_panel.popup.hide()
+    elif result_dialog.visible:
+        result_dialog.hide()
+    elif build_panel.visible:
+        _close_construction()
+    elif production_panel.visible:
+        production_panel.hide()
+    else:
+        return_dialog.popup_centered(Vector2i(520, 200))
 
 func _stop_camera_travel() -> void:
     # A deliberate pan takes over from the visible location, not the distant

@@ -44,6 +44,17 @@ func _run() -> void:
     var preview: String = logger.report_preview()
     _check(preview.contains("diagnostics_smoke"), "clipboard preview lacks test event")
     _check(preview.length() < 24000, "preview clipboard exceeded fixed cap")
+    for i in range(90):
+        logger.event("test", "long_report", {"payload": "x".repeat(800)})
+    preview = logger.report_preview()
+    _check(preview.begins_with("REINA RTS DEBUG  |  version=") and preview.contains("session=")
+        and preview.length() <= 20000 and preview.contains("long_report"), "long clipboard report lost build/session header")
+    logger.event("test", "focus_flush")
+    logger.notification(NOTIFICATION_WM_WINDOW_FOCUS_OUT)
+    _check(FileAccess.get_file_as_string(logger.EVENT_FILE).contains("focus_flush"), "focus loss left queued events unwritten")
+    logger.event("test", "pause_flush")
+    logger.notification(NOTIFICATION_APPLICATION_PAUSED)
+    _check(FileAccess.get_file_as_string(logger.EVENT_FILE).contains("pause_flush"), "Android pause left queued events unwritten")
     if failures == 0:
         print("RTS_DIAGNOSTICS_TEST_PASS")
     get_tree().quit(0 if failures == 0 else 1)

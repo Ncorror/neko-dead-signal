@@ -11,6 +11,7 @@ on:
       - feat/orders-and-recon-v008
       - fix/defeat-sight-report-v009
       - fix/embedded-result-layout-v009
+      - fix/project-audit-v015
       - feat/base-construction-v014
       - fix/return-fire-v013
       - feat/mobile-guardian-v012
@@ -211,6 +212,15 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-result-test.log; then
             exit 1
           fi
+      - name: Test Android Back layers, cancellation and ship confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 60s godot --headless --path client res://tests/test_back_navigation.tscn 2>&1 | tee build/rts-back-test.log
+          grep -q 'RTS_BACK_TEST_PASS' build/rts-back-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-back-test.log; then
+            exit 1
+          fi
       - name: Test paid construction, shared wallet, parallel factories and native placement
         shell: bash
         run: |
@@ -278,7 +288,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.14-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.15-debug.apk
           cp docs/DEVICE_TEST_RTS_008.html build/tester-bundle/REINA_RTS-testbook.html
       - name: Publish APK and testbook
         uses: actions/upload-artifact@v4

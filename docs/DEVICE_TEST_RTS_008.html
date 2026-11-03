@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>REINA RTS · Большой тест 0.0.14</title>
+<title>REINA RTS · Большой тест 0.0.15</title>
 <style>
 :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#dfedf2;background:#061018;line-height:1.55;font-size:16px;--line:#28424f;--muted:#a1b8c3;--accent:#60e0e6;--gold:#f1c375}
 *{box-sizing:border-box}body{margin:0}main{max-width:960px;margin:auto;padding:28px 20px 80px}header{padding:16px 0 26px;border-bottom:1px solid var(--line)}.eyebrow{color:var(--accent);font-size:.76rem;font-weight:700;letter-spacing:.12em}h1{font-size:clamp(1.8rem,5vw,3rem);line-height:1.12;margin:16px 0}h2{font-size:1.35rem;margin:34px 0 12px}h3{font-size:1rem;margin:0 0 7px}p{margin:8px 0}a{color:var(--accent)}.muted,small{color:var(--muted)}.intro{max-width:700px;color:var(--muted)}.note{padding:16px 18px;background:#10222c;border-left:3px solid var(--gold);border-radius:3px;margin:20px 0}.toolbar{position:sticky;top:0;z-index:2;margin:22px 0;padding:12px;background:#0b1b25f5;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 20px #0005}.toolbar-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}#counts{font-weight:650}progress{width:100%;height:8px;margin-top:10px;accent-color:var(--accent)}.actions{display:flex;gap:8px;flex-wrap:wrap}button,select,input,textarea{font:inherit;color:inherit;background:#102631;border:1px solid #365461;border-radius:6px}button,select{min-height:48px;padding:9px 13px}button{cursor:pointer}button.primary{color:#061018;background:var(--accent);font-weight:700;border-color:var(--accent)}button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}label.field{display:grid;gap:6px;color:var(--muted);font-size:.9rem}input,textarea{width:100%;padding:12px;min-height:48px}textarea{min-height:140px;resize:vertical}.case{display:grid;grid-template-columns:1fr 170px;gap:16px;padding:20px;margin:10px 0;border:1px solid var(--line);border-radius:10px;background:#0b1a24}.case p{font-size:.94rem}.expected{color:var(--muted)}.case select{align-self:start;width:100%}.case[data-status=pass]{border-left:4px solid var(--accent)}.case[data-status=fail]{border-left:4px solid #ff8c88}.case[data-status=skip]{border-left:4px solid var(--gold)}code{font-size:.86em;color:var(--gold);overflow-wrap:anywhere}footer{border-top:1px solid var(--line);margin-top:32px;padding-top:18px;font-size:.86rem;color:var(--muted)}.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.9rem;margin:14px 0}.legend span:first-child{color:var(--accent)}.legend span:last-child{color:var(--gold)}#storage-state{font-size:.8rem;margin:8px 0 0;color:var(--muted)}
@@ -15,14 +15,15 @@
 <body>
 <main>
 <header>
-<div class="eyebrow">REINA: DEAD SIGNAL / ANDROID ARM64 / 0.0.14</div>
-<h1>Большой тест.<br>Строительство базы.</h1>
+<div class="eyebrow">REINA: DEAD SIGNAL / ANDROID ARM64 / 0.0.15</div>
+<h1>Большой тест.<br>Строительство и стабильность.</h1>
 <p class="intro">Пройди один полный цикл: корабль → разведка → очередь → бой → итог → новая высадка. Отмечай фактический результат. Если нашёл баг, запиши действие перед ним и сделай короткую запись экрана.</p>
 <p class="muted">Ориентир: 40–50 минут. Этот файл работает без интернета. Готовый отчёт можно открыть, скопировать, передать или сохранить файлом.</p>
 </header>
-<div class="note"><strong>Перед началом</strong><p>Установи <code>REINA_RTS-0.0.14-debug.apk</code> поверх текущей версии. Удалять игру и её данные не нужно. Если Android сообщает о несовместимой подписи, остановись и запиши сообщение — не удаляй старую установку ради теста. Запусти игру и проверь версию <strong>0.0.14</strong> внизу корабельного экрана.</p><p class="muted">Это локальная pre-alpha. Сетевой бой ещё не подключён. Наземное производство уже работает за ресурсы операции. У Амины пока статическая модель: перемещение и поворот есть, анимации шага ещё нет. Другие командиры могут отображаться временными фигурами.</p></div>
+<div class="note"><strong>Перед началом</strong><p>Установи <code>REINA_RTS-0.0.15-debug.apk</code> поверх текущей версии. Удалять игру и её данные не нужно. Если Android сообщает о несовместимой подписи, остановись и запиши сообщение — не удаляй старую установку ради теста. Запусти игру и проверь версию <strong>0.0.15</strong> внизу корабельного экрана.</p><p class="muted">Это локальная pre-alpha. Сетевой бой ещё не подключён. Наземное производство уже работает за ресурсы операции. У Амины пока статическая модель: перемещение и поворот есть, анимации шага ещё нет. Другие командиры могут отображаться временными фигурами.</p></div>
+<div class="note"><strong>Исправления аудита 0.0.15</strong><p>Пункты остаются прежними — 36. Переключение версии теперь открывает отдельные отметки и заметки, сохраняя предыдущий отчёт. «Сбросить» очищает только выбранную версию. Системная кнопка «Назад» сначала закрывает открытую панель; выход или возврат с поля требует подтверждения. Длинный скопированный лог сохраняет заголовок версии и сессии.</p></div>
 <div class="meta">
-<label class="field">Версия, которую проверял<select id="tested-version"><option value="0.0.14">0.0.14 — строительство базы</option><option value="0.0.13">0.0.13 — ответный огонь</option><option value="0.0.12">0.0.12 — подвижный страж</option><option value="0.0.11">0.0.11 — плавная мини-карта</option><option value="0.0.10">0.0.10 — производство и большая карта</option><option value="0.0.9">0.0.9 — исправление поражения</option><option value="0.0.8">0.0.8 — предыдущий большой тест</option></select></label>
+<label class="field">Версия, которую проверял<select id="tested-version"><option value="0.0.15">0.0.15 — аудит и стабильность</option><option value="0.0.14">0.0.14 — строительство базы</option><option value="0.0.13">0.0.13 — ответный огонь</option><option value="0.0.12">0.0.12 — подвижный страж</option><option value="0.0.11">0.0.11 — плавная мини-карта</option><option value="0.0.10">0.0.10 — производство и большая карта</option><option value="0.0.9">0.0.9 — исправление поражения</option><option value="0.0.8">0.0.8 — предыдущий большой тест</option></select></label>
 <label class="field">Телефон<input id="device" placeholder="Например, Poco F7" autocomplete="off"></label>
 <label class="field">Android / прошивка<input id="android" placeholder="Версия Android и прошивка" autocomplete="off"></label>
 <label class="field">Дата / условия<input id="conditions" placeholder="Дата, зарядка, запись экрана" autocomplete="off"></label>
@@ -90,7 +91,7 @@
 <section class="case" data-id="parallel-factories" data-since="0.0.14"><div><h3>34. Общие ресурсы и два завода</h3><p>Построй второй завод, накопи ещё 200 ресурсов. Коснись нового завода и закажи бойца; открой исходный через «БАЗА» и закажи второго. Проверь отмену в одной очереди, переключение панелей и одновременный выпуск. Повтори другой фракцией.</p><p class="expected">Баланс один на всю операцию; отмена возвращает деньги в общий запас. Очереди независимы и работают параллельно. Каждый боец появляется у своего завода и идёт к своей точке сбора. Новые бойцы не появляются внутри здания или друг друга. Командир и выделение сохраняются.</p></div><select aria-label="Результат проверки 34"></select></section>
 <section class="case" data-id="build-routes-sight" data-since="0.0.14"><div><h3>35. Обход строек и обзор поста</h3><p>Отправь бойца по маршруту с очередью и поставь здание на промежуточном участке пути. Затем построй разведпост на разведанной площадке и отведи бойцов подальше. Осмотри основной экран и мини-карту.</p><p class="expected">Боец обходит новую стройку и доходит до прежних точек очереди. Незавершённый пост не даёт обзор, готовый раскрывает ближайшую территорию без бойца рядом. На мини-карте видны свои здания и стройки. Завод закрывает движение, обзор и огонь; низкий пост закрывает только движение.</p></div><select aria-label="Результат проверки 35"></select></section>
 <section class="case" data-id="build-operation-end" data-since="0.0.14"><div><h3>36. Стройки при исходе и новая высадка</h3><p>Оставь незавершённую стройку и оплаченные очереди на двух заводах. Проверь завершение операции. В отдельной высадке построй разведпост, переключи огонь в ручной режим и дай погибнуть всем бойцам. Затем вернись на корабль и начни заново.</p><p class="expected">После исхода стройка и производство прекращаются. Незавершённые здания и невыпущенные бойцы возвращают стоимость один раз. Готовые здания не возвращают цену. Даже с постом потеря всех бойцов даёт поражение и закрывает весь текущий обзор. В новой высадке только исходная база, два бойца, нулевой баланс и пустые очереди.</p></div><select aria-label="Результат проверки 36"></select></section>
-<footer>Рэйна / REINA RTS 0.0.14. Этот тестбук ничего никуда не отправляет. Если браузер не разрешает автосохранение локального HTML, открой отчёт и скопируй его до закрытия. Для загрузки новой сборки используй ссылку на архив с APK из нашего чата.</footer>
+<footer>Рэйна / REINA RTS 0.0.15. Этот тестбук ничего никуда не отправляет. Если браузер не разрешает автосохранение локального HTML, открой отчёт и скопируй его до закрытия. Для загрузки новой сборки используй ссылку на архив с APK из нашего чата.</footer>
 </main>
 <script>
 'use strict';
@@ -99,7 +100,9 @@
 const KEY='reina-rts-device-test-008';
 const cases=[...document.querySelectorAll('.case')];
 const fields=['device','android','conditions','notes','tested-version'];
-const versions=['0.0.8','0.0.9','0.0.10','0.0.11','0.0.12','0.0.13','0.0.14'];
+const versions=['0.0.8','0.0.9','0.0.10','0.0.11','0.0.12','0.0.13','0.0.14','0.0.15'];
+let activeVersion=document.getElementById('tested-version').value;
+const savedVersions=Object.create(null);
 const labels={pending:'Не проверено',pass:'ОК',fail:'Ошибка',skip:'Пропущено'};
 const storageState=document.getElementById('storage-state');
 const reportPanel=document.getElementById('report-panel');
@@ -112,15 +115,46 @@ for(const card of cases){
   }
   select.addEventListener('change',save);
 }
-for(const id of fields)document.getElementById(id).addEventListener(id==='tested-version'?'change':'input',save);
-function readState(){
-  const data={version:document.getElementById('tested-version').value,fields:{},results:{}};
-  for(const id of fields)data.fields[id]=document.getElementById(id).value;
-  for(const card of cases)data.results[card.dataset.id]=card.querySelector('select').value;
+for(const id of fields)document.getElementById(id).addEventListener(id==='tested-version'?'change':'input',id==='tested-version'?switchVersion:save);
+function readState(version=activeVersion){
+  const data={version,fields:{},results:{}};
+  for(const id of fields)data.fields[id]=id==='tested-version'?version:document.getElementById(id).value;
+  for(const card of activeCases(version))data.results[card.dataset.id]=card.querySelector('select').value;
   return data;
 }
-function supportsVersion(since){return versions.indexOf(document.getElementById('tested-version').value)>=versions.indexOf(since);}
-function activeCases(){return cases.filter(card=>!card.dataset.since||supportsVersion(card.dataset.since));}
+function supportsVersion(since,version=activeVersion){return versions.indexOf(version)>=versions.indexOf(since);}
+function activeCases(version=activeVersion){return cases.filter(card=>!card.dataset.since||supportsVersion(card.dataset.since,version));}
+function applyState(data,version,device={}){
+  activeVersion=version;
+  for(const id of fields){
+    const value=data?.fields?.[id];
+    document.getElementById(id).value=id==='tested-version'?version:(typeof value==='string'?value:(['device','android'].includes(id)?device[id]||'':''));
+  }
+  for(const card of cases){
+    const value=data?.results?.[card.dataset.id];
+    card.querySelector('select').value=(!card.dataset.since||supportsVersion(card.dataset.since))&&Object.prototype.hasOwnProperty.call(labels,value)?value:'pending';
+  }
+}
+function remember(data,current){
+  savedVersions[data.version]=data;
+  try{
+    localStorage.setItem(KEY+'-v'+data.version,JSON.stringify(data));
+    if(current)localStorage.setItem(KEY,JSON.stringify(data));
+    return true;
+  }catch(error){return false;}
+}
+function switchVersion(){
+  const next=document.getElementById('tested-version').value;
+  const previous=readState();
+  remember(previous,false);
+  let data=savedVersions[next];
+  try{
+    const stored=JSON.parse(localStorage.getItem(KEY+'-v'+next)||'null');
+    if(stored?.version===next)data=stored;
+  }catch(error){/* In-memory version history remains usable without storage. */}
+  applyState(data,next,previous.fields);
+  save();
+}
 function update(){
   const active=activeCases();
   for(const node of document.querySelectorAll('[data-since]'))node.hidden=!supportsVersion(node.dataset.since);
@@ -143,16 +177,19 @@ function makeReport(){
 }
 function save(){
   update();if(!reportPanel.hidden)reportText.value=makeReport();
-  try{localStorage.setItem(KEY,JSON.stringify(readState()));storageState.textContent='Сохранено в этом браузере. Перед отправкой открой отчёт.';}
-  catch(error){storageState.textContent='Автосохранение недоступно. Открой отчёт и скопируй текст до закрытия.';}
+  if(remember(readState(),true))storageState.textContent='Сохранено в этом браузере. Отметки и заметки каждой версии хранятся отдельно.';
+  else storageState.textContent='Автосохранение недоступно. Открой отчёт и скопируй текст до закрытия.';
 }
 try{
+  for(const version of versions){
+    const prior=JSON.parse(localStorage.getItem(KEY+'-v'+version)||'null');
+    if(prior?.version===version)savedVersions[version]=prior;
+  }
   const data=JSON.parse(localStorage.getItem(KEY)||'null');
   if(data&&versions.includes(data.version)){
-    for(const id of fields)if(typeof data.fields?.[id]==='string'&&id!=='tested-version')document.getElementById(id).value=data.fields[id];
-    document.getElementById('tested-version').value=data.version;
-    for(const card of cases){const value=data.results?.[card.dataset.id];if(Object.prototype.hasOwnProperty.call(labels,value))card.querySelector('select').value=value;}
-    storageState.textContent='Восстановлены результаты '+data.version+'. Версия отчёта сохранена; новый тест не отмечен пройденным автоматически.';
+    savedVersions[data.version]=data;
+    applyState(data,data.version);
+    storageState.textContent='Восстановлены результаты '+data.version+'. Для другого APK выбери его версию: старые отметки в новый тест не переносятся.';
   }
 }catch(error){storageState.textContent='Автосохранение недоступно. Открой отчёт и скопируй текст до закрытия.';}
 update();
@@ -194,9 +231,8 @@ document.getElementById('download-report').addEventListener('click',()=>{
   }catch(error){reportStatus.textContent='Скачивание здесь недоступно. Готовый текст можно скопировать ниже.';}
 });
 document.getElementById('reset').addEventListener('click',()=>{
-  if(!confirm('Удалить отметки и заметки этого теста? Сначала сохрани или скопируй отчёт, если он нужен.'))return;
-  for(const id of fields)document.getElementById(id).value=id==='tested-version'?'0.0.14':'';
-  for(const card of cases)card.querySelector('select').value='pending';save();
+  if(!confirm('Удалить отметки и заметки версии '+activeVersion+'? Сначала сохрани её отчёт. Другие версии сохранятся.'))return;
+  applyState(null,activeVersion);save();
 });
 </script>
 </body>

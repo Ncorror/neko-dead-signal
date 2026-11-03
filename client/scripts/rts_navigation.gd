@@ -9,8 +9,10 @@ var blocked_boxes: Array[Dictionary] = []
 var grid: AStarGrid2D
 var cell_step: float = DEFAULT_STEP
 var world_limit: float = 24.0
+var topology_revision := 0
 
 func configure(limit: float = 24.0, step: float = DEFAULT_STEP) -> void:
+    topology_revision += 1
     cover.clear()
     blocked_boxes.clear()
     world_limit = limit
@@ -30,6 +32,7 @@ func cell_to_world(cell: Vector2i) -> Vector3:
 
 func set_blocked_box(center: Vector3, box_size: Vector3, clearance: float = 0.75, blocks_fire: bool = true) -> void:
     assert(grid != null)
+    topology_revision += 1
     blocked_boxes.append({"center": center, "size": box_size, "clearance": clearance, "fire": blocks_fire})
     if blocks_fire:
         var corner := center - Vector3(box_size.x, 0.0, box_size.z) * 0.5
@@ -49,6 +52,7 @@ func remove_blocked_box(center: Vector3) -> bool:
         var item: Dictionary = blocked_boxes[index]
         if not item["center"].is_equal_approx(center):
             continue
+        topology_revision += 1
         blocked_boxes.remove_at(index)
         var extent: Vector3 = item["size"] * 0.5 + Vector3.ONE * item["clearance"]
         for x in range(ceili((center.x - extent.x) / cell_step), floori((center.x + extent.x) / cell_step) + 1):

@@ -1,3 +1,5 @@
+> Исторический срез указанного этапа. Описания старых ограничений и чисел тестов относятся к нему. Текущее состояние и тестбук — [индекс документации](README.md), исправления аудита — [0.0.15](AUDIT_2026-11-04.md).
+
 # Amina: experiment with unrigged Meshy character in RTS landing (0.0.5)
 
 Date: 2026-11-03. Status: Android physical visual QA required.

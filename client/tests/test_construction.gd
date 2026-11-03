@@ -178,6 +178,24 @@ func _run() -> void:
     _advance(op, 6)
     _check(op.hero.position.distance_to(Vector3(6, 0, -10)) < 0.1, "troop failed to finish its queued route around construction")
 
+    op = await _land()
+    op.production.credit(200)
+    var probe_site := Vector3(3, 0, -2)
+    _check(op.construction.validate(&"outpost", probe_site, op).is_empty(), "cache fixture site")
+    var searches: int = op.construction.connectivity_requests
+    for repeat in range(20):
+        _check(op.construction.validate(&"outpost", probe_site, op).is_empty(), "cached preview rejected unchanged ground")
+    _check(op.construction.connectivity_requests == searches, "unchanged preview repeated graph searches")
+    op.navigation.set_blocked_box(Vector3(-30, 0, 30), Vector3(2, 2, 2))
+    _check(op.construction.validate(&"outpost", probe_site, op).is_empty()
+        and op.construction.connectivity_requests > searches, "changed topology did not invalidate connectivity cache")
+    searches = op.construction.connectivity_requests
+    op.navigation.remove_blocked_box(Vector3(-30, 0, 30))
+    _check(op.construction.validate(&"outpost", probe_site, op).is_empty()
+        and op.construction.connectivity_requests > searches, "removed topology did not invalidate connectivity cache")
+    op.hero.position = probe_site
+    _check(not op.construction.validate(&"outpost", probe_site, op).is_empty(), "cache ignored a live troop on the site")
+
     for resolution in [Vector2i(1280, 720), Vector2i(2048, 945), Vector2i(1024, 600)]:
         get_tree().root.size = resolution
         op = await _land()

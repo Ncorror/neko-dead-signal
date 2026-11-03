@@ -112,17 +112,21 @@ func _exit_tree() -> void:
     if _stream != null:
         _stream.close()
 
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+        _flush()
+
 func report_preview() -> String:
     if not enabled:
         return "Диагностика отключена в релизной сборке."
     _flush()
-    var result := "REINA RTS DEBUG  |  version=" + str(ProjectSettings.get_setting("application/config/version", "dev")) + "  |  session=" + _session + "\n"
-    result += "platform=" + OS.get_name() + "  fps=" + str(Engine.get_frames_per_second()) + "\n"
-    result += "user_dir=" + OS.get_user_data_dir() + "\n\n"
+    var header := "REINA RTS DEBUG  |  version=" + str(ProjectSettings.get_setting("application/config/version", "dev")) + "  |  session=" + _session + "\n"
+    header += "platform=" + OS.get_name() + "  fps=" + str(Engine.get_frames_per_second()) + "\n"
+    header += "user_dir=" + OS.get_user_data_dir() + "\n\n"
     # Limit copied clipboard content even after long test sessions.
-    for item in _recent:
-        result += item + "\n"
-    return result.substr(maxi(0, result.length() - 20000))
+    var body := "\n".join(_recent) + "\n"
+    var budget := maxi(0, 20000 - header.length())
+    return header + body.substr(maxi(0, body.length() - budget))
 
 func make_report() -> String:
     if not enabled:

@@ -17,6 +17,9 @@ var candidate := Vector3.ZERO
 var has_candidate := false
 var preview: MeshInstance3D
 var enabled := true
+var connectivity_requests := 0
+var _connectivity_key: Array = []
+var _connected_cells: Dictionary = {}
 
 func title(kind: StringName) -> String:
     if kind == FACTORY:
@@ -103,6 +106,8 @@ func validate(kind: StringName, at: Vector3, op) -> String:
         for supply in collection:
             if clearance.grow(0.3).has_point(Vector2(supply.position.x, supply.position.z)):
                 return "Нельзя перекрывать контейнер с ресурсами."
+    if op.production.balance < int(spec["cost"]):
+        return "Недостаточно ресурсов: нужно %d." % int(spec["cost"])
     var targets: Array[Vector3] = []
     for unit in op.units:
         targets.append(unit.position)
@@ -125,18 +130,26 @@ func validate(kind: StringName, at: Vector3, op) -> String:
     for cell in cells:
         op.navigation.grid.set_point_solid(cell, true)
     var anchor: Vector2i = op.navigation.world_to_cell(buildings[0]["exit"])
+    var key: Array = [kind, at, op.navigation.topology_revision, anchor]
+    if key != _connectivity_key:
+        _connectivity_key = key
+        _connected_cells.clear()
     var connected: bool = op.navigation.is_walkable(anchor)
     for point in targets:
         var goal: Vector2i = op.navigation.world_to_cell(point)
-        if not op.navigation.is_walkable(goal) or (connected and op.navigation.grid.get_id_path(anchor, goal).is_empty()):
+        if not connected or not op.navigation.is_walkable(goal):
+            connected = false
+            break
+        if not _connected_cells.has(goal):
+            connectivity_requests += 1
+            _connected_cells[goal] = not op.navigation.grid.get_id_path(anchor, goal).is_empty()
+        if not _connected_cells[goal]:
             connected = false
             break
     for cell in cells:
         op.navigation.grid.set_point_solid(cell, false)
     if not connected:
         return "Перекрывается выход базы, маршрут или доступ к ресурсам."
-    if op.production.balance < int(spec["cost"]):
-        return "Недостаточно ресурсов: нужно %d." % int(spec["cost"])
     return ""
 
 func confirm(op) -> bool:
