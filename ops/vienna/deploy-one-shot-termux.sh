@@ -4,12 +4,16 @@
 set -Eeuo pipefail
 umask 077
 REPO="Ncorror/reina-dead-signal-rts"
-REF="infra/vienna-runner-server"
+DEPLOY_REF="${REINA_RTS_DEPLOY_REF:-main}"
 HOST="reina"
 for command in gh ssh scp base64; do
   command -v "$command" >/dev/null || { echo "Missing $command"; exit 1; }
 done
 gh auth status >/dev/null 2>&1 || { echo "GitHub CLI not authorized"; exit 1; }
+# Resolve once before obtaining credentials; never mix scripts from moving refs.
+DEPLOY_SHA="$(gh api "repos/$REPO/commits/$DEPLOY_REF" --jq '.sha')"
+[[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid deployment commit; nothing uploaded"; exit 1; }
+echo "DEPLOY_COMMIT=$DEPLOY_SHA"
 LOCAL="$(mktemp -d)"
 SESSION="reina-rts-switch-$(date +%s)-$$-$RANDOM"
 STAGE="$LOCAL/$SESSION"
@@ -19,7 +23,7 @@ trap finish EXIT
 
 for path in ops/vienna/switch-vienna-root.sh ops/vienna/install-runner.sh ops/vienna/install-server.sh server/control_api.py server/test_control_api.py; do
   echo "FETCH: $path"
-  gh api "repos/$REPO/contents/$path?ref=$REF" --jq '.content' |
+  gh api "repos/$REPO/contents/$path?ref=$DEPLOY_SHA" --jq '.content' |
     tr -d '\n' | base64 -d >"$STAGE/$path"
   [[ -s "$STAGE/$path" ]] || { echo "Download failed for $path"; exit 1; }
 done

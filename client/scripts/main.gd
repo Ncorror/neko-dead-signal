@@ -56,10 +56,10 @@ const OFFICERS := [
         },
         {
             "name": "ЛИРА ВОСС",
-            "full": "Лира Восс — разведчица",
-            "role": "РАЗВЕДКА / РЕЙДЫ",
-            "bio": "Следопыт первого эшелона. Собирает данные о местности и ищет скрытые запасы.",
-            "perk": "РАЗВЕДКА ТЕРРИТОРИИ",
+            "full": "Лира Восс — снайпер-разведчик",
+            "role": "СНАЙПЕР / РАЗВЕДКА",
+            "bio": "Снайпер-разведчик экспедиции. Дальняя поддержка из подготовленной позиции — её будущая специализация.",
+            "perk": "ПОДГОТОВЛЕННАЯ ПОЗИЦИЯ",
             "call": "E-02"
         }
     ],
@@ -152,6 +152,25 @@ func _build_exit_dialog() -> void:
 
 func _confirm_exit() -> void:
     exit_dialog.popup_centered(Vector2i(420, 180))
+
+func _handle_back() -> void:
+    for child in get_children():
+        if child.get_script() == DIAGNOSTICS_UI and child.popup != null and child.popup.visible:
+            child.popup.hide()
+            return
+    if exit_dialog.visible:
+        exit_dialog.hide()
+    else:
+        _confirm_exit()
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_WM_GO_BACK_REQUEST and exit_dialog != null:
+        _handle_back()
+
+func _unhandled_input(event: InputEvent) -> void:
+    if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+        _handle_back()
+        get_viewport().set_input_as_handled()
 
 func _build_header(parent: VBoxContainer) -> void:
     var header := HBoxContainer.new()
@@ -291,7 +310,7 @@ func _build_content(parent: VBoxContainer) -> void:
     hero_bio.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     hero_bio.custom_minimum_size.y = 70
     right.add_child(hero_bio)
-    right.add_child(_label("СПЕЦИАЛИЗАЦИЯ", 12, MUTED))
+    right.add_child(_label("СПЕЦИАЛИЗАЦИЯ · В РАЗРАБОТКЕ", 12, MUTED))
     hero_perk = _label("", 15, CYAN, true)
     right.add_child(hero_perk)
     right.add_child(_stretch())
@@ -314,7 +333,7 @@ func _build_footer(parent: VBoxContainer) -> void:
     parent.add_child(footer)
     footer.add_child(_label("REINA SYSTEMS  /  ОБЩИЙ ЭКСПЕДИЦИОННЫЙ ФЛОТ", 11, MUTED))
     footer.add_child(_stretch_horizontal())
-    footer.add_child(_label("ANDROID  •  PRE-ALPHA %s  •  BASE CONSTRUCTION" % ProjectSettings.get_setting("application/config/version", "dev"), 11, Color("#87b2bf")))
+    footer.add_child(_label("ANDROID  •  PRE-ALPHA %s  •  AUDIT & STABILITY" % ProjectSettings.get_setting("application/config/version", "dev"), 11, Color("#87b2bf")))
 
 func _panel(parent: HBoxContainer, minimum_width: float) -> VBoxContainer:
     var outer := PanelContainer.new()

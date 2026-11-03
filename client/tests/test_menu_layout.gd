@@ -35,6 +35,7 @@ func _run() -> void:
         await tree.scene_changed
         await _settle()
         var menu = tree.current_scene
+        _check(not bool(ProjectSettings.get_setting("application/config/quit_on_go_back")), "Android Back must use scene confirmation")
         var bounds := get_viewport().get_visible_rect()
         _check(menu.close_button.size.y <= 60, "exit button expanded vertically at " + str(resolution))
         for button in [menu.close_button, menu.cta, menu.faction_buttons[0], menu.faction_buttons[1]]:
@@ -53,6 +54,11 @@ func _run() -> void:
         _tap(menu.exit_dialog.get_cancel_button())
         await tree.process_frame
         _check(not menu.exit_dialog.visible and tree.current_scene == menu, "cancel must keep the game open")
+        menu.notification(NOTIFICATION_WM_GO_BACK_REQUEST)
+        await tree.process_frame
+        _check(menu.exit_dialog.visible, "system Back bypassed exit confirmation")
+        menu.notification(NOTIFICATION_WM_GO_BACK_REQUEST)
+        _check(not menu.exit_dialog.visible and tree.current_scene == menu, "second Back must cancel exit")
         _tap(menu.faction_buttons[1])
         await _settle()
         _check(menu.faction_index == 1, "visible fleet button must work")
@@ -63,6 +69,7 @@ func _run() -> void:
         await _settle()
         _check(menu.officer_index == 3 and GameState.officer_index == 3,
             "Lyra must be selectable and saved")
+        _check(menu.hero_role.text.contains("СНАЙПЕР"), "Lyra profile differs from approved sniper design")
         menu._change_officer(1)
         _check(menu.officer_index == 0, "next commander wraps to Amina")
         menu._change_officer(-1)
