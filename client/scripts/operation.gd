@@ -12,10 +12,14 @@ const STATIC_AMINA_PREVIEW := "res://assets/characters/amina/preview.glb"
 const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
 const VISIBILITY := preload("res://scripts/rts_visibility.gd")
 const FOG_SHADER := preload("res://shaders/ground_visibility.gdshader")
+const BATTLEFIELD := preload("res://scripts/rts_battlefield.gd")
+const PRODUCTION := preload("res://scripts/rts_production.gd")
+const PRODUCTION_PANEL := preload("res://scripts/rts_production_panel.gd")
+const MINIMAP := preload("res://scripts/rts_minimap.gd")
 const STATIC_AMINA_WORLD_HEIGHT := 1.90
 const STATIC_AMINA_FRONT_YAW_DEGREES := 0.0
 
-const MAP_LIMIT := 24.0
+const MAP_LIMIT := BATTLEFIELD.PLAYABLE_LIMIT
 const OFFICER_SPEED := 5.8
 const ESCORT_SPEED := 4.7
 const CAMERA_MIN_ZOOM := 4.0
@@ -42,6 +46,11 @@ var result_heading: Label
 var result_summary: Label
 var result_button: Button
 var diagnostics_panel: Node
+var production = PRODUCTION.new()
+var factory: Node3D
+var production_panel
+var minimap
+var reinforcement_serial := 0
 var unit_paths: Dictionary = {}
 var unit_waypoint_index: Dictionary = {}
 var unit_move_speeds: Dictionary = {}
@@ -66,6 +75,7 @@ var perf_accumulated: float = 0.0
 var perf_max_frame_ms := 0.0
 var perf_frames_over_40ms := 0
 var crates: Array[Node3D] = []
+var supply_caches: Array[Node3D] = []
 var resources_collected: int = 0
 var camera_focus: Vector3 = Vector3.ZERO
 var camera_zoom: float = 22.0
@@ -94,7 +104,7 @@ func _ready() -> void:
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("app", "RTS_OPERATION_START", {
             "faction": GameState.faction_index,
-            "officer": GameState.officer_index, "input": "ORDERS_ONLY"
+            "officer": GameState.officer_index, "input": "ORDERS_ONLY", "map_size": str(BATTLEFIELD.WORLD_BOUNDS.size)
         })
 
 func _create_world() -> void:
@@ -106,7 +116,7 @@ func _create_world() -> void:
     add_child(sky)
     var ground := MeshInstance3D.new()
     var plane := PlaneMesh.new()
-    plane.size = Vector2(50, 50)
+    plane.size = BATTLEFIELD.WORLD_BOUNDS.size
     ground.mesh = plane
     ground.material_override = _material(Color("#283b45"))
     add_child(ground)
@@ -127,10 +137,20 @@ func _create_world() -> void:
         world_obstacles.append(_make_box(p, obstacle_size, Color("#4f6269")))
         navigation.set_blocked_box(p, obstacle_size, 0.75)
 
-    for p in [Vector3(5, 0, 2), Vector3(-8, 0, 11), Vector3(13, 0, -6)]:
+    for feature in BATTLEFIELD.OUTER_COVER:
+        var part := _make_box(feature[0], feature[1], Color("#405b64"))
+        world_obstacles.append(part)
+        navigation.set_blocked_box(feature[0], feature[1], 0.75)
+    _create_factory()
+
+    for p in BATTLEFIELD.MISSION_SUPPLIES:
         var crate := _make_box(p, Vector3(1.25, 1, 1.25), Color("#e7b65b"))
         crate.name = "PrototypeSupplyCrate"
         crates.append(crate)
+    for p in BATTLEFIELD.REMOTE_SUPPLIES:
+        var cache := _make_box(p, Vector3(1.6, 1.1, 1.6), Color("#7ebba3"))
+        cache.name = "RemoteSupplyCache"
+        supply_caches.append(cache)
 
     sentry = Combatant.new()
     sentry.name = "SignalGuardian"
@@ -159,7 +179,7 @@ func _create_world() -> void:
     add_child(order_markers)
 
 func _create_visibility() -> void:
-    visibility.configure(Rect2(-25, -25, 50, 50))
+    visibility.configure(BATTLEFIELD.WORLD_BOUNDS)
     sight_texture = ImageTexture.create_from_image(visibility.mask_image())
     var fog := MeshInstance3D.new()
     fog.name = "GroundFog"
@@ -171,6 +191,8 @@ func _create_visibility() -> void:
     mat.shader = FOG_SHADER
     mat.render_priority = -10
     mat.set_shader_parameter("sight_mask", sight_texture)
+    mat.set_shader_parameter("map_origin", BATTLEFIELD.WORLD_BOUNDS.position)
+    mat.set_shader_parameter("map_size", BATTLEFIELD.WORLD_BOUNDS.size)
     fog.material_override = mat
     fog.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     add_child(fog)
@@ -200,13 +222,108 @@ func _apply_visibility() -> void:
     var guardian_visible: bool = visibility.is_visible(sentry.position)
     sentry.visible = guardian_visible or (sentry.hull == 0 and visibility.was_explored(sentry.position))
     sentry_label.visible = guardian_visible
-    for crate in crates:
-        crate.visible = visibility.is_visible(crate.position)
+    for collection in [crates, supply_caches]:
+        for crate in collection:
+            crate.visible = visibility.is_visible(crate.position)
     for obstacle in world_obstacles:
         if visibility.was_explored(obstacle.position) and not explored_obstacles.has(obstacle):
             explored_obstacles.append(obstacle)
         obstacle.visible = explored_obstacles.has(obstacle)
     _update_status()
+
+func _create_factory() -> void:
+    factory = Node3D.new()
+    factory.name = "FieldFactory"
+    factory.position = BATTLEFIELD.FACTORY_POSITION
+    add_child(factory)
+    var color := Color("#426877") if GameState.faction_index == 0 else Color("#75608d")
+    _make_box(Vector3.ZERO, BATTLEFIELD.FACTORY_SIZE, color, factory)
+    _make_box(Vector3(0, 1.6, 0), Vector3(2.3, 0.35, 2.3), color.lightened(0.2), factory)
+    _make_box(Vector3(0, 1.95, 0), Vector3(0.4, 0.7, 0.4), Color("#62ecf0"), factory)
+    var label := Label3D.new()
+    label.text = "БАЗА"
+    label.position.y = 3.0
+    label.pixel_size = 0.012
+    label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+    factory.add_child(label)
+    navigation.set_blocked_box(factory.position, BATTLEFIELD.FACTORY_SIZE, 0.75)
+
+func _reinforcement_name() -> String:
+    return "СТРЕЛОК" if GameState.faction_index == 0 else "ЗОНД"
+
+func _open_factory() -> void:
+    camera_focus = factory.position
+    _clamp_camera_focus()
+    production_panel.show()
+    production_panel.refresh()
+
+func _queue_reinforcement() -> bool:
+    var accepted: bool = outcome == Outcome.ACTIVE and production.enqueue()
+    _update_status()
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("production", "enqueue", {"accepted": accepted, "balance": production.balance, "pending": production.pending.size()})
+    return accepted
+
+func _cancel_reinforcement() -> bool:
+    var accepted: bool = outcome == Outcome.ACTIVE and production.cancel_last()
+    _update_status()
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("production", "cancel", {"accepted": accepted, "balance": production.balance, "pending": production.pending.size()})
+    return accepted
+
+func _spawn_candidates() -> Array[Vector3]:
+    var candidates: Array[Vector3] = []
+    for radius in range(5):
+        for x in range(-radius, radius + 1):
+            for z in range(-radius, radius + 1):
+                if maxi(absi(x), absi(z)) == radius:
+                    candidates.append(BATTLEFIELD.FACTORY_EXIT + Vector3(x, 0, z) * 1.5)
+    return candidates
+
+func _find_spawn_point() -> Variant:
+    for point in _spawn_candidates():
+        if not navigation.is_walkable(navigation.world_to_cell(point)):
+            continue
+        var free := true
+        for unit in units:
+            if unit.position.distance_to(point) < PATH_GRID.UNIT_SEPARATION:
+                free = false
+                break
+        if free:
+            return point
+    return null
+
+func _deploy_reinforcement() -> bool:
+    var point: Variant = _find_spawn_point()
+    if point == null or units.is_empty() or outcome != Outcome.ACTIVE:
+        return false
+    reinforcement_serial += 1
+    var unit := _make_unit("Reinforcement_%02d" % reinforcement_serial, point,
+        Color("#91b9a8") if GameState.faction_index == 0 else Color("#bca3d5"), false)
+    unit.set_meta("callsign", "%s %02d" % [_reinforcement_name(), reinforcement_serial])
+    if GameState.faction_index == 1:
+        for child in unit.get_children():
+            if child is MeshInstance3D:
+                var sphere := SphereMesh.new()
+                sphere.radius = 0.5
+                sphere.height = 1.0
+                child.mesh = sphere
+                child.position.y = 1.0
+                break
+    _make_box(Vector3(0, 1.1, 0.45), Vector3(0.16, 0.16, 0.65), Color("#b7eef0"), unit)
+    var occupied := _other_unit_positions(unit)
+    for other in units:
+        if other != unit and unit_paths.has(other):
+            occupied.append(unit_paths[other].back())
+    var route: Array[Vector3] = navigation.get_path(unit.position, BATTLEFIELD.RALLY_POINT, occupied)
+    if not route.is_empty():
+        unit_paths[unit] = route
+        unit_waypoint_index[unit] = 0
+        unit_move_speeds[unit] = ESCORT_SPEED
+    orders_ui_dirty = true
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("production", "deployed", {"unit": unit.name, "at": str(point), "units": units.size()})
+    return true
 
 func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool) -> Combatant:
     var unit := Combatant.new()
@@ -389,6 +506,7 @@ func _create_ui() -> void:
     officer_button = _add_button(controls, "ОФИЦЕР", _focus_hero)
     escort_button = _add_button(controls, "ЭСКОРТ", _focus_escort)
     _add_button(controls, "ВСЕ", _select_all_units)
+    _add_button(controls, "БАЗА", _open_factory)
     _add_button(controls, "СТОП", _stop_selected_units)
     queue_button = _add_button(controls, "ОЧЕРЕДЬ", func() -> void: pass)
     queue_button.toggle_mode = true
@@ -428,6 +546,23 @@ func _create_ui() -> void:
     hint.add_theme_font_size_override("font_size", 14)
     hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
     bottom.add_child(hint)
+    minimap = MINIMAP.new()
+    root.add_child(minimap)
+    minimap.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+    minimap.offset_left = -205
+    minimap.offset_right = -15
+    minimap.offset_top = -298
+    minimap.offset_bottom = -90
+    minimap.install(self)
+    production_panel = PRODUCTION_PANEL.new()
+    root.add_child(production_panel)
+    production_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+    production_panel.offset_left = -602
+    production_panel.offset_right = -222
+    production_panel.offset_top = -402
+    production_panel.offset_bottom = -90
+    production_panel.install(self)
+    production_panel.hide()
     _create_result_dialog()
 
 func _create_result_dialog() -> void:
@@ -470,8 +605,8 @@ func _show_result() -> void:
     result_heading.text = _result_text()
     result_heading.add_theme_color_override("font_color", Color("#ff9c96") if outcome == Outcome.DEFEAT else Color("#62ecf0"))
     var explanation := "Весь отряд потерян. Текущий обзор закрыт." if outcome == Outcome.DEFEAT else "Страж уничтожен. Все контейнеры собраны."
-    result_summary.text = "%s\nПрипасы %d/3  ·  Ресурсы %d\nВернись на корабль или осмотри карту и сохрани логи." % [
-        explanation, 3 - crates.size(), resources_collected]
+    result_summary.text = "%s\nПрипасы %d/3  ·  Ресурсы %d  ·  Выпущено %d\nВернись на корабль или осмотри карту и сохрани логи." % [
+        explanation, 3 - crates.size(), production.balance, production.completed]
     result_dialog.popup_centered(Vector2i(680, 330))
 
 func _result_action(action: StringName) -> void:
@@ -706,10 +841,21 @@ func _handle_tap(screen_pos: Vector2) -> void:
         _issue_attack()
     elif nearest != null:
         _select_unit(nearest)
+    elif _screen_hits_factory(screen_pos):
+        _open_factory()
     elif selected_unit != null:
         var point: Variant = _screen_to_ground(screen_pos)
         if point != null:
             _issue_move(point)
+
+func _screen_hits_factory(at: Vector2) -> bool:
+    if view_camera.is_position_behind(factory.position + Vector3.UP):
+        return false
+    var bounds := AABB(factory.position - Vector3(1.6, 0, 1.6), BATTLEFIELD.FACTORY_SIZE + Vector3(0, 1, 0))
+    var corners := PackedVector2Array()
+    for i in range(8):
+        corners.append(view_camera.unproject_position(bounds.get_endpoint(i)))
+    return Geometry2D.is_point_in_polygon(at, Geometry2D.convex_hull(corners))
 
 func _screen_to_ground(screen_pos: Vector2) -> Variant:
     var origin := view_camera.project_ray_origin(screen_pos)
@@ -997,6 +1143,13 @@ func _physics_process(delta: float) -> void:
         if closest != null:
             _shoot(sentry, closest)
     _check_crates()
+    if not units.is_empty() and not (crates.is_empty() and sentry.hull == 0):
+        var previously_blocked: bool = production.exit_blocked
+        var delivered: int = production.tick(delta, _deploy_reinforcement)
+        if delivered > 0:
+            _update_status()
+        if previously_blocked != production.exit_blocked and RTSDiagnostics.enabled:
+            RTSDiagnostics.event("production", "exit_state", {"blocked": production.exit_blocked})
     _update_visibility(delta)
     if units.is_empty():
         _finish(Outcome.DEFEAT)
@@ -1030,7 +1183,8 @@ func _process(delta: float) -> void:
                 "queued_orders": _pending_order_count(),
                 "sight_revision": visibility.revision,
                 "sight_checks": visibility.last_step_checks,
-                "resources": resources_collected
+                "resources": resources_collected,
+                "balance": production.balance, "production_queue": production.pending.size()
             })
         perf_max_frame_ms = 0.0
         perf_frames_over_40ms = 0
@@ -1043,16 +1197,21 @@ func _update_camera(delta: float) -> void:
     view_camera.look_at(camera_focus + Vector3.UP, Vector3.UP)
 
 func _check_crates() -> void:
-    for i in range(crates.size() - 1, -1, -1):
-        var crate := crates[i]
+    _collect_supplies(crates, true)
+    _collect_supplies(supply_caches, false)
+
+func _collect_supplies(collection: Array[Node3D], mission: bool) -> void:
+    for i in range(collection.size() - 1, -1, -1):
+        var crate := collection[i]
         var ground_pos := Vector3(crate.position.x, 0, crate.position.z)
         for unit in units:
             if unit.position.distance_to(ground_pos) < 1.55:
-                crates.remove_at(i)
+                collection.remove_at(i)
                 crate.queue_free()
                 resources_collected += 100
+                production.credit(100)
                 if RTSDiagnostics.enabled:
-                    RTSDiagnostics.event("resource", "RTS_CRATE_COLLECTED", {"resources": resources_collected})
+                    RTSDiagnostics.event("resource", "RTS_CRATE_COLLECTED", {"resources": resources_collected, "mission": mission, "balance": production.balance})
                 _update_status()
                 break
 
@@ -1060,6 +1219,8 @@ func _finish(result: Outcome) -> void:
     if outcome != Outcome.ACTIVE:
         return
     outcome = result
+    var refunded: int = production.stop()
+    production_panel.hide()
     unit_paths.clear()
     unit_waypoint_index.clear()
     unit_move_speeds.clear()
@@ -1082,7 +1243,7 @@ func _finish(result: Outcome) -> void:
     _show_result()
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("combat", "RTS_LANDING_RESULT", {
-            "outcome": Outcome.keys()[result], "resources": resources_collected
+            "outcome": Outcome.keys()[result], "resources": resources_collected, "balance": production.balance, "refunded": refunded
         })
 
 func _result_text() -> String:
@@ -1099,8 +1260,11 @@ func _update_status() -> void:
     officer_button.disabled = hero.hull == 0
     escort_button.disabled = escort.hull == 0
     status_label.text = "%s  |  Припасы %d/3  |  Ресурсы %d  |  Офицер %d ОЗ  ·  Эскорт %d ОЗ" % [
-        GameState.faction_name, 3 - crates.size(), resources_collected, hero.hull, escort.hull
+        GameState.faction_name, 3 - crates.size(), production.balance, hero.hull, escort.hull
     ]
+    status_label.text += "  ·  Армия %d" % units.size()
+    if production_panel != null:
+        production_panel.refresh()
     if outcome != Outcome.ACTIVE:
         objective_label.text = "%s  ·  НА КОРАБЛЬ для разбора операции" % _result_text()
     elif sentry.hull > 0 and visibility.is_visible(sentry.position):
@@ -1112,7 +1276,7 @@ func _update_status() -> void:
     if selected_units.size() > 1:
         unit_label.text = "ВЫДЕЛЕН ОТРЯД: %d" % selected_units.size()
     elif selected_unit != null:
-        unit_label.text = "ВЫДЕЛЕН: %s" % (GameState.officer_name if selected_unit == hero else "Эскорт")
+        unit_label.text = "ВЫДЕЛЕН: %s" % (GameState.officer_name if selected_unit == hero else selected_unit.get_meta("callsign", "Эскорт"))
     else:
         unit_label.text = "НЕТ ВЫДЕЛЕННЫХ ЮНИТОВ"
     if selected_units.any(func(unit: Combatant) -> bool: return attackers.has(unit)):
@@ -1188,8 +1352,9 @@ func _make_order_marker(at: Vector3, number: int, color: Color) -> void:
     marker.add_child(label)
 
 func _back_to_ship() -> void:
+    production.stop()
     GameState.last_report = "%s  ·  Припасы %d/3  ·  Ресурсы %d" % [
-        _result_text(), 3 - crates.size(), resources_collected]
+        _result_text(), 3 - crates.size(), production.balance]
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("app", "RTS_OPERATION_END", {"collected": resources_collected})
     get_tree().change_scene_to_file("res://scenes/main.tscn")

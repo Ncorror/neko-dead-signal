@@ -48,6 +48,10 @@ func _run() -> void:
     _commit(sight, nav, [Vector3(0, 0, 10)])
     _check(not sight.is_visible(observers[0]) and sight.was_explored(observers[0]),
         "exploration memory must survive leaving an area")
+    var old_cell: Vector2i = sight.world_to_cell(observers[0])
+    var mask_bytes: PackedByteArray = sight.mask_image().get_data()
+    _check(mask_bytes[old_cell.y * sight.dimensions.x + old_cell.x] == 100,
+        "incremental fog texture must dim old sight instead of leaving a bright cell")
     _commit(sight, nav, [])
     _check(not sight.is_visible(Vector3(0, 0, 10)) and sight.was_explored(Vector3(0, 0, 10)),
         "losing all observers must remove current sight but retain history")
@@ -68,6 +72,7 @@ func _run() -> void:
     sight.advance(nav, 10000)
     _check(not sight.scanning and sight.visible.count(1) == 0 and sight.was_explored(Vector3.ZERO),
         "clearing sight must cancel an in-progress snapshot without erasing history")
+    _check(sight.mask_image().get_data().count(255) == 0, "cached mask retained cleared sight")
 
     get_tree().current_scene = null
     get_tree().root.size = Vector2i(1280, 720)
