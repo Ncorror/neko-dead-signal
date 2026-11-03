@@ -11,6 +11,7 @@ on:
       - feat/orders-and-recon-v008
       - fix/defeat-sight-report-v009
       - fix/embedded-result-layout-v009
+      - fix/return-fire-v013
       - feat/mobile-guardian-v012
       - fix/smooth-minimap-v011
       - feat/production-large-map-v010
@@ -173,6 +174,15 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-visibility-test.log; then
             exit 1
           fi
+      - name: Test return fire, fire on the move and manual mode
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_auto_fire.tscn 2>&1 | tee build/rts-auto-fire-test.log
+          grep -q 'RTS_AUTO_FIRE_TEST_PASS' build/rts-auto-fire-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-auto-fire-test.log; then
+            exit 1
+          fi
       - name: Test mobile guardian perception, chase, fog and attack queues
         shell: bash
         run: |
@@ -258,7 +268,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.12-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.13-debug.apk
           cp docs/DEVICE_TEST_RTS_008.html build/tester-bundle/REINA_RTS-testbook.html
       - name: Publish APK and testbook
         uses: actions/upload-artifact@v4

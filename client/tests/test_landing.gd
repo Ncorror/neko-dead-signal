@@ -49,6 +49,7 @@ func _run() -> void:
         tree.quit(1)
         return
     op.set_physics_process(false)
+    op._set_auto_fire(false) # Keep this existing scenario in explicit-order mode.
     _check(GameState.officer_name.begins_with("Оралин"), "deploy must carry chosen officer")
     _check(op.sentry.hull == 100 and op.unit_paths.is_empty(), "fresh landing")
     _touch(op.escort_button.get_global_rect().get_center())
@@ -138,6 +139,7 @@ func _run() -> void:
     await tree.scene_changed
     op = tree.current_scene
     op.set_physics_process(false)
+    op._set_auto_fire(false) # Keep this existing scenario in explicit-order mode.
     _check(op.resources_collected == 0 and op.crates.size() == 3 and op.sentry.hull == 100, "replay resets mission")
     op.hero.position = Vector3(6, 0, -4)
     op.escort.position = Vector3(6, 0, -4)

@@ -16,6 +16,7 @@ func _land():
     await get_tree().scene_changed
     var op = get_tree().current_scene
     op.set_physics_process(false)
+    op._set_auto_fire(false) # Keep this existing scenario in explicit-order mode.
     op.sentry.damage = 0
     op.enemy_ai.movement_enabled = false # Keep the formation fixture stationary.
     return op

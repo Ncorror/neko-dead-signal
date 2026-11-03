@@ -167,7 +167,7 @@ func tick(delta: float, op) -> void:
         path.clear()
         if _can_see(target, op) and op._in_firing_position(op.sentry, target):
             op._face_direction(op.sentry, target.position - op.sentry.position)
-            op._shoot(op.sentry, target)
+            op._shoot(op.sentry, target, &"enemy")
     elif movement_enabled:
         _move(delta, op)
     op._turn_unit(op.sentry, delta)

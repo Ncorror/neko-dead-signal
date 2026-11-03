@@ -17,6 +17,7 @@ func _land(faction: int = 1):
     await get_tree().scene_changed
     var op = get_tree().current_scene
     op.set_physics_process(false)
+    op._set_auto_fire(false) # Keep this existing scenario in explicit-order mode.
     for frame in range(8):
         await get_tree().process_frame
     return op
