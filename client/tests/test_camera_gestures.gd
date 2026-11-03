@@ -77,6 +77,9 @@ func _test_minimap_travel(op) -> void:
     _check(positions[0].distance_to(positions[1]) < 0.002
         and positions[1].distance_to(positions[2]) < 0.002,
         "camera response must be consistent at 30, 60 and 120 FPS")
+    var remaining: float = positions[0].distance_to(Vector3(-60, 22, 80.9))
+    _check(remaining > 5.0 and remaining < 8.0,
+        "minimap should ease slightly slower while retaining a prompt response")
 
     before = op.view_camera.global_position
     op.minimap._navigate(op.minimap.world_to_map(Vector3(80, 0, -80)))

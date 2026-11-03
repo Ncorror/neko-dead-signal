@@ -81,8 +81,8 @@ func _run() -> void:
     _check(op.camera_focus.distance_to(before_drag) < 3.0, "camera pan must stay slow and bounded")
 
     op._select_all_units()
-    op._issue_move(Vector3(2, 0, -2))
-    _advance(op, 60)
+    op._issue_move(Vector3(10, 0, -4))
+    _advance(op, 180) # Intercept the moving patrol in the central sector.
     _check(op.sentry.visible, "scouting must reveal the sentry before targeting")
     var target_screen: Vector2 = op.view_camera.unproject_position(op.sentry.position + Vector3.UP)
     _touch(target_screen)
