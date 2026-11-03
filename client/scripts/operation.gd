@@ -18,6 +18,8 @@ const PRODUCTION_PANEL := preload("res://scripts/rts_production_panel.gd")
 const MINIMAP := preload("res://scripts/rts_minimap.gd")
 const ENEMY_AI := preload("res://scripts/rts_enemy_ai.gd")
 const AUTO_FIRE := preload("res://scripts/rts_auto_fire.gd")
+const CONSTRUCTION := preload("res://scripts/rts_construction.gd")
+const BUILD_PANEL := preload("res://scripts/rts_build_panel.gd")
 const STATIC_AMINA_WORLD_HEIGHT := 1.90
 const STATIC_AMINA_FRONT_YAW_DEGREES := 0.0
 
@@ -57,6 +59,10 @@ var result_summary: Label
 var result_button: Button
 var diagnostics_panel: Node
 var production = PRODUCTION.new()
+var construction = CONSTRUCTION.new()
+var build_panel
+var active_factory: Dictionary = {}
+var build_button: Button
 var factory: Node3D
 var production_panel
 var minimap
@@ -223,6 +229,8 @@ func _update_visibility(delta: float, force: bool = false) -> void:
         for unit in units:
             if unit.hull > 0:
                 observers.append(unit.position)
+        if outcome == Outcome.ACTIVE and not units.is_empty():
+            observers.append_array(construction.observers())
         if force:
             while visibility.scanning:
                 visibility.advance(navigation, 128)
@@ -270,43 +278,86 @@ func _create_factory() -> void:
     label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
     factory.add_child(label)
     navigation.set_blocked_box(factory.position, BATTLEFIELD.FACTORY_SIZE, 0.75)
+    construction.register_initial(factory, production)
+    active_factory = construction.buildings[0]
 
 func _reinforcement_name() -> String:
     return "СТРЕЛОК" if GameState.faction_index == 0 else "ЗОНД"
 
-func _open_factory() -> void:
+func _open_factory(entry: Dictionary = {}) -> void:
+    if entry.is_empty():
+        entry = construction.buildings[0]
+    if not entry["ready"]:
+        build_panel.inspect(entry)
+        return
+    active_factory = entry
+    construction.cancel_preview()
+    build_panel.hide()
     camera_focus_response = CAMERA_FOCUS_RESPONSE
-    camera_focus = factory.position
+    camera_focus = entry["node"].position
     _clamp_camera_focus()
     production_panel.show()
     production_panel.refresh()
 
+func _factory_work():
+    return production if active_factory.is_empty() else active_factory["work"]
+
+func _open_construction() -> void:
+    if outcome != Outcome.ACTIVE:
+        return
+    _reset_touch_state()
+    production_panel.hide()
+    build_panel.catalog()
+
+func _close_construction() -> void:
+    construction.cancel_preview()
+    build_panel.hide()
+    _reset_touch_state()
+
+func _replan_after_building() -> void:
+    for unit in unit_paths.keys():
+        var old_goal: Vector3 = unit_paths[unit].back()
+        var replacement: Array[Vector3] = navigation.get_path(unit.position, old_goal, _other_unit_positions(unit))
+        if not replacement.is_empty() and replacement.back().distance_to(old_goal) < 0.05:
+            unit_paths[unit] = replacement
+            unit_waypoint_index[unit] = 0
+    orders_ui_dirty = true
+
 func _queue_reinforcement() -> bool:
-    var accepted: bool = outcome == Outcome.ACTIVE and production.enqueue()
+    var work = _factory_work()
+    var accepted: bool = outcome == Outcome.ACTIVE and work.enqueue()
     _update_status()
     if RTSDiagnostics.enabled:
-        RTSDiagnostics.event("production", "enqueue", {"accepted": accepted, "balance": production.balance, "pending": production.pending.size()})
+        RTSDiagnostics.event("production", "enqueue", {"accepted": accepted, "balance": production.balance, "pending": work.pending.size(), "factory": active_factory["id"]})
     return accepted
 
 func _cancel_reinforcement() -> bool:
-    var accepted: bool = outcome == Outcome.ACTIVE and production.cancel_last()
+    var work = _factory_work()
+    var accepted: bool = outcome == Outcome.ACTIVE and work.cancel_last()
     _update_status()
     if RTSDiagnostics.enabled:
-        RTSDiagnostics.event("production", "cancel", {"accepted": accepted, "balance": production.balance, "pending": production.pending.size()})
+        RTSDiagnostics.event("production", "cancel", {"accepted": accepted, "balance": production.balance, "pending": work.pending.size(), "factory": active_factory["id"]})
     return accepted
 
-func _spawn_candidates() -> Array[Vector3]:
+func _spawn_candidates(entry: Dictionary = {}) -> Array[Vector3]:
+    if entry.is_empty():
+        entry = construction.buildings[0]
     var candidates: Array[Vector3] = []
     for radius in range(5):
         for x in range(-radius, radius + 1):
             for z in range(-radius, radius + 1):
                 if maxi(absi(x), absi(z)) == radius:
-                    candidates.append(BATTLEFIELD.FACTORY_EXIT + Vector3(x, 0, z) * 1.5)
+                    candidates.append(entry["exit"] + Vector3(x, 0, z) * 1.5)
     return candidates
 
-func _find_spawn_point() -> Variant:
-    for point in _spawn_candidates():
+func _find_spawn_point(entry: Dictionary = {}) -> Variant:
+    if entry.is_empty():
+        entry = construction.buildings[0]
+    for point in _spawn_candidates(entry):
         if not navigation.is_walkable(navigation.world_to_cell(point)):
+            continue
+        if not navigation.is_walkable(navigation.world_to_cell(entry["exit"])) \
+            or navigation.grid.get_id_path(navigation.world_to_cell(entry["exit"]), navigation.world_to_cell(point)).is_empty():
             continue
         if sentry.hull > 0 and sentry.position.distance_to(point) < PATH_GRID.UNIT_SEPARATION:
             continue
@@ -319,8 +370,10 @@ func _find_spawn_point() -> Variant:
             return point
     return null
 
-func _deploy_reinforcement() -> bool:
-    var point: Variant = _find_spawn_point()
+func _deploy_reinforcement(entry: Dictionary = {}) -> bool:
+    if entry.is_empty():
+        entry = construction.buildings[0]
+    var point: Variant = _find_spawn_point(entry)
     if point == null or units.is_empty() or outcome != Outcome.ACTIVE:
         return false
     reinforcement_serial += 1
@@ -341,14 +394,14 @@ func _deploy_reinforcement() -> bool:
     for other in units:
         if other != unit and unit_paths.has(other):
             occupied.append(unit_paths[other].back())
-    var route: Array[Vector3] = navigation.get_path(unit.position, BATTLEFIELD.RALLY_POINT, occupied)
+    var route: Array[Vector3] = navigation.get_path(unit.position, entry["rally"], occupied)
     if not route.is_empty():
         unit_paths[unit] = route
         unit_waypoint_index[unit] = 0
         unit_move_speeds[unit] = ESCORT_SPEED
     orders_ui_dirty = true
     if RTSDiagnostics.enabled:
-        RTSDiagnostics.event("production", "deployed", {"unit": unit.name, "at": str(point), "units": units.size()})
+        RTSDiagnostics.event("production", "deployed", {"unit": unit.name, "at": str(point), "units": units.size(), "factory": entry["id"]})
     return true
 
 func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool) -> Combatant:
@@ -533,6 +586,7 @@ func _create_ui() -> void:
     escort_button = _add_button(controls, "ЭСКОРТ", _focus_escort)
     _add_button(controls, "ВСЕ", _select_all_units)
     _add_button(controls, "БАЗА", _open_factory)
+    build_button = _add_button(controls, "СТРОЙКА", _open_construction)
     _add_button(controls, "СТОП", _stop_selected_units)
     auto_fire_button = _add_button(controls, "ОГОНЬ: АВТО", func() -> void: pass)
     auto_fire_button.toggle_mode = true
@@ -594,6 +648,15 @@ func _create_ui() -> void:
     production_panel.offset_bottom = -90
     production_panel.install(self)
     production_panel.hide()
+    build_panel = BUILD_PANEL.new()
+    root.add_child(build_panel)
+    build_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+    build_panel.offset_left = -602
+    build_panel.offset_right = -222
+    build_panel.offset_top = -402
+    build_panel.offset_bottom = -90
+    build_panel.install(self)
+    build_panel.hide()
     _create_result_dialog()
 
 func _create_result_dialog() -> void:
@@ -878,6 +941,12 @@ func _pan_camera(delta_pixels: Vector2) -> void:
 func _handle_tap(screen_pos: Vector2) -> void:
     if outcome != Outcome.ACTIVE:
         return
+    if construction.placing != &"":
+        var place: Variant = _screen_to_ground(screen_pos)
+        if place != null:
+            construction.choose(place, self)
+            build_panel.refresh()
+        return
     var nearest: Combatant = null
     var best := 28.0
     var candidates := units.duplicate()
@@ -897,17 +966,28 @@ func _handle_tap(screen_pos: Vector2) -> void:
         _issue_attack()
     elif nearest != null:
         _select_unit(nearest)
-    elif _screen_hits_factory(screen_pos):
-        _open_factory()
-    elif selected_unit != null:
-        var point: Variant = _screen_to_ground(screen_pos)
-        if point != null:
-            _issue_move(point)
+    else:
+        for entry in construction.buildings:
+            if _screen_hits_building(screen_pos, entry):
+                if entry["kind"] == &"factory" and entry["ready"]:
+                    _open_factory(entry)
+                else:
+                    build_panel.inspect(entry)
+                return
+        if selected_unit != null:
+            var point: Variant = _screen_to_ground(screen_pos)
+            if point != null:
+                _issue_move(point)
 
 func _screen_hits_factory(at: Vector2) -> bool:
-    if view_camera.is_position_behind(factory.position + Vector3.UP):
+    return _screen_hits_building(at, construction.buildings[0])
+
+func _screen_hits_building(at: Vector2, entry: Dictionary) -> bool:
+    var location: Vector3 = entry["node"].position
+    if view_camera.is_position_behind(location + Vector3.UP):
         return false
-    var bounds := AABB(factory.position - Vector3(1.6, 0, 1.6), BATTLEFIELD.FACTORY_SIZE + Vector3(0, 1, 0))
+    var size: Vector3 = CONSTRUCTION.DEFINITIONS[entry["kind"]]["size"]
+    var bounds := AABB(location - Vector3(size.x * 0.5, 0, size.z * 0.5), Vector3(size.x, 3.1, size.z))
     var corners := PackedVector2Array()
     for i in range(8):
         corners.append(view_camera.unproject_position(bounds.get_endpoint(i)))
@@ -1277,12 +1357,17 @@ func _physics_process(delta: float) -> void:
     _apply_enemy_visibility()
     _check_crates()
     if not units.is_empty() and not (crates.is_empty() and sentry.hull == 0):
-        var previously_blocked: bool = production.exit_blocked
-        var delivered: int = production.tick(delta, _deploy_reinforcement)
-        if delivered > 0:
-            _update_status()
-        if previously_blocked != production.exit_blocked and RTSDiagnostics.enabled:
-            RTSDiagnostics.event("production", "exit_state", {"blocked": production.exit_blocked})
+        construction.tick(delta, self)
+        for entry in construction.buildings:
+            if entry["kind"] != &"factory" or not entry["ready"]:
+                continue
+            var work = entry["work"]
+            var previously_blocked: bool = work.exit_blocked
+            var delivered: int = work.tick(delta, _deploy_reinforcement.bind(entry))
+            if delivered > 0:
+                _update_status()
+            if previously_blocked != work.exit_blocked and RTSDiagnostics.enabled:
+                RTSDiagnostics.event("production", "exit_state", {"blocked": work.exit_blocked, "factory": entry["id"]})
     _update_visibility(delta)
     if units.is_empty():
         _finish(Outcome.DEFEAT)
@@ -1320,7 +1405,8 @@ func _process(delta: float) -> void:
                 "sight_revision": visibility.revision,
                 "sight_checks": visibility.last_step_checks,
                 "resources": resources_collected,
-                "balance": production.balance, "production_queue": production.pending.size()
+                "balance": production.balance, "production_queue": _production_queue_count(),
+                "buildings": construction.buildings.size()
             })
         perf_max_frame_ms = 0.0
         perf_frames_over_40ms = 0
@@ -1371,10 +1457,11 @@ func _finish(result: Outcome) -> void:
     if outcome != Outcome.ACTIVE:
         return
     outcome = result
-    var refunded: int = production.stop()
+    var refunded: int = construction.stop(self)
     enemy_ai.stop(sentry.hull <= 0)
     auto_fire.stop(self)
     production_panel.hide()
+    build_panel.hide()
     unit_paths.clear()
     unit_waypoint_index.clear()
     unit_move_speeds.clear()
@@ -1418,6 +1505,7 @@ func _update_status() -> void:
     escort_button.disabled = escort.hull == 0
     auto_fire_button.text = "ОГОНЬ: АВТО" if auto_fire.enabled else "ОГОНЬ: РУЧНОЙ"
     auto_fire_button.disabled = outcome != Outcome.ACTIVE
+    build_button.disabled = outcome != Outcome.ACTIVE
     status_label.text = "%s  |  Припасы %d/3  |  Ресурсы %d  |  Офицер %d ОЗ  ·  Эскорт %d ОЗ" % [
         GameState.faction_name, 3 - crates.size(), production.balance, hero.hull, escort.hull
     ]
@@ -1450,6 +1538,13 @@ func _update_status() -> void:
         longest_queue = maxi(longest_queue, pending.size())
     if longest_queue > 0:
         unit_label.text += "  ·  ОЧЕРЕДЬ: %d/%d" % [longest_queue, MAX_PENDING_ORDERS]
+
+func _production_queue_count() -> int:
+    var count := 0
+    for entry in construction.buildings:
+        if entry["work"] != null:
+            count += entry["work"].pending.size()
+    return count
 
 func _pending_order_count() -> int:
     var count := 0
@@ -1526,7 +1621,7 @@ func _make_order_marker(at: Vector3, number: int, color: Color, tracks_enemy: bo
     marker.add_child(label)
 
 func _back_to_ship() -> void:
-    production.stop()
+    construction.stop(self)
     enemy_ai.stop(sentry.hull <= 0)
     auto_fire.stop(self)
     GameState.last_report = "%s  ·  Припасы %d/3  ·  Ресурсы %d" % [

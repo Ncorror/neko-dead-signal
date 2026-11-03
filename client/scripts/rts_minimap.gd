@@ -33,8 +33,13 @@ func _draw() -> void:
         for crate in collection:
             if operation.visibility.is_visible(crate.position):
                 draw_circle(world_to_map(crate.position), 2.2, Color("#e7b65b"))
-    var base: Vector2 = world_to_map(operation.factory.position)
-    draw_rect(Rect2(base - Vector2.ONE * 3, Vector2.ONE * 6), Color("#65dfe3"))
+    for building in operation.construction.buildings:
+        var base: Vector2 = world_to_map(building["node"].position)
+        var color := Color("#65dfe3") if building["ready"] else Color("#ffd385")
+        if building["kind"] == &"factory":
+            draw_rect(Rect2(base - Vector2.ONE * 3, Vector2.ONE * 6), color)
+        else:
+            draw_circle(base, 3.0, color)
     for unit in operation.units:
         draw_circle(world_to_map(unit.position), 2.5, Color("#62ecf0") if unit == operation.hero else Color("#a3cfb8"))
     if operation.sentry.hull > 0 and operation.visibility.is_visible(operation.sentry.position):

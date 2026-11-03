@@ -5,8 +5,12 @@ const UNIT_COST := 100
 const BUILD_SECONDS := 6.0
 const QUEUE_LIMIT := 4
 
-var balance := 0
-var total_earned := 0
+var account = preload("res://scripts/rts_resources.gd").new()
+var balance: int:
+    get: return account.balance
+    set(value): account.balance = value
+var total_earned: int:
+    get: return account.total_earned
 var completed := 0
 var pending: Array[float] = []
 var enabled := true
@@ -14,8 +18,7 @@ var exit_blocked := false
 
 func credit(amount: int) -> void:
     if amount > 0 and enabled:
-        balance += amount
-        total_earned += amount
+        account.credit(amount)
 
 func enqueue() -> bool:
     if not enabled or pending.size() >= QUEUE_LIMIT or balance < UNIT_COST:
