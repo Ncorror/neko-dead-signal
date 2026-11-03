@@ -7,6 +7,7 @@ var queue_label: Label
 var progress: ProgressBar
 var train_button: Button
 var cancel_button: Button
+var title: Label
 var refresh_age := 0.0
 
 func install(owner_node) -> void:
@@ -24,7 +25,7 @@ func install(owner_node) -> void:
     add_child(column)
     var heading := HBoxContainer.new()
     column.add_child(heading)
-    var title := Label.new()
+    title = Label.new()
     title.text = "ПОЛЕВОЙ ЗАВОД" if GameState.faction_index == 0 else "УЗЕЛ СИНТЕЗА"
     title.add_theme_font_size_override("font_size", 19)
     title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -70,7 +71,8 @@ func _process(delta: float) -> void:
 func refresh() -> void:
     if operation == null:
         return
-    var work = operation.production
+    var work = operation._factory_work()
+    title.text = "%s · %d" % [operation.construction.title(&"factory"), operation.active_factory["id"]]
     balance_label.text = "РЕСУРСЫ: %d  ·  ВЫПУЩЕНО: %d" % [work.balance, work.completed]
     var remaining: float = 0.0 if work.pending.is_empty() else work.pending[0]
     queue_label.text = "ОЧЕРЕДЬ: %d/%d  ·  %s" % [work.pending.size(), work.QUEUE_LIMIT,

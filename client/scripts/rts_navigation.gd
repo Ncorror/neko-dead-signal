@@ -5,12 +5,14 @@ extends RefCounted
 const DEFAULT_STEP := 1.0
 const UNIT_SEPARATION := 1.1
 var cover: Array[AABB] = []
+var blocked_boxes: Array[Dictionary] = []
 var grid: AStarGrid2D
 var cell_step: float = DEFAULT_STEP
 var world_limit: float = 24.0
 
 func configure(limit: float = 24.0, step: float = DEFAULT_STEP) -> void:
     cover.clear()
+    blocked_boxes.clear()
     world_limit = limit
     cell_step = step
     var radius := ceili(world_limit / cell_step)
@@ -28,6 +30,7 @@ func cell_to_world(cell: Vector2i) -> Vector3:
 
 func set_blocked_box(center: Vector3, box_size: Vector3, clearance: float = 0.75, blocks_fire: bool = true) -> void:
     assert(grid != null)
+    blocked_boxes.append({"center": center, "size": box_size, "clearance": clearance, "fire": blocks_fire})
     if blocks_fire:
         var corner := center - Vector3(box_size.x, 0.0, box_size.z) * 0.5
         cover.append(AABB(corner, box_size))
@@ -40,6 +43,27 @@ func set_blocked_box(center: Vector3, box_size: Vector3, clearance: float = 0.75
             var cell := Vector2i(x, y)
             if grid.is_in_boundsv(cell):
                 grid.set_point_solid(cell, true)
+
+func remove_blocked_box(center: Vector3) -> bool:
+    for index in range(blocked_boxes.size()):
+        var item: Dictionary = blocked_boxes[index]
+        if not item["center"].is_equal_approx(center):
+            continue
+        blocked_boxes.remove_at(index)
+        var extent: Vector3 = item["size"] * 0.5 + Vector3.ONE * item["clearance"]
+        for x in range(ceili((center.x - extent.x) / cell_step), floori((center.x + extent.x) / cell_step) + 1):
+            for z in range(ceili((center.z - extent.z) / cell_step), floori((center.z + extent.z) / cell_step) + 1):
+                var cell := Vector2i(x, z)
+                if grid.is_in_boundsv(cell):
+                    grid.set_point_solid(cell, false)
+        # Reapply other footprints; removing a site must not erase nearby cover.
+        var remaining := blocked_boxes.duplicate()
+        blocked_boxes.clear()
+        cover.clear()
+        for box in remaining:
+            set_blocked_box(box["center"], box["size"], box["clearance"], box["fire"])
+        return true
+    return false
 
 func has_clear_shot(start: Vector3, target: Vector3) -> bool:
     for box in cover:
