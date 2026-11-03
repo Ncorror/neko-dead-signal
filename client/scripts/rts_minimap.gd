@@ -1,6 +1,8 @@
 extends Control
 ## Shared fog and known targets only. A minimap gesture moves the camera, never units.
 
+const REFRESH_INTERVAL := 1.0 / 30.0
+
 var operation
 var refresh_age := 0.0
 var touch_index := -1
@@ -49,8 +51,8 @@ func _draw() -> void:
 
 func _process(delta: float) -> void:
     refresh_age += delta
-    if refresh_age >= 0.15:
-        refresh_age = 0.0
+    if refresh_age >= REFRESH_INTERVAL:
+        refresh_age = fmod(refresh_age, REFRESH_INTERVAL)
         queue_redraw()
 
 func _navigate(at: Vector2) -> void:
@@ -71,6 +73,8 @@ func _gui_input(event: InputEvent) -> void:
             touch_index = event.index
             _navigate(event.position)
         elif event.index == touch_index:
+            if event.canceled:
+                operation._stop_camera_travel()
             touch_index = -1
         accept_event()
     elif event is InputEventScreenDrag and event.index == touch_index:

@@ -54,7 +54,10 @@ func _run() -> void:
     _touch(op.escort_button.get_global_rect().get_center())
     _check(op.selected_unit == op.escort and op.unit_paths.is_empty(), "HUD tap selected escort without moving")
     # Deliver viewport-local events through GUI hit testing and unhandled input.
-    var before_drag: Vector3 = op.camera_focus
+    # A pan can interrupt the just-requested escort focus. It must take over
+    # at the visible location without moving the rendered view on that frame.
+    var before_drag: Vector3 = op.camera_render_focus
+    var before_position: Vector3 = op.view_camera.global_position
     var start := Vector2(650, 400)
     var down := InputEventScreenTouch.new()
     down.position = start
@@ -65,7 +68,8 @@ func _run() -> void:
     drag.relative = Vector2(90, 0)
     get_viewport().push_input(drag, true)
     var at_threshold: Vector3 = op.camera_focus
-    _check(at_threshold == before_drag, "first drag frame must not jump camera")
+    _check(at_threshold == before_drag and op.view_camera.global_position == before_position,
+        "first drag frame must not jump camera")
     var drag2 := InputEventScreenDrag.new()
     drag2.position = start + Vector2(118, 0)
     drag2.relative = Vector2(28, 0)
