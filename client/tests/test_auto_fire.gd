@@ -17,6 +17,8 @@ func _land(faction: int = 1):
     await get_tree().scene_changed
     var op = get_tree().current_scene
     op.set_physics_process(false)
+    op.economy.income_enabled = false # Isolate the existing fixed-budget scenario.
+    op.objectives.expanded = false # Retain original landing goals in this regression.
     op.enemy_ai.movement_enabled = false
     for frame in range(8):
         await get_tree().process_frame

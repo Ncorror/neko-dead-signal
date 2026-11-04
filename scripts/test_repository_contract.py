@@ -17,12 +17,12 @@ class RepositoryContract(unittest.TestCase):
         book = (ROOT / 'docs/DEVICE_TEST_RTS_008.html').read_text()
         workflow = (ROOT / '.github/workflows/vienna-rts-android.yml').read_text()
         self.assertIn('version/name="' + version + '"', export)
-        for content in [book, workflow]:
-            self.assertIn('REINA_RTS-' + version + '-debug.apk', content)
+        self.assertIn('REINA_RTS-' + version + '-debug.apk', workflow)
+        self.assertNotIn('cp docs/DEVICE_TEST_RTS_008.html', workflow)
         first = re.search(r'<select id="tested-version"><option value="([^"]+)"', book)[1]
-        self.assertEqual(first, version)
+        self.assertIn('REINA_RTS-' + first + '-debug.apk', book)
         versions = re.search(r'const versions=\[(.*?)\];', book)[1]
-        self.assertEqual(re.findall(r"'([^']+)'", versions)[-1], version)
+        self.assertEqual(re.findall(r"'([^']+)'", versions)[-1], first)
         cases = re.findall(r'<section class="case" data-id="([^"]+)"', book)
         self.assertEqual(len(cases), len(set(cases)), 'duplicate testbook case IDs')
         self.assertEqual(len(cases), 36)

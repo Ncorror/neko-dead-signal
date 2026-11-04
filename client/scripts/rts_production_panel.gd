@@ -76,7 +76,8 @@ func refresh() -> void:
     balance_label.text = "РЕСУРСЫ: %d  ·  ВЫПУЩЕНО: %d" % [work.balance, work.completed]
     var remaining: float = 0.0 if work.pending.is_empty() else work.pending[0]
     queue_label.text = "ОЧЕРЕДЬ: %d/%d  ·  %s" % [work.pending.size(), work.QUEUE_LIMIT,
-        "ВЫХОД ЗАНЯТ" if work.exit_blocked else ("%d с" % ceili(remaining) if not work.pending.is_empty() else "ГОТОВ")]
+        "НЕТ ПИТАНИЯ" if not operation.active_factory.get("powered", false) else
+        ("ВЫХОД ЗАНЯТ" if work.exit_blocked else ("%d с" % ceili(remaining) if not work.pending.is_empty() else "ГОТОВ"))]
     progress.value = 0.0 if work.pending.is_empty() else 100.0 * (1.0 - remaining / work.BUILD_SECONDS)
     train_button.text = "%s  ·  %d  /  %d с" % [operation._reinforcement_name(), work.UNIT_COST, int(work.BUILD_SECONDS)]
     train_button.disabled = not work.enabled or work.balance < work.UNIT_COST or work.pending.size() >= work.QUEUE_LIMIT

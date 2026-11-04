@@ -32,6 +32,8 @@ func _run() -> void:
         await tree.scene_changed
         var op = tree.current_scene
         op.set_physics_process(false)
+        op.economy.income_enabled = false # Isolate the existing fixed-budget scenario.
+        op.objectives.expanded = false # Retain original landing goals in this regression.
         op.sentry.damage = 0
         await _settle()
         _check(op.visibility.bounds == Rect2(-100, -100, 200, 200)

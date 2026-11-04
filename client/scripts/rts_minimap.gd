@@ -42,8 +42,13 @@ func _draw() -> void:
             draw_circle(base, 3.0, color)
     for unit in operation.units:
         draw_circle(world_to_map(unit.position), 2.5, Color("#62ecf0") if unit == operation.hero else Color("#a3cfb8"))
-    if operation.sentry.hull > 0 and operation.visibility.is_visible(operation.sentry.position):
-        draw_circle(world_to_map(operation.sentry.position), 3.0, Color("#ff9257"))
+    for enemy in operation._active_enemies():
+        if enemy.hull > 0 and operation.visibility.is_visible(enemy.position):
+            draw_circle(world_to_map(enemy.position), 3.0, Color("#ff9257"))
+    if operation.objectives.expanded:
+        for relay in operation.objectives.relays:
+            if relay["node"].visible:
+                draw_circle(world_to_map(relay["node"].position), 3, Color("#62ecf0") if relay["captured"] else Color("#c495ff"))
     var view: Vector2 = get_viewport().get_visible_rect().size
     var outline := PackedVector2Array()
     for corner in [Vector2.ZERO, Vector2(view.x, 0), view, Vector2(0, view.y), Vector2.ZERO]:

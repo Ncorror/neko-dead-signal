@@ -49,6 +49,8 @@ func _run() -> void:
         tree.quit(1)
         return
     op.set_physics_process(false)
+    op.economy.income_enabled = false # Isolate the existing fixed-budget scenario.
+    op.objectives.expanded = false # Retain original landing goals in this regression.
     op._set_auto_fire(false) # Keep this existing scenario in explicit-order mode.
     _check(GameState.officer_name.begins_with("Оралин"), "deploy must carry chosen officer")
     _check(op.sentry.hull == 100 and op.unit_paths.is_empty(), "fresh landing")
@@ -139,6 +141,8 @@ func _run() -> void:
     await tree.scene_changed
     op = tree.current_scene
     op.set_physics_process(false)
+    op.economy.income_enabled = false # Isolate the existing fixed-budget scenario.
+    op.objectives.expanded = false # Retain original landing goals in this regression.
     op._set_auto_fire(false) # Keep this existing scenario in explicit-order mode.
     _check(op.resources_collected == 0 and op.crates.size() == 3 and op.sentry.hull == 100, "replay resets mission")
     op.hero.position = Vector3(6, 0, -4)

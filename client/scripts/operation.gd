@@ -20,6 +20,8 @@ const ENEMY_AI := preload("res://scripts/rts_enemy_ai.gd")
 const AUTO_FIRE := preload("res://scripts/rts_auto_fire.gd")
 const CONSTRUCTION := preload("res://scripts/rts_construction.gd")
 const BUILD_PANEL := preload("res://scripts/rts_build_panel.gd")
+const ECONOMY := preload("res://scripts/rts_economy.gd")
+const OBJECTIVES := preload("res://scripts/rts_objectives.gd")
 const STATIC_AMINA_WORLD_HEIGHT := 1.90
 const STATIC_AMINA_FRONT_YAW_DEGREES := 0.0
 
@@ -43,6 +45,8 @@ var units: Array[Combatant] = []
 var sentry: Combatant
 var sentry_label: Label3D
 var attackers: Array[Combatant] = []
+var attack_targets: Dictionary = {}
+var known_enemy_positions: Dictionary = {}
 var attack_last_seen: Dictionary = {}
 var attack_repath_age: Dictionary = {}
 var attack_lost_age: Dictionary = {}
@@ -61,6 +65,10 @@ var return_dialog: ConfirmationDialog
 var diagnostics_panel: Node
 var production = PRODUCTION.new()
 var construction = CONSTRUCTION.new()
+var economy = ECONOMY.new()
+var objectives = OBJECTIVES.new()
+var objectives_dialog: AcceptDialog
+var objectives_age := 0.0
 var build_panel
 var active_factory: Dictionary = {}
 var build_button: Button
@@ -119,6 +127,7 @@ func _ready() -> void:
     _create_world()
     _create_visibility()
     _create_ui()
+    economy.recalculate(self)
     _select_unit(hero)
     camera_focus = hero.global_position
     _update_camera(1.0)
@@ -195,6 +204,8 @@ func _create_world() -> void:
     sentry_label.pixel_size = 0.009
     sentry.add_child(sentry_label)
 
+    objectives.install(self)
+
     view_camera = Camera3D.new()
     view_camera.current = true
     view_camera.fov = 55.0
@@ -257,11 +268,20 @@ func _apply_visibility() -> void:
         obstacle.visible = explored_obstacles.has(obstacle)
     _update_status()
 
+func _active_enemies() -> Array[Combatant]:
+    var result: Array[Combatant] = [sentry]
+    result.append_array(objectives.enemies())
+    return result
+
 func _apply_enemy_visibility() -> void:
-    # A moving actor can cross a static sight mask without changing its revision.
     var guardian_visible: bool = visibility.is_visible(sentry.position)
     sentry.visible = guardian_visible or (sentry.hull == 0 and visibility.was_explored(sentry.position))
     sentry_label.visible = guardian_visible
+    objectives.apply_visibility(self)
+    for enemy in _active_enemies():
+        if visibility.is_visible(enemy.position):
+            known_enemy_positions[enemy] = enemy.position
+
 
 func _create_factory() -> void:
     factory = Node3D.new()
@@ -360,9 +380,10 @@ func _find_spawn_point(entry: Dictionary = {}) -> Variant:
         if not navigation.is_walkable(navigation.world_to_cell(entry["exit"])) \
             or navigation.grid.get_id_path(navigation.world_to_cell(entry["exit"]), navigation.world_to_cell(point)).is_empty():
             continue
-        if sentry.hull > 0 and sentry.position.distance_to(point) < PATH_GRID.UNIT_SEPARATION:
-            continue
         var free := true
+        for enemy in _active_enemies():
+            if enemy.hull > 0 and enemy.position.distance_to(point) < PATH_GRID.UNIT_SEPARATION:
+                free = false
         for unit in units:
             if unit.position.distance_to(point) < PATH_GRID.UNIT_SEPARATION:
                 free = false
@@ -588,6 +609,7 @@ func _create_ui() -> void:
     _add_button(controls, "ВСЕ", _select_all_units)
     _add_button(controls, "БАЗА", _open_factory)
     build_button = _add_button(controls, "СТРОЙКА", _open_construction)
+    _add_button(controls, "ЦЕЛИ", _show_objectives)
     _add_button(controls, "СТОП", _stop_selected_units)
     auto_fire_button = _add_button(controls, "ОГОНЬ: АВТО", func() -> void: pass)
     auto_fire_button.toggle_mode = true
@@ -659,6 +681,10 @@ func _create_ui() -> void:
     build_panel.install(self)
     build_panel.hide()
     _create_result_dialog()
+    objectives_dialog = AcceptDialog.new()
+    objectives_dialog.title = "Цели операции"
+    objectives_dialog.get_ok_button().text = "ЗАКРЫТЬ"
+    add_child(objectives_dialog)
     return_dialog = ConfirmationDialog.new()
     return_dialog.title = "Вернуться на корабль?"
     return_dialog.dialog_text = "Текущая операция завершится. Вернуться на корабль?"
@@ -666,6 +692,11 @@ func _create_ui() -> void:
     return_dialog.cancel_button_text = "Остаться"
     return_dialog.confirmed.connect(_back_to_ship)
     add_child(return_dialog)
+
+func _show_objectives() -> void:
+    _reset_touch_state()
+    objectives_dialog.dialog_text = objectives.details(self)
+    objectives_dialog.popup_centered(Vector2i(760, 360))
 
 func _create_result_dialog() -> void:
     result_dialog = ConfirmationDialog.new()
@@ -706,9 +737,9 @@ func _show_result() -> void:
     _reset_touch_state()
     result_heading.text = _result_text()
     result_heading.add_theme_color_override("font_color", Color("#ff9c96") if outcome == Outcome.DEFEAT else Color("#62ecf0"))
-    var explanation := "Весь отряд потерян. Текущий обзор закрыт." if outcome == Outcome.DEFEAT else "Страж уничтожен. Все контейнеры собраны."
+    var explanation := "Весь отряд потерян. Текущий обзор закрыт." if outcome == Outcome.DEFEAT else "Все задачи операции выполнены."
     result_summary.text = "%s\nПрипасы %d/3  ·  Ресурсы %d  ·  Выпущено %d\nВернись на корабль или осмотри карту и сохрани логи." % [
-        explanation, 3 - crates.size(), production.balance, production.completed]
+        explanation, 3 - crates.size(), production.balance, _production_completed()]
     result_dialog.popup_centered(Vector2i(680, 330))
 
 func _result_action(action: StringName) -> void:
@@ -932,6 +963,8 @@ func _handle_back() -> void:
         return_dialog.hide()
     elif diagnostics_panel != null and diagnostics_panel.popup.visible:
         diagnostics_panel.popup.hide()
+    elif objectives_dialog.visible:
+        objectives_dialog.hide()
     elif result_dialog.visible:
         result_dialog.hide()
     elif build_panel.visible:
@@ -979,8 +1012,9 @@ func _handle_tap(screen_pos: Vector2) -> void:
     var nearest: Combatant = null
     var best := 28.0
     var candidates := units.duplicate()
-    if sentry.hull > 0 and visibility.is_visible(sentry.position):
-        candidates.append(sentry)
+    for enemy in _active_enemies():
+        if enemy.hull > 0 and visibility.is_visible(enemy.position):
+            candidates.append(enemy)
     for actor in candidates:
         var center: Vector3 = actor.position + Vector3.UP
         if view_camera.is_position_behind(center):
@@ -991,8 +1025,8 @@ func _handle_tap(screen_pos: Vector2) -> void:
         if distance < best:
             best = distance
             nearest = actor
-    if nearest == sentry:
-        _issue_attack()
+    if nearest != null and not units.has(nearest):
+        _issue_attack(nearest)
     elif nearest != null:
         _select_unit(nearest)
     else:
@@ -1044,8 +1078,9 @@ func _issue_move(destination: Vector3) -> void:
     for unit in units:
         if not selected_units.has(unit):
             occupied.append(unit.position)
-    if sentry.hull > 0 and visibility.is_visible(sentry.position):
-        occupied.append(sentry.position)
+    for enemy in _active_enemies():
+        if enemy.hull > 0 and visibility.is_visible(enemy.position):
+            occupied.append(enemy.position)
     var destinations: Array[Vector3] = FORMATION.destinations(navigation, starts, destination, occupied)
     var accepted := 0
     for i in range(destinations.size()):
@@ -1091,18 +1126,20 @@ func _execute_order(unit: Combatant, order: Dictionary) -> bool:
     if unit.hull <= 0 or outcome != Outcome.ACTIVE:
         return false
     var is_attack: bool = order["type"] == "attack"
-    if is_attack and (sentry.hull <= 0 or not visibility.is_visible(sentry.position)):
+    var enemy: Combatant = order.get("target_unit", sentry)
+    if is_attack and (not is_instance_valid(enemy) or enemy.hull <= 0 or not visibility.is_visible(enemy.position)):
         return false
-    var target: Vector3 = sentry.position if is_attack else order["target"]
+    var target: Vector3 = enemy.position if is_attack else order["target"]
     var planned: Array[Vector3] = []
-    if not is_attack or not _in_firing_position(unit, sentry):
+    if not is_attack or not _in_firing_position(unit, enemy):
         var avoid: Array[Vector3] = []
         var moving_group: Array = order.get("group", [])
         for other in units:
             if other != unit and not moving_group.has(other):
                 avoid.append(other.position)
-        if sentry.hull > 0 and visibility.is_visible(sentry.position):
-            avoid.append(sentry.position)
+        for foe in _active_enemies():
+            if foe.hull > 0 and visibility.is_visible(foe.position):
+                avoid.append(foe.position)
         planned = navigation.get_path(unit.position, target, avoid)
         if planned.is_empty():
             if RTSDiagnostics.enabled:
@@ -1123,7 +1160,8 @@ func _execute_order(unit: Combatant, order: Dictionary) -> bool:
                 })
     if is_attack:
         attackers.append(unit)
-        attack_last_seen[unit] = sentry.position
+        attack_targets[unit] = enemy
+        attack_last_seen[unit] = enemy.position
         attack_repath_age[unit] = 0.0
         attack_lost_age[unit] = 0.0
     orders_ui_dirty = true
@@ -1157,15 +1195,17 @@ func _clear_path(unit: Combatant) -> void:
     unit_blocked_seconds.erase(unit)
     unit_pass_sides.erase(unit)
 
-func _issue_attack() -> void:
-    if outcome != Outcome.ACTIVE or sentry.hull <= 0 or not visibility.is_visible(sentry.position):
+func _issue_attack(enemy: Combatant = null) -> void:
+    if enemy == null:
+        enemy = sentry
+    if outcome != Outcome.ACTIVE or enemy.hull <= 0 or not visibility.is_visible(enemy.position):
         return
     var accepted := 0
     for unit in selected_units:
-        if _submit_order(unit, {"type": "attack", "last_seen": sentry.position}):
+        if _submit_order(unit, {"type": "attack", "target_unit": enemy, "last_seen": enemy.position}):
             accepted += 1
     if RTSDiagnostics.enabled:
-        RTSDiagnostics.event("combat", "attack_order", {"count": accepted, "target": "sentry", "append": append_orders})
+        RTSDiagnostics.event("combat", "attack_order", {"count": accepted, "target": str(enemy.name), "append": append_orders})
     _update_status()
 
 func _in_firing_position(shooter: Combatant, target: Combatant) -> bool:
@@ -1173,24 +1213,26 @@ func _in_firing_position(shooter: Combatant, target: Combatant) -> bool:
 
 func _clear_attack(unit: Combatant) -> void:
     attackers.erase(unit)
+    attack_targets.erase(unit)
     attack_last_seen.erase(unit)
     attack_repath_age.erase(unit)
     attack_lost_age.erase(unit)
 
 func _update_attack_order(unit: Combatant, delta: float) -> bool:
-    if sentry.hull <= 0:
+    var enemy: Combatant = attack_targets.get(unit, sentry)
+    if not is_instance_valid(enemy) or enemy.hull <= 0:
         _clear_attack(unit)
         _clear_path(unit)
         return false
-    var seen: bool = visibility.is_visible(sentry.position)
+    var seen: bool = visibility.is_visible(enemy.position)
     if seen:
-        attack_last_seen[unit] = sentry.position
+        attack_last_seen[unit] = enemy.position
         attack_lost_age[unit] = 0.0
-        if _in_firing_position(unit, sentry):
-            _face_direction(unit, sentry.position - unit.position)
+        if _in_firing_position(unit, enemy):
+            _face_direction(unit, enemy.position - unit.position)
             _clear_path(unit)
             _set_unit_animation(unit, false)
-            _shoot(unit, sentry)
+            _shoot(unit, enemy)
             return true
     else:
         attack_lost_age[unit] = attack_lost_age.get(unit, 0.0) + delta
@@ -1217,14 +1259,14 @@ func _shoot(shooter: Combatant, target: Combatant, reason: StringName = &"order"
     var previous_hull: int = target.hull
     if not shooter.fire_at(target):
         return
-    if shooter == sentry and target.hull > 0 and target.hull < previous_hull:
+    if units.has(target) and not units.has(shooter) and target.hull > 0 and target.hull < previous_hull:
         auto_fire.record_hit(target, shooter, self)
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("combat", "hit", {"from": shooter.name, "to": target.name, "health": target.hull, "reason": str(reason)})
     var origin := shooter.position + Vector3.UP
     var end := target.position + Vector3.UP
     var tracer := _make_box(Vector3.ZERO, Vector3(0.07, 0.07, origin.distance_to(end)),
-        Color("#ff6c4f") if shooter == sentry else Color("#85f0ff"))
+        Color("#85f0ff") if units.has(shooter) else Color("#ff6c4f"))
     tracer.position = (origin + end) * 0.5
     tracer.look_at(end)
     var fade := create_tween()
@@ -1232,16 +1274,15 @@ func _shoot(shooter: Combatant, target: Combatant, reason: StringName = &"order"
     fade.tween_callback(tracer.queue_free)
     if target.hull == 0:
         orders_ui_dirty = true
-        if target == sentry:
-            sentry.get_node("Beacon").hide()
-            for unit in attackers:
-                _clear_path(unit)
-            attackers.clear()
-            attack_last_seen.clear()
-            attack_repath_age.clear()
-            attack_lost_age.clear()
-            enemy_ai.stop(true)
-            auto_fire.stop(self)
+        if not units.has(target):
+            target.get_node("Beacon").hide()
+            for unit in attackers.duplicate():
+                if attack_targets.get(unit, sentry) == target:
+                    _clear_path(unit)
+                    _clear_attack(unit)
+            if target == sentry:
+                enemy_ai.stop(true)
+            auto_fire.enemy_destroyed(target, self)
         else:
             target.hide()
             units.erase(target)
@@ -1259,8 +1300,9 @@ func _other_unit_positions(unit: Combatant) -> Array[Vector3]:
     for other in units:
         if other != unit:
             positions.append(other.position)
-    if unit != sentry and sentry.hull > 0 and visibility.is_visible(sentry.position):
-        positions.append(sentry.position)
+    for enemy in _active_enemies():
+        if unit != enemy and enemy.hull > 0 and visibility.is_visible(enemy.position):
+            positions.append(enemy.position)
     return positions
 
 func _can_step(unit: Combatant, destination: Vector3) -> bool:
@@ -1272,9 +1314,11 @@ func _can_step(unit: Combatant, destination: Vector3) -> bool:
         var closest := Geometry3D.get_closest_point_to_segment(other.position, unit.position, destination)
         if closest.distance_to(other.position) < PATH_GRID.UNIT_SEPARATION:
             return false
-    if unit != sentry and sentry.hull > 0:
-        var closest := Geometry3D.get_closest_point_to_segment(sentry.position, unit.position, destination)
-        if closest.distance_to(sentry.position) < PATH_GRID.UNIT_SEPARATION:
+    for enemy in _active_enemies():
+        if unit == enemy or enemy.hull <= 0:
+            continue
+        var closest := Geometry3D.get_closest_point_to_segment(enemy.position, unit.position, destination)
+        if closest.distance_to(enemy.position) < PATH_GRID.UNIT_SEPARATION:
             return false
     return true
 
@@ -1307,8 +1351,10 @@ func _move_unit(unit: Combatant, delta: float) -> void:
         return
     var planned: Array[Vector3] = unit_paths[unit]
     var index: int = int(unit_waypoint_index.get(unit, 0))
-    if unit != sentry and sentry.hull > 0 and visibility.is_visible(sentry.position) \
-        and planned.back().distance_to(sentry.position) < PATH_GRID.UNIT_SEPARATION:
+    for enemy in _active_enemies():
+        if unit == enemy or enemy.hull <= 0 or not visibility.is_visible(enemy.position) \
+            or planned.back().distance_to(enemy.position) >= PATH_GRID.UNIT_SEPARATION:
+            continue
         # A hidden/moving hostile can occupy a previously accepted destination.
         # Resolve that physical obstruction once it becomes visible; allied
         # traffic still keeps the original accepted destination below.
@@ -1383,12 +1429,18 @@ func _physics_process(delta: float) -> void:
     if sentry.hull > 0:
         sentry.tick(delta)
     enemy_ai.tick(delta, self)
+    objectives.tick_defences(delta, self)
     _apply_enemy_visibility()
     _check_crates()
-    if not units.is_empty() and not (crates.is_empty() and sentry.hull == 0):
+    if not units.is_empty() and not objectives.complete(self):
         construction.tick(delta, self)
+        if economy.tick(delta, self):
+            for building in construction.buildings:
+                if building["ready"] and building["label"] != null:
+                    construction._update_visual(building)
+            _update_status()
         for entry in construction.buildings:
-            if entry["kind"] != &"factory" or not entry["ready"]:
+            if entry["kind"] != &"factory" or not entry["ready"] or not entry.get("powered", false):
                 continue
             var work = entry["work"]
             var previously_blocked: bool = work.exit_blocked
@@ -1397,10 +1449,12 @@ func _physics_process(delta: float) -> void:
                 _update_status()
             if previously_blocked != work.exit_blocked and RTSDiagnostics.enabled:
                 RTSDiagnostics.event("production", "exit_state", {"blocked": work.exit_blocked, "factory": entry["id"]})
+    if objectives.tick(delta, self):
+        _update_status()
     _update_visibility(delta)
     if units.is_empty():
         _finish(Outcome.DEFEAT)
-    elif crates.is_empty() and sentry.hull == 0:
+    elif objectives.complete(self):
         _finish(Outcome.VICTORY)
     for unit in selected_units:
         if selection_rings.has(unit):
@@ -1413,9 +1467,14 @@ func _process(delta: float) -> void:
         orders_ui_dirty = false
         _refresh_order_markers()
         _update_status()
-    if visibility.is_visible(sentry.position):
-        for marker in enemy_order_markers:
-            marker.position = sentry.position
+    for marker in enemy_order_markers:
+        var enemy: Combatant = marker.get_meta("enemy", sentry)
+        if is_instance_valid(enemy) and visibility.is_visible(enemy.position):
+            marker.position = enemy.position
+    objectives_age += delta
+    if objectives_dialog.visible and objectives_age >= 0.2:
+        objectives_age = 0.0
+        objectives_dialog.dialog_text = objectives.details(self)
     perf_accumulated += delta
     perf_max_frame_ms = maxf(perf_max_frame_ms, delta * 1000.0)
     if delta > 0.04:
@@ -1486,11 +1545,13 @@ func _finish(result: Outcome) -> void:
     if outcome != Outcome.ACTIVE:
         return
     outcome = result
+    economy.stop()
     var refunded: int = construction.stop(self)
     enemy_ai.stop(sentry.hull <= 0)
     auto_fire.stop(self)
     production_panel.hide()
     build_panel.hide()
+    objectives_dialog.hide()
     unit_paths.clear()
     unit_waypoint_index.clear()
     unit_move_speeds.clear()
@@ -1499,6 +1560,7 @@ func _finish(result: Outcome) -> void:
     unit_pass_sides.clear()
     unit_orders.clear()
     attackers.clear()
+    attack_targets.clear()
     attack_last_seen.clear()
     attack_repath_age.clear()
     attack_lost_age.clear()
@@ -1538,11 +1600,13 @@ func _update_status() -> void:
     status_label.text = "%s  |  Припасы %d/3  |  Ресурсы %d  |  Офицер %d ОЗ  ·  Эскорт %d ОЗ" % [
         GameState.faction_name, 3 - crates.size(), production.balance, hero.hull, escort.hull
     ]
-    status_label.text += "  ·  Армия %d" % units.size()
+    status_label.text += "  ·  Армия %d  ·  %s" % [units.size(), economy.summary()]
     if production_panel != null:
         production_panel.refresh()
     if outcome != Outcome.ACTIVE:
         objective_label.text = "%s  ·  НА КОРАБЛЬ для разбора операции" % _result_text()
+    elif objectives.expanded:
+        objective_label.text = objectives.summary(self)
     elif sentry.hull > 0 and visibility.is_visible(sentry.position):
         objective_label.text = "Цель: уничтожь оранжевого стража (%d ОЗ) и собери три золотых контейнера." % sentry.hull
     elif sentry.hull > 0:
@@ -1575,6 +1639,13 @@ func _production_queue_count() -> int:
             count += entry["work"].pending.size()
     return count
 
+func _production_completed() -> int:
+    var count := 0
+    for entry in construction.buildings:
+        if entry["work"] != null:
+            count += entry["work"].completed
+    return count
+
 func _pending_order_count() -> int:
     var count := 0
     for pending in unit_orders.values():
@@ -1593,29 +1664,30 @@ func _refresh_order_markers() -> void:
     for unit in selected_units:
         var number := 1
         if attackers.has(unit):
-            var last_seen: Vector3 = attack_last_seen.get(unit, unit.position)
-            _make_order_marker(sentry.position if visibility.is_visible(sentry.position) else last_seen,
-                number, Color("#ff9257"), true)
+            var enemy: Combatant = attack_targets.get(unit, sentry)
+            var known: Vector3 = enemy.position if visibility.is_visible(enemy.position) else attack_last_seen.get(unit, unit.position)
+            _make_order_marker(known, number, Color("#ff9257"), true, enemy)
             number += 1
         elif unit_paths.has(unit):
             if auto_fire.moving.has(unit):
-                var known: Vector3 = sentry.position if visibility.is_visible(sentry.position) else unit_paths[unit].back()
-                _make_order_marker(known, number, Color("#ff9257"), true)
+                var enemy: Combatant = auto_fire.memory[unit]["target"]
+                var known: Vector3 = enemy.position if visibility.is_visible(enemy.position) else unit_paths[unit].back()
+                _make_order_marker(known, number, Color("#ff9257"), true, enemy)
             else:
                 _make_order_marker(unit_paths[unit].back(), number, Color("#62ecf0"))
             number += 1
-        var pending: Array = unit_orders.get(unit, [])
-        for order in pending:
+        for order in unit_orders.get(unit, []):
             var attack: bool = order["type"] == "attack"
-            var target: Vector3 = order.get("last_seen", unit.position) if attack else order["target"]
-            if attack and visibility.is_visible(sentry.position):
-                target = sentry.position
-            _make_order_marker(target, number, Color("#e7b65b"), attack)
+            var enemy: Combatant = order.get("target_unit", sentry) if attack else null
+            var point: Vector3 = order.get("last_seen", unit.position) if attack else order["target"]
+            if attack and is_instance_valid(enemy):
+                point = enemy.position if visibility.is_visible(enemy.position) else known_enemy_positions.get(enemy, point)
+            _make_order_marker(point, number, Color("#e7b65b"), attack, enemy)
             number += 1
 
-func _make_order_marker(at: Vector3, number: int, color: Color, tracks_enemy: bool = false) -> void:
+func _make_order_marker(at: Vector3, number: int, color: Color, tracks_enemy: bool = false, enemy: Combatant = null) -> void:
     for existing in order_markers.get_children():
-        if existing.get_meta("tracks_enemy", false) == tracks_enemy and existing.position.distance_to(at) < 0.1:
+        if existing.get_meta("tracks_enemy", false) == tracks_enemy and existing.get_meta("enemy", sentry) == (enemy if enemy != null else sentry) and existing.position.distance_to(at) < 0.1:
             var sequence: Label3D = existing.get_node("Sequence")
             if not sequence.text.split(" · ").has(str(number)):
                 sequence.text += " · " + str(number)
@@ -1624,6 +1696,7 @@ func _make_order_marker(at: Vector3, number: int, color: Color, tracks_enemy: bo
     marker.position = at
     marker.set_meta("tracks_enemy", tracks_enemy)
     if tracks_enemy:
+        marker.set_meta("enemy", enemy if enemy != null else sentry)
         enemy_order_markers.append(marker)
     order_markers.add_child(marker)
     var ring := MeshInstance3D.new()
@@ -1650,6 +1723,7 @@ func _make_order_marker(at: Vector3, number: int, color: Color, tracks_enemy: bo
     marker.add_child(label)
 
 func _back_to_ship() -> void:
+    economy.stop()
     construction.stop(self)
     enemy_ai.stop(sentry.hull <= 0)
     auto_fire.stop(self)
