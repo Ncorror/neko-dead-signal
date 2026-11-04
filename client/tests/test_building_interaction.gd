@@ -84,7 +84,7 @@ func _run() -> void:
             var center: Vector3 = entry["node"].position
             _check(op.visibility.is_visible(center) and entry["node"].visible,
                 "owned construction site lost its local sight: " + str(entry["kind"]))
-        _check(not op.visibility.is_visible(post["node"].position + Vector3(0, 0, 6)),
+        _check(not op.visibility.is_visible(post["node"].position + Vector3(0, 0, 14)),
             "unfinished post received its powered extended sight")
         _advance(op, 8.2)
         for entry in [right, left, generator, post]:

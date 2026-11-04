@@ -143,7 +143,7 @@ func refresh() -> void:
     cancel_button.disabled = not active
     if mode == 0:
         title.text = "СТРОИТЕЛЬСТВО"
-        message.text = "Добытчик даёт ресурсы, электростанция питает базу. Каждый завод имеет свою очередь."
+        message.text = "Обзор: здания — 12, запитанный пост — 18. Добытчик даёт ресурсы, электростанция питает базу."
         factory_button.text = "%s\n200 / 8 с · 4 энергии" % work.title(&"factory")
         outpost_button.text = "%s\n100 / 5 с · 2 энергии" % work.title(&"outpost")
         extractor_button.text = "%s\n150 / 8 с · 4 энергии" % ("ДОБЫТЧИК" if GameState.faction_index == 0 else "СБОРЩИК")
@@ -162,8 +162,9 @@ func refresh() -> void:
         var ready: bool = inspected["ready"]
         var descriptions := {&"factory": "Своя очередь выпуска.", &"outpost": "Обзор ближайшей территории.",
             &"extractor": "+10 ресурсов каждые 5 секунд работы.", &"generator": "+12 мощности для всей базы."}
-        message.text = ("%s\n%s · %s" % [descriptions[inspected["kind"]], work.power_text(inspected["kind"]),
-            "РАБОТАЕТ" if inspected.get("powered", false) else "НЕТ ПИТАНИЯ"]) if ready else "Развёртывание · осталось %d с" % ceili(inspected["remaining"])
+        var sight: float = work.OUTPOST_SIGHT_RADIUS if inspected["kind"] == &"outpost" and inspected.get("powered", false) else work.BUILDING_SIGHT_RADIUS
+        message.text = ("%s\n%s · %s · ОБЗОР %d" % [descriptions[inspected["kind"]], work.power_text(inspected["kind"]),
+            "РАБОТАЕТ" if inspected.get("powered", false) else "НЕТ ПИТАНИЯ", int(sight)]) if ready else "Развёртывание · осталось %d с · ОБЗОР 8" % ceili(inspected["remaining"])
         progress.value = 100.0 * (1.0 - float(inspected["remaining"]) / float(work.DEFINITIONS[inspected["kind"]]["seconds"]))
         action_button.visible = ready
         action_button.text = "ОТКРЫТЬ ЗАВОД" if inspected["kind"] == &"factory" else "СТРОИТЬ ЕЩЁ"

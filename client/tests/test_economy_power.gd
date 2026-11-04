@@ -104,15 +104,15 @@ func _run() -> void:
     op.hero.position = Vector3(-80, 0, 75)
     op.escort.position = Vector3(-85, 0, 75)
     op._update_visibility(0, true)
-    _check(post["powered"] and op.visibility.is_visible(Vector3(-46, 0, 4)), "powered post gave no sight")
+    _check(post["powered"] and op.visibility.is_visible(Vector3(-46, 0, -6)), "powered post gave no sight")
     _advance(op, 3.1)
     op._update_visibility(0, true)
-    _check(not post["powered"] and not op.visibility.is_visible(Vector3(-46, 0, 4)), "power loss left post sight active")
+    _check(not post["powered"] and not op.visibility.is_visible(Vector3(-46, 0, -6)), "power loss left post sight active")
     _start(op, &"generator", Vector3(-60, 0, 8))
     _advance(op, 6.2)
     op.hero.position = Vector3(-80, 0, 75)
     op._update_visibility(0, true)
-    _check(post["powered"] and op.visibility.is_visible(Vector3(-46, 0, 4)), "restored power did not restore post sight")
+    _check(post["powered"] and op.visibility.is_visible(Vector3(-46, 0, -6)), "restored power did not restore post sight")
     var balance: int = op.production.balance
     op.sentry.weapon_range = 250
     op.sentry.damage = 1000
@@ -122,7 +122,7 @@ func _run() -> void:
     _advance(op, 0.1)
     balance = op.production.balance
     _advance(op, 20)
-    _check(op.outcome == op.Outcome.DEFEAT and op.production.balance == balance and not op.visibility.is_visible(Vector3(-46, 0, 4)),
+    _check(op.outcome == op.Outcome.DEFEAT and op.production.balance == balance and not op.visibility.is_visible(Vector3(-46, 0, -6)),
         "defeat did not stop income and post sight")
     if failures == 0:
         print("RTS_ECONOMY_TEST_PASS factions=2 supply=ok extraction=ok power=ok pause_resume=ok sight=ok finish=ok")

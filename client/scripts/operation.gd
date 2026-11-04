@@ -242,16 +242,17 @@ func _update_visibility(delta: float, force: bool = false) -> void:
     if force or sight_timer >= 0.15:
         var observers: Array[Vector3] = []
         var building_observers: Array[Vector3] = []
+        var building_radii: Array[float] = []
         for unit in units:
             if unit.hull > 0:
                 observers.append(unit.position)
         if outcome == Outcome.ACTIVE and not units.is_empty():
-            observers.append_array(construction.observers())
             building_observers = construction.local_observers()
+            building_radii = construction.observer_radii()
         if force:
             while visibility.scanning:
                 visibility.advance(navigation, 128)
-        visibility.request_snapshot(observers, force, building_observers)
+        visibility.request_snapshot(observers, force, building_observers, building_radii)
         sight_timer = 0.0
     var changed: bool = visibility.advance(navigation, 128)
     if force:

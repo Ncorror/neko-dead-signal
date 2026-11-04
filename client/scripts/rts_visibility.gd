@@ -1,7 +1,7 @@
 extends RefCounted
 ## Shared local sight. A complete snapshot is published only after its ray budget is processed.
 
-const BUILDING_SIGHT_RADIUS := 3.5
+const BUILDING_SIGHT_RADIUS := 12.0
 
 var bounds := Rect2(-25, -25, 50, 50)
 var cell_step := 1.0
@@ -14,6 +14,7 @@ var last_step_checks := 0
 var scanning := false
 var _observers: Array[Vector3] = []
 var _full_sight_count := 0
+var _observer_radii: Array[float] = []
 var _jobs: Array[Vector3i] = []
 var _job_index := 0
 var _next_visible := PackedByteArray()
@@ -34,6 +35,7 @@ func configure(area: Rect2, step: float = 1.0, radius: float = 8.0) -> void:
     _next_indices = []
     _observers.clear()
     _full_sight_count = 0
+    _observer_radii.clear()
     _jobs.clear()
     _job_index = 0
     scanning = false
@@ -58,18 +60,24 @@ func was_explored(point: Vector3) -> bool:
     var cell := world_to_cell(point)
     return _contains(cell) and explored[cell.y * dimensions.x + cell.x] != 0
 
-func request_snapshot(observers: Array[Vector3], force: bool = false, buildings: Array[Vector3] = []) -> bool:
+func request_snapshot(observers: Array[Vector3], force: bool = false, buildings: Array[Vector3] = [], building_radii: Array[float] = []) -> bool:
     if scanning:
         return false
     var positions: Array[Vector3] = []
+    var radii: Array[float] = []
     var sources: Array[Vector3] = observers.duplicate()
     sources.append_array(buildings)
     for point in sources:
         positions.append(Vector3(snappedf(point.x, 0.25), 0.0, snappedf(point.z, 0.25)))
-    if not force and positions == _observers and _full_sight_count == observers.size():
+    for index in range(sources.size()):
+        var building_index := index - observers.size()
+        radii.append(sight_radius if building_index < 0 else
+            maxf(0, building_radii[building_index] if building_index < building_radii.size() else BUILDING_SIGHT_RADIUS))
+    if not force and positions == _observers and _full_sight_count == observers.size() and radii == _observer_radii:
         return false
     _observers = positions
     _full_sight_count = observers.size()
+    _observer_radii = radii
     _next_visible = PackedByteArray()
     _next_visible.resize(visible.size())
     _next_visible.fill(0)
@@ -77,7 +85,7 @@ func request_snapshot(observers: Array[Vector3], force: bool = false, buildings:
     _jobs.clear()
     _job_index = 0
     for observer in range(_observers.size()):
-        var radius: float = sight_radius if observer < _full_sight_count else BUILDING_SIGHT_RADIUS
+        var radius: float = _observer_radii[observer]
         var radius_cells := ceili(radius / cell_step) + 1
         var origin := world_to_cell(_observers[observer])
         for y in range(maxi(0, origin.y - radius_cells), mini(dimensions.y, origin.y + radius_cells + 1)):
@@ -128,6 +136,7 @@ func clear_current() -> void:
     _job_index = 0
     _observers.clear()
     _full_sight_count = 0
+    _observer_radii.clear()
     _next_visible = PackedByteArray()
     for index in _visible_indices:
         _mask[index] = 100
