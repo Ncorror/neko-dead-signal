@@ -111,10 +111,10 @@ func _run() -> void:
         op.hero.position = Vector3(-50, 0, 0)
         op.escort.position = Vector3(-55, 0, 0)
         op._update_visibility(0, true)
-        _check(not op.visibility.is_visible(Vector3(9, 0, -2)), "unfinished post gave extended vision")
+        _check(not op.visibility.is_visible(Vector3(17, 0, -2)), "unfinished post gave extended vision")
         _advance(op, 5.1)
         op._update_visibility(0, true)
-        _check(post["ready"] and op.visibility.is_visible(Vector3(9, 0, -2)), "finished post gave no extended sight without nearby troops")
+        _check(post["ready"] and op.visibility.is_visible(Vector3(17, 0, -2)), "finished post gave no extended sight without nearby troops")
         _check(not op.navigation.is_walkable(Vector2i(3, -2)), "post footprint was walkable")
         op.sentry.damage = 1000
         op.sentry.position = op.hero.position + Vector3(2, 0, 0)

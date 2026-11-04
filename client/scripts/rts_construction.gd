@@ -7,6 +7,9 @@ const EXTRACTOR := &"extractor"
 const GENERATOR := &"generator"
 const WORK := preload("res://scripts/rts_production.gd")
 const CLEARANCE := 0.75
+const SITE_SIGHT_RADIUS := 8.0
+const BUILDING_SIGHT_RADIUS := 12.0
+const OUTPOST_SIGHT_RADIUS := 18.0
 const DEFINITIONS := {
     FACTORY: {"cost": 200, "seconds": 8.0, "size": Vector3(3.2, 1.6, 3.2), "power": 4},
     OUTPOST: {"cost": 100, "seconds": 5.0, "size": Vector3(2, 0.8, 2), "power": 2},
@@ -271,13 +274,22 @@ func observers() -> Array[Vector3]:
     return points
 
 func local_observers() -> Array[Vector3]:
-    # Ownership keeps the immediate building area lit, including construction
-    # and a power outage. Only a powered, finished outpost has extended sight.
+    # Stable order pairs with observer_radii. All owned buildings reveal fog.
     var points: Array[Vector3] = []
     if enabled:
         for entry in buildings:
             points.append(entry["node"].position)
     return points
+
+func observer_radii() -> Array[float]:
+    var radii: Array[float] = []
+    if enabled:
+        for entry in buildings:
+            var radius := SITE_SIGHT_RADIUS
+            if entry["ready"]:
+                radius = OUTPOST_SIGHT_RADIUS if entry["kind"] == OUTPOST and entry.get("powered", false) else BUILDING_SIGHT_RADIUS
+            radii.append(radius)
+    return radii
 
 func stop(op) -> int:
     if not enabled:
