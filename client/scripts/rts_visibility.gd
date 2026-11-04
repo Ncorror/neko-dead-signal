@@ -1,6 +1,8 @@
 extends RefCounted
 ## Shared local sight. A complete snapshot is published only after its ray budget is processed.
 
+const BUILDING_SIGHT_RADIUS := 3.5
+
 var bounds := Rect2(-25, -25, 50, 50)
 var cell_step := 1.0
 var sight_radius := 8.0
@@ -11,6 +13,7 @@ var revision := 0
 var last_step_checks := 0
 var scanning := false
 var _observers: Array[Vector3] = []
+var _full_sight_count := 0
 var _jobs: Array[Vector3i] = []
 var _job_index := 0
 var _next_visible := PackedByteArray()
@@ -30,6 +33,7 @@ func configure(area: Rect2, step: float = 1.0, radius: float = 8.0) -> void:
     _visible_indices = []
     _next_indices = []
     _observers.clear()
+    _full_sight_count = 0
     _jobs.clear()
     _job_index = 0
     scanning = false
@@ -54,28 +58,32 @@ func was_explored(point: Vector3) -> bool:
     var cell := world_to_cell(point)
     return _contains(cell) and explored[cell.y * dimensions.x + cell.x] != 0
 
-func request_snapshot(observers: Array[Vector3], force: bool = false) -> bool:
+func request_snapshot(observers: Array[Vector3], force: bool = false, buildings: Array[Vector3] = []) -> bool:
     if scanning:
         return false
     var positions: Array[Vector3] = []
-    for point in observers:
+    var sources: Array[Vector3] = observers.duplicate()
+    sources.append_array(buildings)
+    for point in sources:
         positions.append(Vector3(snappedf(point.x, 0.25), 0.0, snappedf(point.z, 0.25)))
-    if not force and positions == _observers:
+    if not force and positions == _observers and _full_sight_count == observers.size():
         return false
     _observers = positions
+    _full_sight_count = observers.size()
     _next_visible = PackedByteArray()
     _next_visible.resize(visible.size())
     _next_visible.fill(0)
     _next_indices = []
     _jobs.clear()
     _job_index = 0
-    var radius_cells := ceili(sight_radius / cell_step) + 1
     for observer in range(_observers.size()):
+        var radius: float = sight_radius if observer < _full_sight_count else BUILDING_SIGHT_RADIUS
+        var radius_cells := ceili(radius / cell_step) + 1
         var origin := world_to_cell(_observers[observer])
         for y in range(maxi(0, origin.y - radius_cells), mini(dimensions.y, origin.y + radius_cells + 1)):
             for x in range(maxi(0, origin.x - radius_cells), mini(dimensions.x, origin.x + radius_cells + 1)):
                 var cell := Vector2i(x, y)
-                if cell_to_world(cell).distance_squared_to(_observers[observer]) <= sight_radius * sight_radius:
+                if cell_to_world(cell).distance_squared_to(_observers[observer]) <= radius * radius:
                     _jobs.append(Vector3i(x, y, observer))
     scanning = true
     return true
@@ -89,7 +97,7 @@ func advance(navigation, budget: int = 128) -> bool:
         var index := job.y * dimensions.x + job.x
         if _next_visible[index] == 0:
             last_step_checks += 1
-            if navigation.has_clear_sight(_observers[job.z], cell_to_world(Vector2i(job.x, job.y))):
+            if navigation.has_clear_sight(_observers[job.z], cell_to_world(Vector2i(job.x, job.y)), job.z >= _full_sight_count):
                 _next_visible[index] = 1
                 _next_indices.append(index)
         _job_index += 1
@@ -119,6 +127,7 @@ func clear_current() -> void:
     _jobs.clear()
     _job_index = 0
     _observers.clear()
+    _full_sight_count = 0
     _next_visible = PackedByteArray()
     for index in _visible_indices:
         _mask[index] = 100

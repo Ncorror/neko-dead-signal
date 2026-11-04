@@ -75,11 +75,15 @@ func has_clear_shot(start: Vector3, target: Vector3) -> bool:
             return false
     return true
 
-func has_clear_sight(start: Vector3, target: Vector3) -> bool:
+func has_clear_sight(start: Vector3, target: Vector3, from_owned_building: bool = false) -> bool:
     # The obstacle itself can be discovered. Cells behind it remain hidden.
     var eye := start + Vector3.UP
     var destination := target + Vector3.UP
     for box in cover:
+        # A structure observes from inside its own hull. Other structures and
+        # terrain still occlude its sight; weapon rays never use this exception.
+        if from_owned_building and box.has_point(eye):
+            continue
         if box.intersects_segment(eye, destination) != null and not box.has_point(destination):
             return false
     return true

@@ -73,7 +73,7 @@ func choose(point: Vector3, op) -> void:
 
 func refresh_preview(op) -> String:
     if placing == &"" or not has_candidate:
-        return "Коснись свободного места на видимой земле."
+        return "Коснись видимой земли или веди пальцем, чтобы выбрать место."
     var reason := validate(placing, candidate, op)
     preview.position = candidate + Vector3.UP * (float(DEFINITIONS[placing]["size"].y) * 0.5 + 0.05)
     preview.material_override.albedo_color = Color(0.25, 0.95, 0.85, 0.45) if reason.is_empty() else Color(1, 0.25, 0.22, 0.45)
@@ -268,6 +268,15 @@ func observers() -> Array[Vector3]:
         for entry in buildings:
             if entry["ready"] and entry.get("powered", false) and entry["kind"] == OUTPOST:
                 points.append(entry["node"].position)
+    return points
+
+func local_observers() -> Array[Vector3]:
+    # Ownership keeps the immediate building area lit, including construction
+    # and a power outage. Only a powered, finished outpost has extended sight.
+    var points: Array[Vector3] = []
+    if enabled:
+        for entry in buildings:
+            points.append(entry["node"].position)
     return points
 
 func stop(op) -> int:
