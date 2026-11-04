@@ -153,7 +153,7 @@ func refresh() -> void:
         var reason: String = work.refresh_preview(operation)
         message.text = "%s · %s · %d ресурсов\n%s" % [work.title(work.placing), work.power_text(work.placing),
             work.DEFINITIONS.get(work.placing, {"cost": 0})["cost"],
-            "Место свободно. Подтверди строительство." if reason.is_empty() else reason]
+            "Место свободно. Эскиз двигай пальцем, затем подтверди." if reason.is_empty() else reason]
         action_button.text = "ПОСТРОИТЬ"
         action_button.disabled = not active or not work.has_candidate or not reason.is_empty()
         cancel_button.text = "НАЗАД К ПОСТРОЙКАМ"

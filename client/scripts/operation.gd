@@ -121,6 +121,9 @@ var pinch_used := false
 var touch_start: Vector2 = Vector2.ZERO
 var touch_dragged: bool = false
 var touch_tracking: bool = false
+var placement_touch_active := false
+var placement_had_candidate := false
+var placement_previous_candidate := Vector3.ZERO
 
 func _ready() -> void:
     navigation.configure(MAP_LIMIT, 1.0)
@@ -238,15 +241,17 @@ func _update_visibility(delta: float, force: bool = false) -> void:
     sight_timer += delta
     if force or sight_timer >= 0.15:
         var observers: Array[Vector3] = []
+        var building_observers: Array[Vector3] = []
         for unit in units:
             if unit.hull > 0:
                 observers.append(unit.position)
         if outcome == Outcome.ACTIVE and not units.is_empty():
             observers.append_array(construction.observers())
+            building_observers = construction.local_observers()
         if force:
             while visibility.scanning:
                 visibility.advance(navigation, 128)
-        visibility.request_snapshot(observers, force)
+        visibility.request_snapshot(observers, force, building_observers)
         sight_timer = 0.0
     var changed: bool = visibility.advance(navigation, 128)
     if force:
@@ -856,6 +861,16 @@ func _clamp_camera_focus() -> void:
     camera_focus.x = clampf(camera_focus.x, -limit, limit)
     camera_focus.z = clampf(camera_focus.z, -limit, limit)
 
+func _input(event: InputEvent) -> void:
+    # Keep ownership of a placement gesture when the finger crosses a panel.
+    # Fresh touches still go through the GUI before reaching the battlefield.
+    if not placement_touch_active or event.device == InputEvent.DEVICE_ID_EMULATION:
+        return
+    if event is InputEventScreenTouch:
+        _handle_touch(event)
+    elif event is InputEventScreenDrag:
+        _handle_drag(event)
+
 func _unhandled_input(event: InputEvent) -> void:
     # UI widgets consume their input before _unhandled_input. Never react to an
     # Android emulated mouse event as if it were an independent finger gesture.
@@ -898,7 +913,14 @@ func _handle_touch(touch: InputEventScreenTouch) -> void:
             touch_tracking = true
             touch_dragged = false
             touch_start = touch.position
+            if construction.placing != &"":
+                placement_touch_active = true
+                placement_had_candidate = construction.has_candidate
+                placement_previous_candidate = construction.candidate
+                _stop_camera_travel()
+                _move_placement_preview(touch.position)
         else:
+            _restore_placement_preview()
             _stop_camera_travel()
             pinch_used = true
             touch_tracking = false
@@ -908,12 +930,16 @@ func _handle_touch(touch: InputEventScreenTouch) -> void:
     else:
         touch_points.erase(touch.index)
         if touch.canceled or pinch_used:
+            if touch.canceled:
+                _restore_placement_preview()
             touch_tracking = false
             touch_dragged = false
             pinch_distance = 0.0
         elif touch_tracking and touch.index == touch_index:
             touch_tracking = false
-            if not touch_dragged:
+            if placement_touch_active:
+                _move_placement_preview(touch.position)
+            elif not touch_dragged:
                 if RTSDiagnostics.enabled:
                     RTSDiagnostics.event("input", "tap", {"at": str(touch.position)})
                 _handle_tap(touch.position)
@@ -925,6 +951,7 @@ func _handle_touch(touch: InputEventScreenTouch) -> void:
                 RTSDiagnostics.event("camera", "pinch_end", {"zoom": camera_zoom})
             pinch_used = false
             touch_index = -1
+            placement_touch_active = false
     get_viewport().set_input_as_handled()
 
 func _handle_drag(drag: InputEventScreenDrag) -> void:
@@ -939,6 +966,11 @@ func _handle_drag(drag: InputEventScreenDrag) -> void:
             _clamp_camera_focus()
         pinch_distance = distance
     elif touch_tracking and drag.index == touch_index:
+        if placement_touch_active:
+            touch_dragged = true
+            _move_placement_preview(drag.position)
+            get_viewport().set_input_as_handled()
+            return
         if not touch_dragged:
             if drag.position.distance_to(touch_start) < TOUCH_DRAG_THRESHOLD:
                 return
@@ -948,6 +980,28 @@ func _handle_drag(drag: InputEventScreenDrag) -> void:
             return
         _pan_camera(drag.relative)
     get_viewport().set_input_as_handled()
+
+func _move_placement_preview(at: Vector2) -> void:
+    if construction.placing == &"" or not get_viewport().get_visible_rect().has_point(at):
+        return
+    for control in [build_panel, production_panel, minimap, build_button.get_parent()]:
+        if control.visible and control.get_global_rect().has_point(at):
+            return
+    var point: Variant = _screen_to_ground(at)
+    if point != null:
+        construction.choose(point, self)
+        build_panel.refresh()
+
+func _restore_placement_preview() -> void:
+    if not placement_touch_active or construction.placing == &"":
+        return
+    construction.has_candidate = placement_had_candidate
+    construction.candidate = placement_previous_candidate
+    if not placement_had_candidate:
+        construction.preview.hide()
+    else:
+        construction.refresh_preview(self)
+    build_panel.refresh()
 
 func _notification(what: int) -> void:
     if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
@@ -989,6 +1043,7 @@ func _reset_touch_state() -> void:
     pinch_distance = 0.0
     touch_tracking = false
     touch_dragged = false
+    placement_touch_active = false
 
 func _pan_camera(delta_pixels: Vector2) -> void:
     # Previous camera_zoom * 0.018 shifted ~80 world units per 200 px swipe:
