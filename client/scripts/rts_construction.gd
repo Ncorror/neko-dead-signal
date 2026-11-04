@@ -3,11 +3,15 @@ extends RefCounted
 
 const FACTORY := &"factory"
 const OUTPOST := &"outpost"
+const EXTRACTOR := &"extractor"
+const GENERATOR := &"generator"
 const WORK := preload("res://scripts/rts_production.gd")
 const CLEARANCE := 0.75
 const DEFINITIONS := {
-    FACTORY: {"cost": 200, "seconds": 8.0, "size": Vector3(3.2, 1.6, 3.2)},
-    OUTPOST: {"cost": 100, "seconds": 5.0, "size": Vector3(2, 0.8, 2)}
+    FACTORY: {"cost": 200, "seconds": 8.0, "size": Vector3(3.2, 1.6, 3.2), "power": 4},
+    OUTPOST: {"cost": 100, "seconds": 5.0, "size": Vector3(2, 0.8, 2), "power": 2},
+    EXTRACTOR: {"cost": 150, "seconds": 8.0, "size": Vector3(3, 1.5, 3), "power": 4},
+    GENERATOR: {"cost": 100, "seconds": 6.0, "size": Vector3(2.4, 1.4, 2.4), "capacity": 12}
 }
 
 var buildings: Array[Dictionary] = []
@@ -24,11 +28,19 @@ var _connected_cells: Dictionary = {}
 func title(kind: StringName) -> String:
     if kind == FACTORY:
         return "ПОЛЕВОЙ ЗАВОД" if GameState.faction_index == 0 else "УЗЕЛ СИНТЕЗА"
+    if kind == EXTRACTOR:
+        return "ДОБЫВАЮЩИЙ КОМПЛЕКС" if GameState.faction_index == 0 else "СБОРЩИК МАТЕРИИ"
+    if kind == GENERATOR:
+        return "ЭЛЕКТРОСТАНЦИЯ" if GameState.faction_index == 0 else "ЭНЕРГОУЗЕЛ"
     return "РАЗВЕДПОСТ" if GameState.faction_index == 0 else "СЕНСОРНЫЙ ШПИЛЬ"
+
+func power_text(kind: StringName) -> String:
+    var spec: Dictionary = DEFINITIONS[kind]
+    return "+%d энергии" % int(spec["capacity"]) if spec.has("capacity") else "%d энергии" % int(spec["power"])
 
 func register_initial(node: Node3D, work) -> void:
     buildings.append({"id": 1, "kind": FACTORY, "node": node, "work": work,
-        "remaining": 0.0, "ready": true, "cost": 0, "label": null,
+        "remaining": 0.0, "ready": true, "powered": true, "cost": 0, "label": null,
         "exit": node.position + Vector3(4, 0, 0), "rally": node.position + Vector3(4, 0, -4)})
 
 func begin(kind: StringName, op) -> void:
@@ -100,8 +112,12 @@ func validate(kind: StringName, at: Vector3, op) -> String:
     for unit in op.units:
         if clearance.has_point(Vector2(unit.position.x, unit.position.z)):
             return "Сначала отведи бойца с площадки."
-    if op.sentry.hull > 0 and clearance.has_point(Vector2(op.sentry.position.x, op.sentry.position.z)):
-        return "Площадка занята."
+    for enemy in op._active_enemies():
+        if enemy.hull > 0 and clearance.has_point(Vector2(enemy.position.x, enemy.position.z)):
+            return "Площадка занята."
+    for point in op.objectives.positions():
+        if clearance.grow(0.3).has_point(Vector2(point.x, point.z)):
+            return "Нельзя перекрывать узел задания."
     for collection in [op.crates, op.supply_caches]:
         for supply in collection:
             if clearance.grow(0.3).has_point(Vector2(supply.position.x, supply.position.z)):
@@ -126,6 +142,7 @@ func validate(kind: StringName, at: Vector3, op) -> String:
     for collection in [op.crates, op.supply_caches]:
         for supply in collection:
             targets.append(supply.position)
+    targets.append_array(op.objectives.positions())
     # Test connectivity without publishing a changed navigation/visibility state.
     for cell in cells:
         op.navigation.grid.set_point_solid(cell, true)
@@ -173,9 +190,15 @@ func confirm(op) -> bool:
     if kind == FACTORY:
         op._make_box(Vector3(0, 1.6, 0), Vector3(2.3, 0.35, 2.3), color.lightened(0.2), body)
         op._make_box(Vector3(1.55, 0.4, 0), Vector3(0.15, 0.8, 1.3), Color("#62ecf0"), body)
-    else:
+    elif kind == OUTPOST:
         op._make_box(Vector3(0, 0.8, 0), Vector3(0.25, 2, 0.25), Color("#62ecf0"), body)
         op._make_box(Vector3(0, 2.5, 0), Vector3(1.1, 0.25, 1.1), color.lightened(0.4), body)
+    elif kind == GENERATOR:
+        for x in [-0.6, 0.6]:
+            op._make_box(Vector3(x, 1.4, 0), Vector3(0.45, 0.45, 1.8), Color("#d7d66e"), body)
+    else:
+        op._make_box(Vector3(0, 1.5, 0), Vector3(0.8, 1.0, 0.8), Color("#8bd6bb"), body)
+        op._make_box(Vector3(0, 1.8, 0), Vector3(2.6, 0.2, 0.3), Color("#62ecf0"), body)
     var label := Label3D.new()
     label.position.y = 3.3
     label.pixel_size = 0.012
@@ -185,10 +208,11 @@ func confirm(op) -> bool:
     if work != null:
         work.account = op.production.account
     var entry := {"id": serial, "kind": kind, "node": node, "body": body, "work": work,
-        "remaining": spec["seconds"], "ready": false, "cost": spec["cost"], "label": label,
+        "remaining": spec["seconds"], "ready": false, "powered": false, "income_age": 0.0,
+        "cost": spec["cost"], "label": label,
         "exit": at + Vector3(4, 0, 0), "rally": at + Vector3(4, 0, -4)}
     buildings.append(entry)
-    op.navigation.set_blocked_box(at, spec["size"], CLEARANCE, kind == FACTORY)
+    op.navigation.set_blocked_box(at, spec["size"], CLEARANCE, kind != OUTPOST)
     _update_visual(entry)
     cancel_preview()
     op._replan_after_building()
@@ -204,7 +228,8 @@ func _update_visual(entry: Dictionary) -> void:
     var fraction := 1.0 - float(entry["remaining"]) / float(spec["seconds"])
     entry["body"].scale.y = 0.25 + 0.75 * fraction
     entry["label"].text = "%s · %d%s" % [title(entry["kind"]), entry["id"],
-        "" if entry["ready"] else "\nСТРОИТСЯ · %d%%" % int(fraction * 100)]
+        ("" if entry.get("powered", false) else "\nНЕТ ПИТАНИЯ") if entry["ready"]
+        else "\nСТРОИТСЯ · %d%%" % int(fraction * 100)]
     entry["label"].modulate = Color("#9ce5e0") if entry["ready"] else Color("#ffd385")
 
 func tick(delta: float, op) -> void:
@@ -241,7 +266,7 @@ func observers() -> Array[Vector3]:
     var points: Array[Vector3] = []
     if enabled:
         for entry in buildings:
-            if entry["ready"] and entry["kind"] == OUTPOST:
+            if entry["ready"] and entry.get("powered", false) and entry["kind"] == OUTPOST:
                 points.append(entry["node"].position)
     return points
 

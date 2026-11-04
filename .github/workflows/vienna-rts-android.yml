@@ -11,6 +11,7 @@ on:
       - feat/orders-and-recon-v008
       - fix/defeat-sight-report-v009
       - fix/embedded-result-layout-v009
+      - feat/economy-power-objectives-v016
       - fix/project-audit-v015
       - feat/base-construction-v014
       - fix/return-fire-v013
@@ -212,6 +213,33 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-result-test.log; then
             exit 1
           fi
+      - name: Test operation income, power allocation and paused production
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_economy_power.tscn 2>&1 | tee build/rts-economy-power-test.log
+          grep -q 'RTS_ECONOMY_TEST_PASS' build/rts-economy-power-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-economy-power-test.log; then
+            exit 1
+          fi
+      - name: Test multiple targets, capture rewards and expanded mission goals
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_extended_objectives.tscn 2>&1 | tee build/rts-extended-objectives-test.log
+          grep -q 'RTS_OBJECTIVES_TEST_PASS' build/rts-extended-objectives-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-extended-objectives-test.log; then
+            exit 1
+          fi
+      - name: Play the full expanded operation with normal income and damage
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_extended_play.tscn 2>&1 | tee build/rts-extended-play-test.log
+          grep -q 'RTS_EXTENDED_PLAY_TEST_PASS' build/rts-extended-play-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-extended-play-test.log; then
+            exit 1
+          fi
       - name: Test Android Back layers, cancellation and ship confirmation
         shell: bash
         run: |
@@ -283,14 +311,13 @@ jobs:
           test -s client/build/REINA_DEAD_SIGNAL_RTS-debug.apk
           "$ANDROID_HOME/build-tools/36.1.0/apksigner" verify client/build/REINA_DEAD_SIGNAL_RTS-debug.apk
           sha256sum client/build/REINA_DEAD_SIGNAL_RTS-debug.apk | tee client/build/SHA256SUMS
-      - name: Prepare APK and offline device testbook
+      - name: Prepare tester APK
         shell: bash
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.15-debug.apk
-          cp docs/DEVICE_TEST_RTS_008.html build/tester-bundle/REINA_RTS-testbook.html
-      - name: Publish APK and testbook
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.16-debug.apk
+      - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:
           name: reina-rts-debug-${{ github.run_number }}

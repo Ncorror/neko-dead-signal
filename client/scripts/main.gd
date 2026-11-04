@@ -317,7 +317,7 @@ func _build_content(parent: VBoxContainer) -> void:
     right.add_child(_rule())
     if GameState.last_report.is_empty():
         right.add_child(_label("ЗАДАЧА ДЕСАНТА", 12, CYAN))
-        right.add_child(_label("Уничтожь стража и собери три контейнера. Эскорт тоже подбирает припасы.", 13, WHITE, false, true))
+        right.add_child(_label("Собери три припаса, захвати два узла и разверни добычу с энергетикой. Уничтожь охрану.", 13, WHITE, false, true))
     else:
         right.add_child(_label("ИТОГ ПОСЛЕДНЕЙ ВЫСАДКИ", 12, CYAN))
         right.add_child(_label(GameState.last_report, 13, WHITE, false, true))
@@ -333,7 +333,7 @@ func _build_footer(parent: VBoxContainer) -> void:
     parent.add_child(footer)
     footer.add_child(_label("REINA SYSTEMS  /  ОБЩИЙ ЭКСПЕДИЦИОННЫЙ ФЛОТ", 11, MUTED))
     footer.add_child(_stretch_horizontal())
-    footer.add_child(_label("ANDROID  •  PRE-ALPHA %s  •  AUDIT & STABILITY" % ProjectSettings.get_setting("application/config/version", "dev"), 11, Color("#87b2bf")))
+    footer.add_child(_label("ANDROID  •  PRE-ALPHA %s  •  ECONOMY & OBJECTIVES" % ProjectSettings.get_setting("application/config/version", "dev"), 11, Color("#87b2bf")))
 
 func _panel(parent: HBoxContainer, minimum_width: float) -> VBoxContainer:
     var outer := PanelContainer.new()

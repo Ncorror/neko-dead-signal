@@ -79,6 +79,8 @@ func _run() -> void:
         tree.quit(1)
         return
     op.set_physics_process(false)
+    op.economy.income_enabled = false # Isolate the existing fixed-budget scenario.
+    op.objectives.expanded = false # Retain original landing goals in this regression.
     _check(op.hero.hull == 100 and op.escort.hull == 80,
         "existing RTS combatant statistics changed")
     var mount: Node3D = op.hero.get_node_or_null("StaticCommanderPreview")

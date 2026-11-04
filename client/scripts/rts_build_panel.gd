@@ -10,6 +10,9 @@ var message: Label
 var progress: ProgressBar
 var factory_button: Button
 var outpost_button: Button
+var extractor_button: Button
+var generator_button: Button
+var catalog_grid: GridContainer
 var action_button: Button
 var cancel_button: Button
 var refresh_age := 0.0
@@ -40,6 +43,7 @@ func install(op) -> void:
     heading.add_child(close)
     balance = Label.new()
     balance.add_theme_font_size_override("font_size", 15)
+    balance.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     column.add_child(balance)
     message = Label.new()
     message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -49,8 +53,19 @@ func install(op) -> void:
     progress.custom_minimum_size.y = 14
     progress.show_percentage = false
     column.add_child(progress)
-    factory_button = _button(column, "", func() -> void: choose(&"factory"))
-    outpost_button = _button(column, "", func() -> void: choose(&"outpost"))
+    catalog_grid = GridContainer.new()
+    catalog_grid.columns = 2
+    catalog_grid.add_theme_constant_override("h_separation", 6)
+    catalog_grid.add_theme_constant_override("v_separation", 6)
+    column.add_child(catalog_grid)
+    factory_button = _button(catalog_grid, "", func() -> void: choose(&"factory"))
+    outpost_button = _button(catalog_grid, "", func() -> void: choose(&"outpost"))
+    extractor_button = _button(catalog_grid, "", func() -> void: choose(&"extractor"))
+    generator_button = _button(catalog_grid, "", func() -> void: choose(&"generator"))
+    for button in [factory_button, outpost_button, extractor_button, generator_button]:
+        button.custom_minimum_size.y = 58
+        button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        button.add_theme_font_size_override("font_size", 13)
     action_button = _button(column, "", _act)
     cancel_button = _button(column, "", _cancel)
     catalog()
@@ -112,24 +127,31 @@ func refresh() -> void:
         return
     var work = operation.construction
     var active: bool = operation.outcome == operation.Outcome.ACTIVE
-    balance.text = "ОБЩИЕ РЕСУРСЫ: %d" % operation.production.balance
+    balance.text = "РЕСУРСЫ: %d · %s" % [operation.production.balance, operation.economy.summary()]
+    catalog_grid.visible = mode == 0
     factory_button.visible = mode == 0
     outpost_button.visible = mode == 0
+    extractor_button.visible = mode == 0
+    generator_button.visible = mode == 0
     action_button.visible = mode != 0
     cancel_button.visible = mode != 0
     progress.visible = mode == 2 and not inspected.is_empty() and not inspected["ready"]
     factory_button.disabled = not active
     outpost_button.disabled = not active
+    extractor_button.disabled = not active
+    generator_button.disabled = not active
     cancel_button.disabled = not active
     if mode == 0:
         title.text = "СТРОИТЕЛЬСТВО"
-        message.text = "Собери ресурсы и разведай площадку. Завод добавляет очередь выпуска, пост даёт обзор."
-        factory_button.text = "%s · 200 / 8 с" % work.title(&"factory")
-        outpost_button.text = "%s · 100 / 5 с" % work.title(&"outpost")
+        message.text = "Добытчик даёт ресурсы, электростанция питает базу. Каждый завод имеет свою очередь."
+        factory_button.text = "%s\n200 / 8 с · 4 энергии" % work.title(&"factory")
+        outpost_button.text = "%s\n100 / 5 с · 2 энергии" % work.title(&"outpost")
+        extractor_button.text = "%s\n150 / 8 с · 4 энергии" % ("ДОБЫТЧИК" if GameState.faction_index == 0 else "СБОРЩИК")
+        generator_button.text = "%s\n100 / 6 с · +12 энергии" % work.title(&"generator")
     elif mode == 1:
         title.text = "ВЫБЕРИ ПЛОЩАДКУ"
         var reason: String = work.refresh_preview(operation)
-        message.text = "%s · %d ресурсов\n%s" % [work.title(work.placing),
+        message.text = "%s · %s · %d ресурсов\n%s" % [work.title(work.placing), work.power_text(work.placing),
             work.DEFINITIONS.get(work.placing, {"cost": 0})["cost"],
             "Место свободно. Подтверди строительство." if reason.is_empty() else reason]
         action_button.text = "ПОСТРОИТЬ"
@@ -138,8 +160,10 @@ func refresh() -> void:
     elif not inspected.is_empty():
         title.text = "%s · %d" % [work.title(inspected["kind"]), inspected["id"]]
         var ready: bool = inspected["ready"]
-        message.text = ("Своя очередь производства. Общий запас ресурсов." if inspected["kind"] == &"factory"
-            else "Даёт текущий обзор вокруг поста, пока операция продолжается.") if ready else "Развёртывание · осталось %d с" % ceili(inspected["remaining"])
+        var descriptions := {&"factory": "Своя очередь выпуска.", &"outpost": "Обзор ближайшей территории.",
+            &"extractor": "+10 ресурсов каждые 5 секунд работы.", &"generator": "+12 мощности для всей базы."}
+        message.text = ("%s\n%s · %s" % [descriptions[inspected["kind"]], work.power_text(inspected["kind"]),
+            "РАБОТАЕТ" if inspected.get("powered", false) else "НЕТ ПИТАНИЯ"]) if ready else "Развёртывание · осталось %d с" % ceili(inspected["remaining"])
         progress.value = 100.0 * (1.0 - float(inspected["remaining"]) / float(work.DEFINITIONS[inspected["kind"]]["seconds"]))
         action_button.visible = ready
         action_button.text = "ОТКРЫТЬ ЗАВОД" if inspected["kind"] == &"factory" else "СТРОИТЬ ЕЩЁ"

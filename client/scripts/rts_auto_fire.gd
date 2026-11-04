@@ -32,6 +32,11 @@ func set_enabled(value: bool, op) -> void:
     if not enabled:
         stop(op)
 
+func enemy_destroyed(enemy, op) -> void:
+    for unit in memory.keys():
+        if memory[unit]["target"] == enemy:
+            cancel(unit, op)
+
 func record_hit(unit, aggressor, op) -> void:
     if not enabled or unit.hull <= 0 or has_player_order(unit, op) \
         or not op.visibility.is_visible(aggressor.position):
@@ -94,9 +99,22 @@ func update_motion(unit, delta: float, op) -> void:
     op.orders_ui_dirty = true
 
 func try_fire(unit, op) -> bool:
-    var enemy = op.sentry
-    if not enabled or op.outcome != op.Outcome.ACTIVE or unit.hull <= 0 or enemy.hull <= 0 \
-        or not op.visibility.is_visible(enemy.position) or not op._in_firing_position(unit, enemy):
+    if not enabled or op.outcome != op.Outcome.ACTIVE or unit.hull <= 0:
+        return false
+    var enemy = null
+    var best := INF
+    var aggressor = memory.get(unit, {}).get("target", null)
+    for candidate in op._active_enemies():
+        if candidate.hull <= 0 or not op.visibility.is_visible(candidate.position) or not op._in_firing_position(unit, candidate):
+            continue
+        var distance: float = unit.position.distance_squared_to(candidate.position)
+        if candidate == aggressor:
+            enemy = candidate
+            break
+        if distance < best:
+            best = distance
+            enemy = candidate
+    if enemy == null:
         return false
     op._face_direction(unit, enemy.position - unit.position)
     op._shoot(unit, enemy, &"automatic")

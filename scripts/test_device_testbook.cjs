@@ -7,7 +7,7 @@ const {pathToFileURL}=require('node:url');
 
 (async()=>{
   const root=path.resolve(__dirname,'..');
-  const version=/config\/version="([^"]+)"/.exec(fs.readFileSync(path.join(root,'client/project.godot'),'utf8'))[1];
+  const version=/<select id="tested-version"><option value="([^"]+)"/.exec(fs.readFileSync(path.join(root,'docs/DEVICE_TEST_RTS_008.html'),'utf8'))[1];
   const url=pathToFileURL(path.join(root,'docs/DEVICE_TEST_RTS_008.html')).href;
   const launch={args:['--no-sandbox']};
   if(process.env.REINA_CHROMIUM_EXECUTABLE)launch.executablePath=process.env.REINA_CHROMIUM_EXECUTABLE;

@@ -126,6 +126,8 @@ func _run() -> void:
     await tree.scene_changed
     var op = tree.current_scene
     op.set_physics_process(false)
+    op.economy.income_enabled = false # Isolate the existing fixed-budget scenario.
+    op.objectives.expanded = false # Retain original landing goals in this regression.
     for frame in range(20):
         await tree.process_frame
     var original_zoom: float = op.camera_zoom
