@@ -54,9 +54,9 @@ func _valid(root: Variant) -> bool:
             return false
         var seen: Array = []
         for relay in item["relays"]:
-            if not (relay is int or relay is float) or relay != int(relay) or relay < 0 or relay > 2 or seen.has(relay):
+            if not (relay is int or relay is float) or relay != int(relay) or relay < 0 or relay > 2 or seen.has(int(relay)):
                 return false
-            seen.append(relay)
+            seen.append(int(relay))
         if (not item["accepted"] and not seen.is_empty()) or (item["claimed"] and (not item["accepted"] or seen.size() != 3)):
             return false
         for coordinate in item["position"]:
@@ -76,6 +76,14 @@ func _read(path: String) -> Variant:
     var parser := JSON.new()
     if parser.parse(file.get_as_text()) != OK or not _valid(parser.data):
         return null
+    # JSON numbers load as floats. Canonical integer IDs keep Array.has and
+    # duplicate checks identical before and after a process restart.
+    parser.data["version"] = SCHEMA
+    for item in parser.data["characters"].values():
+        var ids: Array = []
+        for relay in item["relays"]:
+            ids.append(int(relay))
+        item["relays"] = ids
     return parser.data
 
 func _write_temp(path: String, value: Dictionary) -> bool:

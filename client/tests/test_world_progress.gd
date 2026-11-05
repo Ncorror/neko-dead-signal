@@ -34,7 +34,8 @@ func _ready() -> void:
     var reloaded = STORE.new()
     _check(reloaded.open_profile(TEST_PATH, 0, 0) and reloaded.state()["relays"] == [0]
         and reloaded.state()["position"] == [-5.25, 17.75] and reloaded.state()["zoom"] == 12.5,
-        "app-style reload lost quest, exact position or zoom")
+        "app-style reload lost quest, exact position or zoom: " + str(reloaded.state()))
+    _check(reloaded.activate(0) and reloaded.state()["relays"] == [0], "reload made an activated relay collectible twice")
     _check(reloaded.activate(1) and reloaded.activate(2) and reloaded.claim_reward(), "quest could not be completed")
     for attempt in range(4):
         _check(reloaded.claim_reward(), "idempotent reward claim was rejected")
