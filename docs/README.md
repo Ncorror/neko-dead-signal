@@ -19,8 +19,9 @@
 
 ## Целевой дизайн и ресурсы
 
-- [GDD v0.2](ONLINE_WORLD_GDD_v0.2.md) — целевая MMO-RTS, не список уже выпущенных механик.
+- [Актуальный GDD v0.3](DEAD_SIGNAL_MMORTS_GDD_v0.3.md) — MMO-мир, обычные данжи, стратегические суперданжи и еженедельные осады. [GDD v0.2](ONLINE_WORLD_GDD_v0.2.md) оставлен как исторический RTS-дизайн; ни один документ не означает готовый MMO-сервер.
 - [Независимость и получение героинь](COMMANDER_INDEPENDENCE_AND_MESHY_PLAN_2026-11-04.md), [досье командиров](COMMANDER_ROSTER_AND_ANIMATIONS_v1.md).
+- [Утверждённый канон Миры Кейд](MIRA_KADE_HEALER_MASS_HEAL_DESIGN_v0.1.md) — хил/инженер, боевое воскрешение, «Нанополе», пистолет, «Электроимпульс» и уникальный дрон МЕД/БОЙ; игровые механики ещё не реализованы.
 - [Снайперская роль Лиры](LYRA_VOSS_SNIPER_COMBAT_DESIGN_v1.md), [кандидаты её анимаций](LYRA_VOSS_MESHY_SNIPER_ANIMATIONS_v1.md).
 - [Meshy-пайплайн](MESHY_PIPELINE.md), [матрица анимаций](ANIMATION_REQUIREMENTS_RTS.md), [исходники арта](../assets/art/commanders-v1/README.md), [каталог внешнего архива](DRIVE_CHARACTER_ARCHIVE_2026-11-04.md).
 
