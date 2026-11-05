@@ -1,6 +1,8 @@
 # REINA: DEAD SIGNAL — RTS
 
-**СТАТУС: PRE-ALPHA 0.0.20 / Android / Godot 4.7.2.** Работает локальный RTS-прототип; целевое направление — MMORTS / Strategic MMORPG. MMO-мир и мультиплеер ещё не реализованы.
+**СТАТУС: PRE-ALPHA 0.0.20 / Android / Godot 4.7.2.** Работает локальный RTS-прототип. MMO-мир и мультиплеер ещё не реализованы.
+
+**Текущий долгосрочный канон — MMORTS / Strategic MMORPG:** открытый MMO-мир, обычные данжи, стратегические суперданжи и еженедельные клановые осады; нынешний клиент 0.0.20 остаётся локальным RTS-прототипом, а не готовым MMO. [GDD v0.3](docs/DEAD_SIGNAL_MMORTS_GDD_v0.3.md), [канон Миры Кейд](docs/MIRA_KADE_HEALER_MASS_HEAL_DESIGN_v0.1.md). Старое описание чистой RTS ниже относится к прототипу и архивному дизайну.
 
 Актуальные документы и границы реализации — [docs/README.md](docs/README.md). Подписи узлов и плотной базы 0.0.20 — [OPERATION_LABELS_020.md](docs/OPERATION_LABELS_020.md). Победное прохождение 0.0.19 на Android — [отчёт](docs/DEVICE_VICTORY_019_2026-11-05.md). Утверждённые радиусы: штаб 15, здания 12, пост 18 — [HEADQUARTERS_SIGHT_019.md](docs/HEADQUARTERS_SIGHT_019.md).
 

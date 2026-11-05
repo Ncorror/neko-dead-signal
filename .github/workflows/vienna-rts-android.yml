@@ -100,7 +100,7 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log; then
             exit 1
           fi
-      - name: Test dense-base captions at native sizes and camera zooms
+      - name: Test dense-base captions, power warnings and camera zooms
         shell: bash
         run: |
           set -Eeuo pipefail

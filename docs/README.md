@@ -21,7 +21,8 @@
 ## Целевой дизайн и ресурсы
 
 - [GDD v0.3](DEAD_SIGNAL_MMORTS_GDD_v0.3.md) — актуальная MMORTS / Strategic MMORPG: личный герой в мире/обычных данжах, стратегические операции в суперданжах и осадах; проект, не уже выполненная миграция.
-- [Пять классов и героини](MMORTS_FIVE_CLASSES_AND_HEROINES_v0.1.md), [целитель и дрон Миры](MIRA_KADE_HEALER_MASS_HEAL_DESIGN_v0.1.md) — согласованные решения и оставшиеся вопросы; способности ещё не реализованы.
+- [Пять классов и героини](MMORTS_FIVE_CLASSES_AND_HEROINES_v0.1.md) — согласованные решения и оставшиеся вопросы.
+- [Утверждённый канон Миры Кейд](MIRA_KADE_HEALER_MASS_HEAL_DESIGN_v0.1.md) — хил/инженер, боевое воскрешение, «Нанополе», пистолет, «Электроимпульс» и уникальный дрон МЕД/БОЙ; игровые механики ещё не реализованы.
 - [Независимость и получение героинь](COMMANDER_INDEPENDENCE_AND_MESHY_PLAN_2026-11-04.md), [досье командиров](COMMANDER_ROSTER_AND_ANIMATIONS_v1.md).
 - [Снайперская роль Лиры](LYRA_VOSS_SNIPER_COMBAT_DESIGN_v1.md), [кандидаты её анимаций](LYRA_VOSS_MESHY_SNIPER_ANIMATIONS_v1.md).
 - [Meshy-пайплайн](MESHY_PIPELINE.md), [матрица анимаций](ANIMATION_REQUIREMENTS_RTS.md), [исходники арта](../assets/art/commanders-v1/README.md), [каталог внешнего архива](DRIVE_CHARACTER_ARCHIVE_2026-11-04.md).
