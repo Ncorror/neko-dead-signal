@@ -7,7 +7,9 @@ const FIT := preload("res://scripts/rts_character_fit.gd")
 const DIAGNOSTICS := preload("res://scripts/rts_diagnostics_ui.gd")
 const AMINA := "res://assets/characters/amina/preview.glb"
 const LIMIT := 30.0
-const SPEED := 5.8
+const SPEED := 4.2
+const PAN_PREVIEW_SECONDS := 1.5
+const GOAL_PREVIEW_SECONDS := 4.0
 const NPC_AT := Vector3(-18, 0, 11)
 const RELAY_AT := [Vector3(-19, 0, -16), Vector3(17, 0, -18), Vector3(19, 0, 16)]
 const COVER := [
@@ -30,9 +32,10 @@ var target_marker: MeshInstance3D
 var camera: Camera3D
 var focus := Vector3.ZERO
 var rendered_focus := Vector3.ZERO
-var zoom := 20.0
-var rendered_zoom := 20.0
+var zoom := PROGRESS.DEFAULT_ZOOM
+var rendered_zoom := PROGRESS.DEFAULT_ZOOM
 var following := true
+var preview_seconds := 0.0
 var status: Label
 var quest_label: Label
 var save_label: Label
@@ -45,6 +48,7 @@ var stop_button: Button
 var minus_button: Button
 var plus_button: Button
 var return_button: Button
+var logs_button: Button
 var conversation: ConfirmationDialog
 var journal: AcceptDialog
 var notice: AcceptDialog
@@ -69,6 +73,8 @@ func _ready() -> void:
     var restored := Vector3(float(saved["position"][0]), 0, float(saved["position"][1]))
     hero.position = restored if navigation.is_walkable(navigation.world_to_cell(restored)) else PROGRESS.SPAWN
     zoom = float(saved["zoom"])
+    if saved.get("camera_preset", 1) != PROGRESS.CAMERA_PRESET:
+        zoom = minf(zoom, PROGRESS.DEFAULT_ZOOM)
     rendered_zoom = zoom
     focus = hero.position
     rendered_focus = focus
@@ -244,8 +250,8 @@ func _create_ui() -> void:
         bar.add_child(button)
     diagnostics_panel = DIAGNOSTICS.new()
     add_child(diagnostics_panel)
-    if RTSDiagnostics.enabled:
-        bar.add_child(_button("ЛОГИ", diagnostics_panel._open))
+    diagnostics_panel.install(self, bar)
+    logs_button = diagnostics_panel.open_button
     bar.add_child(return_button)
     bottom_panel = PanelContainer.new()
     bottom_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -257,7 +263,7 @@ func _create_ui() -> void:
     var bottom := VBoxContainer.new()
     bottom_panel.add_child(bottom)
     save_label = _label(bottom, "Прогресс сохраняется на устройстве.", 14)
-    _label(bottom, "Касание — идти / подойти к объекту. Свайп — камера. Два пальца — масштаб.", 14)
+    _label(bottom, "Касание — идти / подойти. Камера следует за героем. Свайп — осмотр. Два пальца — масштаб.", 14)
     conversation = ConfirmationDialog.new()
     conversation.title = "Связист Вега · Сигнал с берега"
     conversation.cancel_button_text = "ПОЗЖЕ"
@@ -318,9 +324,12 @@ func _show_goal() -> void:
                 focus = RELAY_AT[i]
                 break
     following = false
+    preview_seconds = GOAL_PREVIEW_SECONDS
 
 func _follow() -> void:
     following = true
+    preview_seconds = 0.0
+    focus = hero.position
 
 func _stop() -> void:
     route.clear()
@@ -381,6 +390,7 @@ func _input(event: InputEvent) -> void:
             elif event.position.distance_to(gesture_start) >= 16:
                 gesture_dragged = true
                 following = false
+                preview_seconds = PAN_PREVIEW_SECONDS
         get_viewport().set_input_as_handled()
     elif event is InputEventMouseButton:
         if event.button_index == MOUSE_BUTTON_LEFT:
@@ -413,6 +423,7 @@ func _reset_gesture() -> void:
 
 func _pan(pixels: Vector2) -> void:
     following = false
+    preview_seconds = PAN_PREVIEW_SECONDS
     focus -= Vector3(pixels.x, 0, pixels.y).limit_length(45) * zoom * 0.0014
     focus.x = clampf(focus.x, -LIMIT, LIMIT)
     focus.z = clampf(focus.z, -LIMIT, LIMIT)
@@ -454,12 +465,14 @@ func _move_to(point: Vector3) -> bool:
     route = planned
     route_index = 0
     interaction = -2
+    _follow()
     target_marker.position = route.back() + Vector3(0, 0.08, 0)
     target_marker.show()
     _event("move_order", {"at": str(point)})
     return true
 
 func _approach(target: int) -> void:
+    _follow()
     var at: Vector3 = NPC_AT if target == -1 else RELAY_AT[target]
     if hero.position.distance_to(at) <= 3.0:
         _stop()
@@ -546,11 +559,15 @@ func _process(delta: float) -> void:
     perf_age += delta
     perf_max_ms = maxf(perf_max_ms, delta * 1000)
     if perf_age >= 5:
-        _event("WORLD_PERF", {"fps": Engine.get_frames_per_second(), "max_frame_ms": snappedf(perf_max_ms, 0.1), "characters": 1, "route_points": route.size()})
+        _event("WORLD_PERF", {"fps": Engine.get_frames_per_second(), "max_frame_ms": snappedf(perf_max_ms, 0.1), "characters": 1, "route_points": route.size(), "camera_follow": following, "zoom": zoom, "speed": SPEED})
         perf_age = 0
         perf_max_ms = 0
 
 func _update_camera(delta: float) -> void:
+    if not following and contacts.is_empty() and not mouse_dragging and not _modal_open():
+        preview_seconds = maxf(0.0, preview_seconds - maxf(delta, 0.0))
+        if preview_seconds <= 0:
+            _follow()
     if following:
         focus = hero.position
     var weight := 1.0 - exp(-clampf(delta, 0, 0.1) * 8)
@@ -558,6 +575,16 @@ func _update_camera(delta: float) -> void:
     rendered_zoom = lerpf(rendered_zoom, zoom, weight)
     camera.position = rendered_focus + Vector3(0, rendered_zoom, rendered_zoom * 0.95)
     camera.look_at(rendered_focus + Vector3.UP)
+    # Aim at the usable playfield centre, accounting for the top and bottom HUD.
+    # Translate the camera without changing its angle or movement plane.
+    var bounds := camera.get_viewport().get_visible_rect()
+    var top: float = top_panel.get_global_rect().end.y
+    var bottom: float = bottom_panel.get_global_rect().position.y
+    if bottom - top > 200:
+        var aim := Vector2(bounds.get_center().x, (top + bottom) * 0.5)
+        var target := rendered_focus + Vector3.UP
+        var depth := -camera.to_local(target).z
+        camera.position += target - camera.project_position(aim, depth)
 
 func _checkpoint() -> bool:
     if not progress.writable:

@@ -2,6 +2,7 @@ extends Node
 ## Unified debug-only diagnostics UI, shareable text via clipboard, ZIP via user://.
 
 var popup: AcceptDialog
+var open_button: Button
 
 func install(owner_node: Node, button_bar: Container) -> void:
     if not RTSDiagnostics.enabled:
@@ -16,6 +17,7 @@ func install(owner_node: Node, button_bar: Container) -> void:
     popup.custom_action.connect(_on_action)
     owner_node.add_child(popup)
     var btn := Button.new()
+    open_button = btn
     btn.text = "ЛОГИ"
     btn.custom_minimum_size = Vector2(94, 47)
     btn.pressed.connect(_open)
