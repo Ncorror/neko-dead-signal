@@ -3,6 +3,8 @@ extends RefCounted
 
 const DEFAULT_PATH := "user://world/progress-v1.json"
 const SCHEMA := 1
+const CAMERA_PRESET := 2
+const DEFAULT_ZOOM := 16.0
 const REWARD_XP := 100
 const REWARD_CREDITS := 75
 const SPAWN := Vector3(-18, 0, 18)
@@ -36,7 +38,7 @@ func open_profile(path: String, faction: int, officer: int) -> bool:
 func state() -> Dictionary:
     return data["characters"].get(character_id, {
         "accepted": false, "relays": [], "claimed": false,
-        "position": [SPAWN.x, SPAWN.z], "zoom": 20.0}).duplicate(true)
+        "position": [SPAWN.x, SPAWN.z], "zoom": DEFAULT_ZOOM, "camera_preset": CAMERA_PRESET}).duplicate(true)
 
 func _valid(root: Variant) -> bool:
     if not root is Dictionary or root.get("version") != SCHEMA or not root.get("characters") is Dictionary:
@@ -65,6 +67,9 @@ func _valid(root: Variant) -> bool:
         var zoom: Variant = item.get("zoom")
         if not (zoom is float or zoom is int) or not is_finite(float(zoom)) or zoom < 8 or zoom > 30:
             return false
+        var preset: Variant = item.get("camera_preset", 1)
+        if not (preset is int or preset is float) or preset != int(preset) or int(preset) not in [1, CAMERA_PRESET]:
+            return false
     return true
 
 func _read(path: String) -> Variant:
@@ -84,6 +89,7 @@ func _read(path: String) -> Variant:
         for relay in item["relays"]:
             ids.append(int(relay))
         item["relays"] = ids
+        item["camera_preset"] = int(item.get("camera_preset", 1))
     return parser.data
 
 func _write_temp(path: String, value: Dictionary) -> bool:
@@ -147,10 +153,11 @@ func claim_reward() -> bool:
 func checkpoint(point: Vector3, zoom: float) -> bool:
     var next := state()
     var coordinates := [point.x, point.z]
-    if next["position"] == coordinates and is_equal_approx(float(next["zoom"]), zoom):
+    if next["position"] == coordinates and is_equal_approx(float(next["zoom"]), zoom) and next.get("camera_preset", 1) == CAMERA_PRESET:
         return true
     next["position"] = coordinates
     next["zoom"] = zoom
+    next["camera_preset"] = CAMERA_PRESET
     return _commit(next)
 
 func experience() -> int:

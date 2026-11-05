@@ -59,7 +59,7 @@ func _run() -> void:
         await _settle()
         var bounds: Rect2 = zone.get_viewport().get_visible_rect()
         for control in [zone.top_panel, zone.bottom_panel, zone.journal_button, zone.goal_button,
-            zone.follow_button, zone.stop_button, zone.plus_button, zone.minus_button, zone.return_button]:
+            zone.follow_button, zone.stop_button, zone.plus_button, zone.minus_button, zone.logs_button, zone.return_button]:
             _check(bounds.encloses(control.get_global_rect()), "native UI clipped at " + str(size))
         var start := Vector2(bounds.size.x * 0.62, bounds.size.y * 0.57)
         var original: Vector3 = zone.hero.position
@@ -94,6 +94,30 @@ func _run() -> void:
         _check(zone.journal.visible, "journal button did not open the quest")
         zone.notification(NOTIFICATION_WM_GO_BACK_REQUEST)
         _check(not zone.journal.visible and not zone.return_dialog.visible, "Back did not close the journal first")
+        _press(zone.logs_button)
+        await _settle()
+        _check(zone.diagnostics_panel.popup != null and zone.diagnostics_panel.popup.visible,
+            "native world LOGS button did not open the installed diagnostics window")
+        var zip_button: Button = null
+        var copy_button: Button = null
+        for button in zone.diagnostics_panel.popup.find_children("*", "Button", true, false):
+            if button.text == "СОЗДАТЬ ZIP":
+                zip_button = button
+            elif button.text == "КОПИРОВАТЬ":
+                copy_button = button
+        _check(zip_button != null and copy_button != null, "world diagnostics export controls are missing")
+        if zip_button != null:
+            _press(zip_button)
+            await _settle()
+            _check(zone.diagnostics_panel.popup.dialog_text.contains("ZIP сохранён")
+                and FileAccess.file_exists(RTSDiagnostics.REPORT_DIR + "/report-0.zip"), "native diagnostics ZIP export failed")
+        if copy_button != null and DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+            _press(copy_button)
+            await _settle()
+            _check(DisplayServer.clipboard_get().contains("version="), "native diagnostics clipboard action failed")
+        zone.notification(NOTIFICATION_WM_GO_BACK_REQUEST)
+        _check(not zone.diagnostics_panel.popup.visible and not zone.return_dialog.visible,
+            "Back did not close diagnostics before asking to leave the zone")
         _press(zone.goal_button)
         _check(zone.focus == zone.NPC_AT and not zone.following and zone.route.is_empty(), "goal camera button issued movement")
         _press(zone.follow_button)
@@ -145,5 +169,5 @@ func _run() -> void:
     _clean()
     GameState.world_progress_path = "user://world/progress-v1.json"
     if failures == 0:
-        print("WORLD_INPUT_TEST_PASS sizes=3 tap=ok pan=ok pinch=ok cancel=ok ui=ok back=ok limits=ok corrupt_exit=ok")
+        print("WORLD_INPUT_TEST_PASS sizes=3 tap=ok pan=ok pinch=ok cancel=ok ui=ok logs=native zip=ok back=ok limits=ok corrupt_exit=ok")
     get_tree().quit(0 if failures == 0 else 1)

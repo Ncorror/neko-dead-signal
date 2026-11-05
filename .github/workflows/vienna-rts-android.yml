@@ -14,6 +14,7 @@ on:
       - fix/headquarters-sight-v019
       - fix/victory-building-labels-v020
       - feat/world-zone-v021
+      - fix/world-camera-logs-v022
       - fix/base-sight-radius-v018
       - fix/building-sight-touch-v017
       - feat/economy-power-objectives-v016
@@ -127,6 +128,15 @@ jobs:
           timeout 90s godot --headless --path client res://tests/test_world_input.tscn 2>&1 | tee build/rts-world-input-test.log
           grep -q 'WORLD_INPUT_TEST_PASS' build/rts-world-input-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-input-test.log; then
+            exit 1
+          fi
+      - name: Test automatic world camera, walking speed and existing save migration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_world_camera.tscn 2>&1 | tee build/rts-world-camera-test.log
+          grep -q 'WORLD_CAMERA_TEST_PASS' build/rts-world-camera-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-camera-test.log; then
             exit 1
           fi
       - name: Test dense-base captions, power warnings and camera zooms
@@ -376,7 +386,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.21-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.22-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:
