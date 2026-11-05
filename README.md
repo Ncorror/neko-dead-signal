@@ -2,6 +2,8 @@
 
 **СТАТУС: PRE-ALPHA / Android / Godot 4.7.2.** Отдельная приватная научно-фантастическая онлайн-стратегия; не полноценный мультиплеер.
 
+**Текущий долгосрочный канон — MMORTS / Strategic MMORPG:** открытый MMO-мир, обычные данжи, стратегические суперданжи и еженедельные клановые осады; нынешний клиент 0.0.19 остаётся локальным RTS-прототипом, а не готовым MMO. [GDD v0.3](docs/DEAD_SIGNAL_MMORTS_GDD_v0.3.md), [канон Миры Кейд](docs/MIRA_KADE_HEALER_MASS_HEAL_DESIGN_v0.1.md). Старое описание чистой RTS ниже относится к прототипу и архивному дизайну.
+
 Актуальные документы и границы реализации — [docs/README.md](docs/README.md). Утверждённые радиусы 0.0.19: штаб 15, здания 12, пост 18 — [HEADQUARTERS_SIGHT_019.md](docs/HEADQUARTERS_SIGHT_019.md). Исходное исследование обзора 0.0.18 — [BASE_RECONNAISSANCE_018.md](docs/BASE_RECONNAISSANCE_018.md). Исправления размещения пальцем 0.0.17 — [BUILDING_SIGHT_AND_TOUCH_017.md](docs/BUILDING_SIGHT_AND_TOUCH_017.md). Экономика, электричество и расширенная операция 0.0.16 — [ECONOMY_AND_OBJECTIVES_016.md](docs/ECONOMY_AND_OBJECTIVES_016.md). Результаты аудита 0.0.15 — [AUDIT_2026-11-04.md](docs/AUDIT_2026-11-04.md).
 
 ## Зафиксированная игровая концепция
