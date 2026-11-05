@@ -11,7 +11,9 @@ func layout(camera: Camera3D, buildings: Array[Dictionary]) -> void:
     for entry in buildings:
         var label: Label3D = entry.get("map_label")
         if is_instance_valid(label):
-            key.append([entry["node"].global_transform, label.text, label.is_visible_in_tree(), label.get_aabb()])
+            # The shaped text mesh changes after deferred text/font updates.
+            # A billboard AABB is an inflated cube, unsuitable for text layout.
+            key.append([entry["node"].global_transform, label.text, label.is_visible_in_tree(), label.generate_triangle_mesh()])
     if key == _last_key:
         return
     _last_key = key
@@ -37,20 +39,23 @@ func layout(camera: Camera3D, buildings: Array[Dictionary]) -> void:
         occupied.append(slot)
 
 func _screen_rect(camera: Camera3D, label: Label3D) -> Rect2:
-    var box := label.get_aabb()
+    var mesh := label.generate_triangle_mesh()
+    if mesh == null:
+        return Rect2()
     var right := camera.global_basis.x
     var up := camera.global_basis.y
     var first := true
     var rect := Rect2()
-    for x in [box.position.x, box.end.x]:
-        for y in [box.position.y, box.end.y]:
-            var point := camera.unproject_position(label.global_position + right * x + up * y)
-            if first:
-                rect = Rect2(point, Vector2.ZERO)
-                first = false
-            else:
-                rect = rect.expand(point)
-    return rect
+    for vertex in mesh.get_faces():
+        var point := camera.unproject_position(label.global_position + right * vertex.x + up * vertex.y)
+        if first:
+            rect = Rect2(point, Vector2.ZERO)
+            first = false
+        else:
+            rect = rect.expand(point)
+    var origin := camera.unproject_position(label.global_position)
+    var outline := camera.unproject_position(label.global_position + right * label.outline_size * label.pixel_size)
+    return rect.grow(absf(outline.x - origin.x))
 
 func _nearest_slot(rect: Rect2, occupied: Array[Rect2], bounds: Rect2) -> Rect2:
     # Candidate edges give the nearest available vertical slot. Stable building

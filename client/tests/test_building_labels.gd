@@ -12,13 +12,17 @@ func _check(ok: bool, message: String) -> void:
         push_error("RTS_BUILDING_LABELS_TEST_FAIL " + message)
 
 func _mesh_bounds(camera: Camera3D, label: Label3D) -> Rect2:
-    var box := label.get_aabb()
+    var mesh := label.generate_triangle_mesh()
+    if mesh == null:
+        return Rect2()
+    var vertices := mesh.get_faces()
+    if vertices.is_empty():
+        return Rect2()
     var rect := Rect2(camera.unproject_position(label.global_position
-        + camera.global_basis.x * box.position.x + camera.global_basis.y * box.position.y), Vector2.ZERO)
-    for x in [box.position.x, box.end.x]:
-        for y in [box.position.y, box.end.y]:
-            rect = rect.expand(camera.unproject_position(label.global_position
-                + camera.global_basis.x * x + camera.global_basis.y * y))
+        + camera.global_basis.x * vertices[0].x + camera.global_basis.y * vertices[0].y), Vector2.ZERO)
+    for vertex in vertices:
+        rect = rect.expand(camera.unproject_position(label.global_position
+            + camera.global_basis.x * vertex.x + camera.global_basis.y * vertex.y))
     return rect
 
 func _settle(op) -> void:
@@ -82,12 +86,6 @@ func _check_base(faction: int, extra_generator: bool) -> void:
                 if op.view_camera.is_position_behind(anchor) or not get_viewport().get_visible_rect().has_point(op.view_camera.unproject_position(anchor)):
                     continue
                 var rect := _mesh_bounds(op.view_camera, label)
-                if size == Vector2i(1280, 720) and zoom == 10.0:
-                    var saved := label.position
-                    label.position = label.get_meta("map_anchor")
-                    var original := _mesh_bounds(op.view_camera, label)
-                    label.position = saved
-                    print("RTS_LABEL_TRACE faction=%d extra_generator=%s id=%d base=%s final=%s" % [faction, extra_generator, entry["id"], original, rect])
                 _check(rect.has_area(), "actual text mesh has no measurable bounds")
                 _check(get_viewport().get_visible_rect().encloses(rect), "caption clipped at " + str(size) + " zoom=" + str(zoom))
                 for other_index in range(visible.size()):
