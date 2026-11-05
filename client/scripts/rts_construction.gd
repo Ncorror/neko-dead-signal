@@ -8,6 +8,7 @@ const GENERATOR := &"generator"
 const WORK := preload("res://scripts/rts_production.gd")
 const CLEARANCE := 0.75
 const SITE_SIGHT_RADIUS := 8.0
+const HEADQUARTERS_SIGHT_RADIUS := 15.0
 const BUILDING_SIGHT_RADIUS := 12.0
 const OUTPOST_SIGHT_RADIUS := 18.0
 const DEFINITIONS := {
@@ -41,8 +42,13 @@ func power_text(kind: StringName) -> String:
     var spec: Dictionary = DEFINITIONS[kind]
     return "+%d энергии" % int(spec["capacity"]) if spec.has("capacity") else "%d энергии" % int(spec["power"])
 
+func building_title(entry: Dictionary) -> String:
+    if entry.get("headquarters", false):
+        return "ШТАБ" if GameState.faction_index == 0 else "КОМАНДНЫЙ УЗЕЛ"
+    return title(entry["kind"])
+
 func register_initial(node: Node3D, work) -> void:
-    buildings.append({"id": 1, "kind": FACTORY, "node": node, "work": work,
+    buildings.append({"id": 1, "kind": FACTORY, "headquarters": true, "node": node, "work": work,
         "remaining": 0.0, "ready": true, "powered": true, "cost": 0, "label": null,
         "exit": node.position + Vector3(4, 0, 0), "rally": node.position + Vector3(4, 0, -4)})
 
@@ -281,14 +287,20 @@ func local_observers() -> Array[Vector3]:
             points.append(entry["node"].position)
     return points
 
+func sight_radius(entry: Dictionary) -> float:
+    if not entry["ready"]:
+        return SITE_SIGHT_RADIUS
+    if entry.get("headquarters", false):
+        return HEADQUARTERS_SIGHT_RADIUS
+    if entry["kind"] == OUTPOST and entry.get("powered", false):
+        return OUTPOST_SIGHT_RADIUS
+    return BUILDING_SIGHT_RADIUS
+
 func observer_radii() -> Array[float]:
     var radii: Array[float] = []
     if enabled:
         for entry in buildings:
-            var radius := SITE_SIGHT_RADIUS
-            if entry["ready"]:
-                radius = OUTPOST_SIGHT_RADIUS if entry["kind"] == OUTPOST and entry.get("powered", false) else BUILDING_SIGHT_RADIUS
-            radii.append(radius)
+            radii.append(sight_radius(entry))
     return radii
 
 func stop(op) -> int:

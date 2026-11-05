@@ -67,6 +67,10 @@ func _run() -> void:
     _check(sight.is_visible(Vector3(10, 0, 0)) and sight.was_explored(Vector3(10, 0, 0)),
         "building did not discover new terrain beyond the unit's radius")
     _check(not sight.is_visible(Vector3(13, 0, 0)), "ordinary building exceeded radius 12")
+    ranges[0] = 15.0
+    sight.request_snapshot(empty, false, center, ranges)
+    _scan(sight, nav)
+    _check(sight.is_visible(Vector3(14, 0, 0)) and not sight.is_visible(Vector3(16, 0, 0)), "headquarters radius must be 15")
     ranges[0] = 18.0
     _check(sight.request_snapshot(empty, false, center, ranges), "stationary source radius change did not trigger an update")
     _scan(sight, nav)
@@ -101,12 +105,19 @@ func _run() -> void:
         op.production.credit(3000)
         op.hero.position = Vector3(-85, 0, 80)
         op._update_visibility(0, true)
-        var base_ring: Vector3 = op.factory.position + Vector3(-10, 0, 0)
+        var headquarters: Dictionary = op.construction.buildings[0]
+        _check(headquarters.get("headquarters", false) and op.construction.sight_radius(headquarters) == 15.0,
+            "starting headquarters did not receive its distinct radius")
+        op._open_factory()
+        _check(op.production_panel.title.text.begins_with("ШТАБ" if faction == 0 else "КОМАНДНЫЙ УЗЕЛ")
+            and op.production_panel.balance_label.text.contains("ОБЗОР: 15"), "headquarters card did not show its actual role/range")
+        op.production_panel.hide()
+        var base_ring: Vector3 = op.factory.position + Vector3(-14, 0, 0)
         op.sentry.position = base_ring
         op._apply_enemy_visibility()
         _check(op.visibility.is_visible(base_ring) and op.sentry.visible,
             "base did not reveal an enemy beyond infantry sight without troops nearby")
-        op.sentry.position = op.factory.position + Vector3(-14, 0, 0)
+        op.sentry.position = op.factory.position + Vector3(-16, 0, 0)
         op._apply_enemy_visibility()
         _check(not op.sentry.visible, "base leaked an enemy beyond its new range")
         op.sentry.position = Vector3(80, 0, -80)
@@ -140,6 +151,10 @@ func _run() -> void:
         op._update_visibility(0, true)
         _check(not post["powered"] and not op.visibility.is_visible(edge)
             and op.visibility.is_visible(Vector3(75, 0, 10)), "power loss did not reduce post range from 18 to 12")
+        var extra_factory: Dictionary = op.construction.buildings[1]
+        op._open_factory(extra_factory)
+        _check(not extra_factory.get("headquarters", false) and op.construction.sight_radius(extra_factory) == 12.0
+            and op.production_panel.balance_label.text.contains("ОБЗОР: 12"), "additional factory inherited headquarters range")
     if failures == 0:
-        print("RTS_BUILDING_SIGHT_TEST_PASS factions=2 unit=8 building=12 outpost=18 site=8 reveal=new enemy=ok power=ok city=12 max_snapshot_frames=%d wall_ms=%d" % [max_frames, wall_ms])
+        print("RTS_BUILDING_SIGHT_TEST_PASS factions=2 unit=8 headquarters=15 building=12 outpost=18 site=8 reveal=new enemy=ok power=ok city=12 max_snapshot_frames=%d wall_ms=%d" % [max_frames, wall_ms])
     get_tree().quit(0 if failures == 0 else 1)
