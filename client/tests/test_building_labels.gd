@@ -37,16 +37,18 @@ func _run() -> void:
         op.set_process(false)
         op.production.credit(5000)
         op.escort.position = Vector3(85, 0, 80)
-        var kinds: Array[StringName] = [&"extractor", &"generator", &"outpost", &"factory"]
+        var kinds: Array[StringName] = [&"extractor", &"generator", &"outpost"]
         for i in range(9):
             var at := Vector3(20 + (i % 3) * 6, 0, 44 + floori(i / 3.0) * 6)
             op.hero.position = at + Vector3(0, 0, 5)
             op._update_visibility(0, true)
-            var kind: StringName = kinds[i % kinds.size()]
+            # Factories need a free exit/rally lane on their right. Keep that
+            # lane outside the block instead of testing an illegal placement.
+            var kind: StringName = &"factory" if i % 3 == 2 else kinds[(i + floori(i / 3.0)) % kinds.size()]
             op.construction.begin(kind, op)
             op.construction.choose(at, op)
             var reason: String = op.construction.validate(kind, at, op)
-            _check(reason.is_empty() and op.construction.confirm(op), "dense-base fixture rejected: " + reason)
+            _check(reason.is_empty() and op.construction.confirm(op), "dense-base fixture %d %s at %s rejected: %s" % [i, kind, at, reason])
         op.construction.tick(9, op)
         op.economy.recalculate(op)
         # Cover both completed/powered captions and a warning with an extra line.
