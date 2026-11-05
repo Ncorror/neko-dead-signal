@@ -60,7 +60,7 @@ func _run() -> void:
         zone = get_tree().current_scene
         zone.set_physics_process(false)
         await _settle()
-        _check(zone.name == "WorldZone" and zone.find_children("WorldHero", "Node3D").size() == 1
+        _check(zone.name == "WorldZone" and zone.find_children("WorldHero", "Node3D", true, false).size() == 1
             and zone.get_node_or_null("FieldFactory") == null, "world did not open with exactly one personal hero")
         _check(not zone.progress.state()["accepted"], "fresh world retained an old quest")
         # NPC is approached by the same tap handler used by the phone.
