@@ -75,17 +75,26 @@ func _run() -> void:
                 op.camera_pose_initialized = false
                 await _settle(op)
                 var visible: Array[Rect2] = []
+                var visible_ids: Array[int] = []
                 for entry in op.construction.buildings:
                     var label: Label3D = entry["map_label"]
                     var anchor: Vector3 = entry["node"].to_global(label.get_meta("map_anchor"))
                     if op.view_camera.is_position_behind(anchor) or not get_viewport().get_visible_rect().has_point(op.view_camera.unproject_position(anchor)):
                         continue
                     var rect := _mesh_bounds(op.view_camera, label)
+                    if size == Vector2i(1280, 720) and zoom == 10.0:
+                        var saved := label.position
+                        label.position = label.get_meta("map_anchor")
+                        var original := _mesh_bounds(op.view_camera, label)
+                        label.position = saved
+                        print("RTS_LABEL_TRACE faction=%d id=%d base=%s final=%s" % [faction, entry["id"], original, rect])
                     _check(rect.has_area(), "actual text mesh has no measurable bounds")
                     _check(get_viewport().get_visible_rect().encloses(rect), "caption clipped at " + str(size) + " zoom=" + str(zoom))
-                    for other in visible:
-                        _check(not rect.intersects(other), "dense-base captions overlap at " + str(size) + " zoom=" + str(zoom))
+                    for other_index in range(visible.size()):
+                        _check(not rect.intersects(visible[other_index]), "dense-base captions %d/%d overlap at %s zoom=%s: %s / %s" % [
+                            entry["id"], visible_ids[other_index], size, zoom, rect, visible[other_index]])
                     visible.append(rect)
+                    visible_ids.append(entry["id"])
                     _check(not label.text.is_empty() and label.is_visible_in_tree(), "decluttering hid a building caption")
                 _check(visible.size() >= 3, "dense-base view did not exercise neighbouring captions")
                 var before: Array[Vector3] = []

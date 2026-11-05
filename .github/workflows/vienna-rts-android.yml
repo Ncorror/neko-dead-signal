@@ -100,6 +100,15 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log; then
             exit 1
           fi
+      - name: Test dense-base captions at native sizes and camera zooms
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_building_labels.tscn 2>&1 | tee build/rts-building-labels-test.log
+          grep -q 'RTS_BUILDING_LABELS_TEST_PASS' build/rts-building-labels-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-building-labels-test.log; then
+            exit 1
+          fi
       - name: Run AStar navigation regression in Godot
         shell: bash
         run: |
@@ -224,15 +233,6 @@ jobs:
           timeout 90s godot --headless --path client res://tests/test_building_sight.tscn 2>&1 | tee build/rts-building-sight-test.log
           grep -q 'RTS_BUILDING_SIGHT_TEST_PASS' build/rts-building-sight-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-building-sight-test.log; then
-            exit 1
-          fi
-      - name: Test dense-base captions at native sizes and camera zooms
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          timeout 90s godot --headless --path client res://tests/test_building_labels.tscn 2>&1 | tee build/rts-building-labels-test.log
-          grep -q 'RTS_BUILDING_LABELS_TEST_PASS' build/rts-building-labels-test.log
-          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-building-labels-test.log; then
             exit 1
           fi
       - name: Test owned building sight, narrow passage and native placement drag
