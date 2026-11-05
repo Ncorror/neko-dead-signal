@@ -12,6 +12,7 @@ on:
       - fix/defeat-sight-report-v009
       - fix/embedded-result-layout-v009
       - fix/headquarters-sight-v019
+      - fix/victory-building-labels-v020
       - fix/base-sight-radius-v018
       - fix/building-sight-touch-v017
       - feat/economy-power-objectives-v016
@@ -225,6 +226,15 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-building-sight-test.log; then
             exit 1
           fi
+      - name: Test dense-base captions at native sizes and camera zooms
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_building_labels.tscn 2>&1 | tee build/rts-building-labels-test.log
+          grep -q 'RTS_BUILDING_LABELS_TEST_PASS' build/rts-building-labels-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-building-labels-test.log; then
+            exit 1
+          fi
       - name: Test owned building sight, narrow passage and native placement drag
         shell: bash
         run: |
@@ -337,7 +347,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.19-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.20-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:

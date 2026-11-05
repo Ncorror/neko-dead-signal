@@ -47,9 +47,10 @@ func building_title(entry: Dictionary) -> String:
         return "ШТАБ" if GameState.faction_index == 0 else "КОМАНДНЫЙ УЗЕЛ"
     return title(entry["kind"])
 
-func register_initial(node: Node3D, work) -> void:
+func register_initial(node: Node3D, work, map_label: Label3D) -> void:
     buildings.append({"id": 1, "kind": FACTORY, "headquarters": true, "node": node, "work": work,
         "remaining": 0.0, "ready": true, "powered": true, "cost": 0, "label": null,
+        "map_label": map_label,
         "exit": node.position + Vector3(4, 0, 0), "rally": node.position + Vector3(4, 0, -4)})
 
 func begin(kind: StringName, op) -> void:
@@ -211,14 +212,16 @@ func confirm(op) -> bool:
     var label := Label3D.new()
     label.position.y = 3.3
     label.pixel_size = 0.012
+    label.outline_size = 4
     label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+    label.set_meta("map_anchor", label.position)
     node.add_child(label)
     var work = WORK.new() if kind == FACTORY else null
     if work != null:
         work.account = op.production.account
     var entry := {"id": serial, "kind": kind, "node": node, "body": body, "work": work,
         "remaining": spec["seconds"], "ready": false, "powered": false, "income_age": 0.0,
-        "cost": spec["cost"], "label": label,
+        "cost": spec["cost"], "label": label, "map_label": label,
         "exit": at + Vector3(4, 0, 0), "rally": at + Vector3(4, 0, -4)}
     buildings.append(entry)
     op.navigation.set_blocked_box(at, spec["size"], CLEARANCE, kind != OUTPOST)
@@ -236,7 +239,7 @@ func _update_visual(entry: Dictionary) -> void:
     var spec: Dictionary = DEFINITIONS[entry["kind"]]
     var fraction := 1.0 - float(entry["remaining"]) / float(spec["seconds"])
     entry["body"].scale.y = 0.25 + 0.75 * fraction
-    entry["label"].text = "%s · %d%s" % [title(entry["kind"]), entry["id"],
+    entry["label"].text = "%s · %d%s" % [title(entry["kind"]).replace(" ", "\n"), entry["id"],
         ("" if entry.get("powered", false) else "\nНЕТ ПИТАНИЯ") if entry["ready"]
         else "\nСТРОИТСЯ · %d%%" % int(fraction * 100)]
     entry["label"].modulate = Color("#9ce5e0") if entry["ready"] else Color("#ffd385")

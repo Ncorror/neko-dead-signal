@@ -72,6 +72,8 @@ func _run() -> void:
             op._issue_move(relay["node"].position)
             _advance(10)
         _check(relay["captured"], "survivor could not capture relay " + str(i + 1))
+        _check(relay["label"].text == "УЗЕЛ %d · ЗАХВАЧЕН" % (i + 1),
+            "capture/victory froze the relay label before its final state")
         if i == 0:
             op._open_factory()
             for extra in range(2):

@@ -108,13 +108,16 @@ func _run() -> void:
 
         op.hero.position = first["node"].position
         _advance(op, 3)
+        _check(first["label"].text.ends_with("%"), "stationary capture progress did not refresh")
         op.hero.position += Vector3(0, 0, 5)
         _advance(op, 0.1)
         _check(first["progress"] == 0 and not first["captured"], "capture continued after the area was abandoned")
+        _check(first["label"].text.ends_with("ЗАЙМИ ПОСЛЕ БОЯ"), "abandoned capture left stale progress text")
         var bank: int = op.production.balance
         op.hero.position = first["node"].position
         _advance(op, 6.2)
         _check(first["captured"] and op.production.balance == bank + 150, "first capture failed to pay exactly once")
+        _check(first["label"].text == "УЗЕЛ 1 · ЗАХВАЧЕН", "captured relay retained its percentage")
         _advance(op, 7)
         _check(op.production.balance == bank + 150, "captured relay paid repeatedly")
         op.hero.position = second["node"].position

@@ -22,6 +22,7 @@ const CONSTRUCTION := preload("res://scripts/rts_construction.gd")
 const BUILD_PANEL := preload("res://scripts/rts_build_panel.gd")
 const ECONOMY := preload("res://scripts/rts_economy.gd")
 const OBJECTIVES := preload("res://scripts/rts_objectives.gd")
+const BUILDING_LABELS := preload("res://scripts/rts_building_labels.gd")
 const STATIC_AMINA_WORLD_HEIGHT := 1.90
 const STATIC_AMINA_FRONT_YAW_DEGREES := 0.0
 
@@ -111,6 +112,7 @@ var camera_render_zoom: float = 22.0
 var camera_pose_initialized := false
 var camera_focus_response := CAMERA_FOCUS_RESPONSE
 var view_camera: Camera3D
+var building_labels = BUILDING_LABELS.new()
 var status_label: Label
 var unit_label: Label
 
@@ -299,13 +301,15 @@ func _create_factory() -> void:
     _make_box(Vector3(0, 1.6, 0), Vector3(2.3, 0.35, 2.3), color.lightened(0.2), factory)
     _make_box(Vector3(0, 1.95, 0), Vector3(0.4, 0.7, 0.4), Color("#62ecf0"), factory)
     var label := Label3D.new()
-    label.text = "ШТАБ" if GameState.faction_index == 0 else "КОМАНДНЫЙ УЗЕЛ"
+    label.text = "ШТАБ" if GameState.faction_index == 0 else "КОМАНДНЫЙ\nУЗЕЛ"
     label.position.y = 3.0
     label.pixel_size = 0.012
+    label.outline_size = 4
     label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+    label.set_meta("map_anchor", label.position)
     factory.add_child(label)
     navigation.set_blocked_box(factory.position, BATTLEFIELD.FACTORY_SIZE, 0.75)
-    construction.register_initial(factory, production)
+    construction.register_initial(factory, production, label)
     active_factory = construction.buildings[0]
 
 func _reinforcement_name() -> String:
@@ -1486,7 +1490,6 @@ func _physics_process(delta: float) -> void:
         sentry.tick(delta)
     enemy_ai.tick(delta, self)
     objectives.tick_defences(delta, self)
-    _apply_enemy_visibility()
     _check_crates()
     if not units.is_empty() and not objectives.complete(self):
         construction.tick(delta, self)
@@ -1507,6 +1510,9 @@ func _physics_process(delta: float) -> void:
                 RTSDiagnostics.event("production", "exit_state", {"blocked": work.exit_blocked, "factory": entry["id"]})
     if objectives.tick(delta, self):
         _update_status()
+    # Capture text must be committed before victory stops the next physics tick.
+    # It also tracks progress/reset when the fog snapshot itself is unchanged.
+    _apply_enemy_visibility()
     _update_visibility(delta)
     if units.is_empty():
         _finish(Outcome.DEFEAT)
@@ -1519,6 +1525,7 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
     _update_camera(delta)
+    building_labels.layout(view_camera, construction.buildings)
     if orders_ui_dirty:
         orders_ui_dirty = false
         _refresh_order_markers()
