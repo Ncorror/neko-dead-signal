@@ -305,6 +305,7 @@ func _create_factory() -> void:
     label.position.y = 3.0
     label.pixel_size = 0.012
     label.outline_size = 4
+    label.no_depth_test = true
     label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
     label.set_meta("map_anchor", label.position)
     factory.add_child(label)
