@@ -57,7 +57,7 @@ func _run() -> void:
         zone = get_tree().current_scene
         zone.set_physics_process(false)
         await _settle()
-        var bounds := zone.get_viewport().get_visible_rect()
+        var bounds: Rect2 = zone.get_viewport().get_visible_rect()
         for control in [zone.top_panel, zone.bottom_panel, zone.journal_button, zone.goal_button,
             zone.follow_button, zone.stop_button, zone.plus_button, zone.minus_button, zone.return_button]:
             _check(bounds.encloses(control.get_global_rect()), "native UI clipped at " + str(size))

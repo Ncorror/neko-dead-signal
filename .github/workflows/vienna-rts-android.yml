@@ -98,7 +98,8 @@ jobs:
           set -Eeuo pipefail
           mkdir -p build
           godot --headless --path client --editor --import --quit 2>&1 | tee build/godot-import.log
-          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log; then
+          godot --headless --path client res://scenes/world_zone.tscn --quit-after 2 2>&1 | tee build/world-smoke.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log build/world-smoke.log; then
             exit 1
           fi
       - name: Test world profile checkpoints, one-time rewards and save recovery
@@ -341,7 +342,6 @@ jobs:
           set -Eeuo pipefail
           godot --headless --path client --quit-after 15 2>&1 | tee build/menu-smoke.log
           godot --headless --path client res://scenes/operation.tscn --quit-after 15 2>&1 | tee build/landing-smoke.log
-          godot --headless --path client res://scenes/world_zone.tscn --quit-after 15 2>&1 | tee build/world-smoke.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/menu-smoke.log build/landing-smoke.log build/world-smoke.log; then
             exit 1
           fi

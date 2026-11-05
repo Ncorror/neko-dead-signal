@@ -358,7 +358,7 @@ func _input(event: InputEvent) -> void:
                 var points := contacts.values()
                 pinch_distance = points[0].distance_to(points[1])
         elif contacts.has(event.index):
-            var tap := not event.canceled and contacts.size() == 1 and not gesture_dragged and not gesture_multi and not _over_ui(event.position)
+            var tap: bool = not event.canceled and contacts.size() == 1 and not gesture_dragged and not gesture_multi and not _over_ui(event.position)
             contacts.erase(event.index)
             if tap:
                 _tap(event.position)
