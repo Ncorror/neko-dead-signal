@@ -5,9 +5,10 @@ const SELECTION_FILE := "user://commander_selection.cfg"
 var faction_index: int = 0
 var officer_index: int = 0
 var faction_name: String = "Люди — флот «Рэйна»"
-var officer_name: String = "Амина — разведка и дроны"
+var officer_name: String = "Амина — штурмовой ДД"
 var last_report := ""
 var officers_by_faction: Array[int] = [0, 0]
+var world_progress_path := "user://world/progress-v1.json"
 
 func _ready() -> void:
     var cfg := ConfigFile.new()

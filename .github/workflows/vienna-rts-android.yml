@@ -13,6 +13,7 @@ on:
       - fix/embedded-result-layout-v009
       - fix/headquarters-sight-v019
       - fix/victory-building-labels-v020
+      - feat/world-zone-v021
       - fix/base-sight-radius-v018
       - fix/building-sight-touch-v017
       - feat/economy-power-objectives-v016
@@ -98,6 +99,33 @@ jobs:
           mkdir -p build
           godot --headless --path client --editor --import --quit 2>&1 | tee build/godot-import.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log; then
+            exit 1
+          fi
+      - name: Test world profile checkpoints, one-time rewards and save recovery
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 45s godot --headless --path client res://tests/test_world_progress.tscn 2>&1 | tee build/rts-world-progress-test.log
+          grep -q 'WORLD_PROGRESS_TEST_PASS' build/rts-world-progress-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-progress-test.log; then
+            exit 1
+          fi
+      - name: Play the one-hero world quest and return to RTS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_world_zone.tscn 2>&1 | tee build/rts-world-zone-test.log
+          grep -q 'WORLD_ZONE_TEST_PASS' build/rts-world-zone-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-zone-test.log; then
+            exit 1
+          fi
+      - name: Test world touch gestures and native UI at three Android sizes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_world_input.tscn 2>&1 | tee build/rts-world-input-test.log
+          grep -q 'WORLD_INPUT_TEST_PASS' build/rts-world-input-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-input-test.log; then
             exit 1
           fi
       - name: Test dense-base captions, power warnings and camera zooms
@@ -313,7 +341,8 @@ jobs:
           set -Eeuo pipefail
           godot --headless --path client --quit-after 15 2>&1 | tee build/menu-smoke.log
           godot --headless --path client res://scenes/operation.tscn --quit-after 15 2>&1 | tee build/landing-smoke.log
-          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/menu-smoke.log build/landing-smoke.log; then
+          godot --headless --path client res://scenes/world_zone.tscn --quit-after 15 2>&1 | tee build/world-smoke.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/menu-smoke.log build/landing-smoke.log build/world-smoke.log; then
             exit 1
           fi
       - name: Create RTS-only debug signing key if missing
@@ -347,7 +376,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.20-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.21-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:
