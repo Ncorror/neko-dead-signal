@@ -37,14 +37,16 @@ func _run() -> void:
         op.set_process(false)
         op.production.credit(5000)
         op.escort.position = Vector3(85, 0, 80)
-        var kinds: Array[StringName] = [&"extractor", &"generator", &"outpost"]
+        # One generator deliberately leaves late buildings without power, so
+        # the extra warning line is measured too. Factories occupy the right
+        # column with their exit/rally lane outside the block.
+        var kinds: Array[StringName] = [&"extractor", &"generator", &"factory",
+            &"extractor", &"outpost", &"factory", &"outpost", &"extractor", &"factory"]
         for i in range(9):
             var at := Vector3(20 + (i % 3) * 6, 0, 44 + floori(i / 3.0) * 6)
             op.hero.position = at + Vector3(0, 0, 5)
             op._update_visibility(0, true)
-            # Factories need a free exit/rally lane on their right. Keep that
-            # lane outside the block instead of testing an illegal placement.
-            var kind: StringName = &"factory" if i % 3 == 2 else kinds[(i + floori(i / 3.0)) % kinds.size()]
+            var kind: StringName = kinds[i]
             op.construction.begin(kind, op)
             op.construction.choose(at, op)
             var reason: String = op.construction.validate(kind, at, op)
@@ -52,9 +54,12 @@ func _run() -> void:
         op.construction.tick(9, op)
         op.economy.recalculate(op)
         # Cover both completed/powered captions and a warning with an extra line.
+        var warning_seen := false
         for entry in op.construction.buildings:
             if entry["label"] != null:
                 op.construction._update_visual(entry)
+                warning_seen = warning_seen or entry["label"].text.contains("НЕТ ПИТАНИЯ")
+        _check(warning_seen, "dense-base fixture did not exercise the power-warning line")
         op.build_panel.hide()
         op.production_panel.hide()
         var topology: int = op.navigation.topology_revision
