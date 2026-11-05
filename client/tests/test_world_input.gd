@@ -113,8 +113,11 @@ func _run() -> void:
         await _settle()
         _check(zone.return_dialog.visible, "Back did not request a return")
         _press(zone.return_dialog.get_cancel_button())
-        _check(not zone.return_dialog.visible and zone.route == route, "canceling return discarded the route")
+        await _settle()
+        _check(not zone.return_dialog.visible and zone.route == route,
+            "canceling return failed: dialog=%s route_preserved=%s" % [zone.return_dialog.visible, zone.route == route])
         _press(zone.stop_button)
+        await _settle()
         _check(zone.route.is_empty() and not zone.target_marker.visible, "Stop left an active route or marker")
         for frame in range(30):
             zone._change_zoom(0.5)
