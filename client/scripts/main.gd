@@ -32,10 +32,10 @@ const OFFICERS := [
     [
         {
             "name": "АМИНА",
-            "full": "Амина — разведка и дроны",
-            "role": "РАЗВЕДКА / ДРОНЫ",
-            "bio": "Кошачьи наушники, лёгкая экспедиционная экипировка. Находит скрытые ресурсы и ведёт дроны.",
-            "perk": "ОРБИТАЛЬНОЕ СКАНИРОВАНИЕ",
+            "full": "Амина — штурмовой ДД",
+            "role": "ДД / ГРАНАТОМЁТ",
+            "bio": "Лёгкая экспедиционная экипировка, автомат с подствольным гранатомётом. Взрывные навыки и разведка — в разработке.",
+            "perk": "ВЗРЫВНОЙ СПЕЦИАЛИСТ",
             "call": "E-03"
         },
         {
@@ -48,10 +48,10 @@ const OFFICERS := [
         },
         {
             "name": "МИРА КЕЙД",
-            "full": "Мира Кейд — инженер",
-            "role": "ИНЖЕНЕР / ПОДДЕРЖКА",
-            "bio": "Техник экспедиции. Первая выходит на поверхность, восстанавливает узлы и ведёт десант.",
-            "perk": "ПОЛЕВОЙ РЕМОНТ",
+            "full": "Мира Кейд — техномедик",
+            "role": "МЕДИК / ЛЕЧЕНИЕ",
+            "bio": "Медик экспедиции с импульсным пистолетом. Лечение, воскрешение и личный дрон — в разработке.",
+            "perk": "НАНОПОЛЕ",
             "call": "E-01"
         },
         {
@@ -100,6 +100,7 @@ var hero_call: Label
 var faction_details: Label
 var selected_fleet: Label
 var cta: Button
+var world_button: Button
 var close_button: Button
 var exit_dialog: ConfirmationDialog
 
@@ -321,7 +322,10 @@ func _build_content(parent: VBoxContainer) -> void:
     else:
         right.add_child(_label("ИТОГ ПОСЛЕДНЕЙ ВЫСАДКИ", 12, CYAN))
         right.add_child(_label(GameState.last_report, 13, WHITE, false, true))
-    cta = _button("НАЧАТЬ ВЫСАДКУ    ›", true, 67)
+    world_button = _button("МИР · СЕКТОР 01    ›", true, 52)
+    world_button.pressed.connect(_enter_world)
+    right.add_child(world_button)
+    cta = _button("RTS · ВЫСАДКА    ›", false, 48)
     cta.pressed.connect(_deploy)
     right.add_child(cta)
 
@@ -333,7 +337,7 @@ func _build_footer(parent: VBoxContainer) -> void:
     parent.add_child(footer)
     footer.add_child(_label("REINA SYSTEMS  /  ОБЩИЙ ЭКСПЕДИЦИОННЫЙ ФЛОТ", 11, MUTED))
     footer.add_child(_stretch_horizontal())
-    footer.add_child(_label("ANDROID  •  PRE-ALPHA %s  •  OPERATION LABELS" % ProjectSettings.get_setting("application/config/version", "dev"), 11, Color("#87b2bf")))
+    footer.add_child(_label("ANDROID  •  PRE-ALPHA %s  •  WORLD SECTOR 01" % ProjectSettings.get_setting("application/config/version", "dev"), 11, Color("#87b2bf")))
 
 func _panel(parent: HBoxContainer, minimum_width: float) -> VBoxContainer:
     var outer := PanelContainer.new()
@@ -527,3 +531,7 @@ func _deploy() -> void:
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("app", "deploy", {"faction": faction_index, "officer": officer_index})
     get_tree().change_scene_to_file("res://scenes/operation.tscn")
+
+func _enter_world() -> void:
+    _store_selected_commander()
+    get_tree().change_scene_to_file("res://scenes/world_zone.tscn")
