@@ -11,6 +11,7 @@ on:
       - feat/orders-and-recon-v008
       - fix/defeat-sight-report-v009
       - fix/embedded-result-layout-v009
+      - fix/headquarters-sight-v019
       - fix/base-sight-radius-v018
       - fix/building-sight-touch-v017
       - feat/economy-power-objectives-v016
@@ -336,7 +337,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.18-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.19-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:

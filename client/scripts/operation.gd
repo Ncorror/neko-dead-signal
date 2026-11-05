@@ -299,7 +299,7 @@ func _create_factory() -> void:
     _make_box(Vector3(0, 1.6, 0), Vector3(2.3, 0.35, 2.3), color.lightened(0.2), factory)
     _make_box(Vector3(0, 1.95, 0), Vector3(0.4, 0.7, 0.4), Color("#62ecf0"), factory)
     var label := Label3D.new()
-    label.text = "БАЗА"
+    label.text = "ШТАБ" if GameState.faction_index == 0 else "КОМАНДНЫЙ УЗЕЛ"
     label.position.y = 3.0
     label.pixel_size = 0.012
     label.billboard = BaseMaterial3D.BILLBOARD_ENABLED

@@ -72,8 +72,9 @@ func refresh() -> void:
     if operation == null:
         return
     var work = operation._factory_work()
-    title.text = "%s · %d" % [operation.construction.title(&"factory"), operation.active_factory["id"]]
-    balance_label.text = "РЕСУРСЫ: %d  ·  ВЫПУЩЕНО: %d" % [work.balance, work.completed]
+    title.text = "%s · %d" % [operation.construction.building_title(operation.active_factory), operation.active_factory["id"]]
+    balance_label.text = "РЕСУРСЫ: %d  ·  ВЫПУЩЕНО: %d\nОБЗОР: %d" % [work.balance, work.completed,
+        int(operation.construction.sight_radius(operation.active_factory))]
     var remaining: float = 0.0 if work.pending.is_empty() else work.pending[0]
     queue_label.text = "ОЧЕРЕДЬ: %d/%d  ·  %s" % [work.pending.size(), work.QUEUE_LIMIT,
         "НЕТ ПИТАНИЯ" if not operation.active_factory.get("powered", false) else
