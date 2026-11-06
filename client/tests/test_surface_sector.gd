@@ -101,12 +101,28 @@ func _run() -> void:
         _press(menu.surface_button)
         await _adopt()
         _check(zone.world.terrain.mesh.get_aabb().size.x == 128 and zone.visited.has(0), "ship did not enter the 128x128 first sector")
-        _check(zone.bottom_panel.get_global_rect().position.y - zone.top_panel.get_global_rect().end.y > 220,
-            "landscape HUD left too little playfield at " + str(size))
+        var viewport := get_viewport().get_visible_rect()
+        var clear_height: float = zone.bottom_panel.get_global_rect().position.y - zone.top_panel.get_global_rect().end.y
+        _check(clear_height >= viewport.size.y * 0.73,
+            "landscape HUD occupies more than 27 percent: clear=%s viewport=%s size=%s" % [clear_height, viewport, size])
+        print("SURFACE_HUD_DEBUG size=%s top=%s bottom=%s clear_ratio=%.3f" % [size,
+            zone.top_panel.get_global_rect(), zone.bottom_panel.get_global_rect(), clear_height / viewport.size.y])
         _check(zone.camera.unproject_position(zone.hero.position + Vector3.UP).distance_to(_centre()) < 2,
             "hero is not centred between panels")
-        for button in [zone.sites_button, zone.goal_button, zone.logs_button, zone.return_button]:
+        var controls: Array = [zone.sites_button, zone.follow_button, zone.stop_button, zone.minus_button,
+            zone.plus_button, zone.help_button, zone.goal_button, zone.logs_button, zone.return_button]
+        for button in controls:
             _check(get_viewport().get_visible_rect().encloses(button.get_global_rect()), "surface control is clipped")
+            _check(button.get_global_rect().size.y >= 44 and button.get_global_rect().size.x >= 44,
+                "compact HUD shrank a touch target below 44 pixels")
+            for other in controls:
+                if other != button:
+                    _check(not button.get_global_rect().intersects(other.get_global_rect()), "surface buttons overlap")
+        _backdrop_framing()
+        _press(zone.help_button)
+        await _settle()
+        _check(zone.notice.visible and zone.notice.dialog_text.contains("К ЦЕЛИ"), "control help is inaccessible")
+        zone._handle_back()
         # Real physics ray must hit the authored triangle, including at raised landmarks.
         for site in TERRAIN.SITES:
             var from: Vector3 = site + Vector3.UP * 40
@@ -171,7 +187,7 @@ func _run() -> void:
     _check(FileAccess.get_file_as_string(OLD_PATH) == legacy_bytes, "surface reentry changed old quest bytes")
     _clean()
     if failures == 0:
-        print("SURFACE_SECTOR_TEST_PASS sizes=3 terrain_picking=physics controls=native gestures=cancel,pinch,ui elevations=grounded sites=5 old_save=byte_identical reload=ok")
+        print("SURFACE_SECTOR_TEST_PASS sizes=3 hud_clear=73percent touch_targets=44 backdrop=frustum_covered terrain_picking=physics controls=native gestures=cancel,pinch,ui elevations=grounded sites=5 old_save=byte_identical reload=ok")
     get_tree().quit(0 if failures == 0 else 1)
 
 func _gestures() -> void:
@@ -197,3 +213,33 @@ func _gestures() -> void:
     _touch(ui_at, false)
     _check(zone.route.is_empty(), "a gesture starting on HUD leaked a world order")
     _press(zone.follow_button)
+
+func _backdrop_framing() -> void:
+    var saved_zoom: float = zone.zoom
+    var viewport := get_viewport().get_visible_rect()
+    var bounds: AABB = zone.world.backdrop.mesh.get_aabb()
+    var floor := Plane(Vector3.UP, minf(zone.world.terrain.minimum, zone.world.backdrop.minimum) - 1)
+    # Include the full viewport, not just the visible strip between panels.
+    for edge in [Vector2(-62, -62), Vector2(62, -62), Vector2(-62, 62), Vector2(62, 62), Vector2.ZERO]:
+        for scale in [8.0, 30.0]:
+            zone.following = false
+            zone.peek = 10
+            zone.focus = zone.world.terrain.on_ground(Vector3(edge.x, 0, edge.y))
+            zone.rendered_focus = zone.focus
+            zone.zoom = scale
+            zone.rendered_zoom = scale
+            zone._update_camera(0)
+            for pixel in [viewport.position, Vector2(viewport.end.x, 0), Vector2(0, viewport.end.y), viewport.end]:
+                var at: Variant = floor.intersects_ray(zone.camera.project_ray_origin(pixel), zone.camera.project_ray_normal(pixel))
+                _check(at != null, "camera framing exposes the horizon beyond the backdrop")
+                if at != null:
+                    _check(at.x >= bounds.position.x and at.x <= bounds.end.x
+                        and at.z >= bounds.position.z and at.z <= bounds.end.z,
+                        "camera exposes the terrain cut: corner=%s hit=%s bounds=%s" % [edge, at, bounds])
+                    _check(-zone.camera.to_local(at).z < zone.camera.far, "backdrop falls outside the camera far plane")
+    _check(not zone._move_to(Vector3(100, 0, 0)), "decorative terrain became a walkable map extension")
+    zone.zoom = saved_zoom
+    zone.rendered_zoom = saved_zoom
+    zone._follow()
+    zone.rendered_focus = zone.focus
+    zone._update_camera(0)

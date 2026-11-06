@@ -3,6 +3,7 @@ extends Node3D
 
 const TERRAIN := preload("res://scripts/surface_terrain.gd")
 const ASSETS := preload("res://scripts/surface_assets.gd")
+const BACKDROP := preload("res://scripts/surface_backdrop.gd")
 var terrain = TERRAIN.new()
 var kit = ASSETS.new()
 var navigation
@@ -11,6 +12,7 @@ var obstacles: Array[Dictionary] = []
 var site_markers: Array[Node3D] = []
 var npc: Node3D
 var vegetation: MultiMeshInstance3D
+var backdrop
 var material_cache: Dictionary = {}
 
 func material(color: Color, glow: float = 0.0) -> StandardMaterial3D:
@@ -82,17 +84,26 @@ func build(nav) -> void:
     var environment := WorldEnvironment.new()
     var sky := Environment.new()
     sky.background_mode = Environment.BG_COLOR
-    sky.background_color = Color("#22333f")
+    sky.background_color = Color("#617b8a")
     sky.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    sky.ambient_light_color = Color("#b7c4ce")
-    sky.ambient_light_energy = 0.62
+    sky.ambient_light_color = Color("#d7e2e8")
+    sky.ambient_light_energy = 0.9
     environment.environment = sky
     add_child(environment)
     var sun := DirectionalLight3D.new()
+    sun.name = "SurfaceSun"
     sun.rotation_degrees = Vector3(-52, -32, 0)
-    sun.light_color = Color("#fff1d3")
+    sun.light_color = Color("#fff4de")
     sun.light_energy = 1.0
+    sun.shadow_enabled = false
     add_child(sun)
+    var fill := DirectionalLight3D.new()
+    fill.name = "SurfaceFill"
+    fill.rotation_degrees = Vector3(-34, 150, 0)
+    fill.light_color = Color("#c1dbec")
+    fill.light_energy = 0.22
+    fill.shadow_enabled = false
+    add_child(fill)
     var ground := MeshInstance3D.new()
     ground.name = "Terrain128"
     ground.mesh = terrain.mesh
@@ -100,6 +111,9 @@ func build(nav) -> void:
     ground_material.vertex_color_use_as_albedo = true
     ground.material_override = ground_material
     add_child(ground)
+    backdrop = BACKDROP.new()
+    backdrop.build(terrain, ground_material)
+    add_child(backdrop)
     terrain_body = StaticBody3D.new()
     terrain_body.name = "TerrainCollision"
     terrain_body.collision_layer = 1
@@ -115,7 +129,9 @@ func build(nav) -> void:
         marker.position = terrain.on_ground(TERRAIN.SITES[i])
         marker.name = "SurfaceSite_%d" % i
         add_child(marker)
-        caption(marker, "%02d · %s" % [i + 1, TERRAIN.SITE_NAMES[i]], 4)
+        var label := caption(marker, "%02d · %s" % [i + 1, TERRAIN.SITE_NAMES[i]], 6)
+        label.font_size = 36
+        label.pixel_size = 0.014
         site_markers.append(marker)
     _outpost()
     _wreck()
