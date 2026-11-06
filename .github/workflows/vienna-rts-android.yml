@@ -18,6 +18,7 @@ on:
       - feat/world-assault-combat-v023
       - feat/world-pve-sector-v024
       - feat/surface-128-v025
+      - feat/surface-art-v026
       - fix/base-sight-radius-v018
       - fix/building-sight-touch-v017
       - feat/economy-power-objectives-v016
@@ -36,6 +37,7 @@ on:
       - fix/selection-camera-and-portraits-v004
     paths:
       - 'client/**'
+      - 'tools/build_environment_kit.py'
       - '.github/workflows/vienna-rts-android.yml'
   workflow_dispatch:
 
@@ -76,6 +78,11 @@ jobs:
           test -x "$ANDROID_HOME/build-tools/36.1.0/apksigner"
           test -d "$ANDROID_HOME/platforms/android-36"
           java -version
+      - name: Verify authored environment GLBs match their source
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 tools/build_environment_kit.py --check
       - name: Prepare writable Godot XDG directories
         shell: bash
         run: |
@@ -105,6 +112,15 @@ jobs:
           godot --headless --path client res://scenes/world_zone.tscn --quit-after 2 2>&1 | tee build/world-smoke.log
           godot --headless --path client res://scenes/surface_sector_01_prototype.tscn --quit-after 2 2>&1 | tee build/surface-smoke.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log build/world-smoke.log build/surface-smoke.log; then
+            exit 1
+          fi
+      - name: Validate imported surface modules, materials, geometry and shared footprints
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_surface_assets.tscn 2>&1 | tee build/rts-surface-assets-test.log
+          grep -q 'SURFACE_ASSETS_TEST_PASS' build/rts-surface-assets-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-surface-assets-test.log; then
             exit 1
           fi
       - name: Test world profile checkpoints, one-time rewards and save recovery
@@ -444,7 +460,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.25-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.26-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:
