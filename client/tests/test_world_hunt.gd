@@ -113,7 +113,7 @@ func _save_roundtrip(model) -> void:
     original["cooldowns"][0] = 22.5
     store.checkpoint(Vector3(-4, 0, 15), 13, original)
     store.claim_combat_reward()
-    var legacy := store.data.duplicate(true)
+    var legacy: Dictionary = store.data.duplicate(true)
     legacy["characters"]["amina"].erase("hunt")
     var file := FileAccess.open(PATH, FileAccess.WRITE)
     file.store_string(JSON.stringify(legacy))

@@ -57,7 +57,7 @@ func _special_attack(enemy: Dictionary, delta: float, hero_at: Vector3) -> bool:
         enemy["windup"] = maxf(0, enemy["windup"] - delta)
         if enemy["windup"] == 0:
             var point: Vector3 = enemy["blast_at"]
-            var hit := hero_at.distance_to(point) <= BLAST_RADIUS and not in_safe(hero_at) and navigation.has_clear_shot(enemy["at"], hero_at)
+            var hit: bool = hero_at.distance_to(point) <= BLAST_RADIUS and not in_safe(hero_at) and navigation.has_clear_shot(enemy["at"], hero_at)
             events.append({"type": "boss_blast", "enemy": BOSS, "from": enemy["at"], "to": point, "hit": hit})
             if hit:
                 hp = maxf(0, hp - BLAST_DAMAGE)
@@ -79,6 +79,8 @@ func _special_attack(enemy: Dictionary, delta: float, hero_at: Vector3) -> bool:
 
 func tick(seconds: float, hero_at: Vector3) -> void:
     super.tick(seconds, hero_at)
+    if not enabled:
+        return
     var delta := clampf(seconds, 0, 0.1)
     for enemy in enemies:
         var id: int = enemy["id"]

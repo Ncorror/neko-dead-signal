@@ -35,13 +35,13 @@ func _create_world() -> void:
     sun.rotation_degrees = Vector3(-55, -25, 0)
     sun.light_energy = 1.1
     add_child(sun)
-    _box(self, Vector3(0, -0.4, 0), Vector3(66, 0.4, 66), Color("#343d3d"))
+    _box(self, Vector3(0, -0.4, 0), Vector3(66, 0.4, 66), Color("#2d414b"))
     # Roads, lit camp pads and rusted structures provide landmarks without hiding enemies.
     _box(self, Vector3(-9, 0.01, 10), Vector3(5, 0.04, 35), Color("#4a4e49"))
     _box(self, Vector3(7, 0.015, -4), Vector3(35, 0.04, 4), Color("#4a4e49"))
     _box(self, Vector3(18, 0.01, -19), Vector3(13, 0.06, 13), Color("#60504a"))
     for item in RUINS:
-        _box(self, item[0], item[1], Color("#67534b"))
+        _box(self, item[0], item[1], Color("#465962"))
         _box(self, item[0] + Vector3(0, item[1].y, 0), Vector3(item[1].x + 0.2, 0.12, item[1].z + 0.2), Color("#92725a"))
         navigation.set_blocked_box(item[0], item[1], 0.7)
     for i in range(17):

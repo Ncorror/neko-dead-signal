@@ -291,7 +291,7 @@ func _events() -> void:
     var important := false
     for event in model.take_events():
         var name: String = event["type"]
-        var details := event.duplicate()
+        var details: Dictionary = event.duplicate()
         details.erase("type")
         for key in ["from", "to"]:
             if details.has(key):
