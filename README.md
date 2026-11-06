@@ -4,7 +4,7 @@
 
 **Текущий долгосрочный канон — MMORTS / Strategic MMORPG:** открытый MMO-мир, обычные данжи, стратегические суперданжи и еженедельные клановые осады; нынешний клиент 0.0.22 содержит локальные RTS-операцию и первый геройский сектор, а не готовым MMO. [GDD v0.3](docs/DEAD_SIGNAL_MMORTS_GDD_v0.3.md), [канон Миры Кейд](docs/MIRA_KADE_HEALER_MASS_HEAL_DESIGN_v0.1.md). Старое описание чистой RTS ниже относится к прототипу и архивному дизайну.
 
-Актуальные документы и границы реализации — [docs/README.md](docs/README.md). Автокамера мира, скорость, исправление логов и частичный физический тест 0.0.22 — [WORLD_CAMERA_AND_LOGS_022.md](docs/WORLD_CAMERA_AND_LOGS_022.md). Подписи узлов и плотной базы 0.0.20 — [OPERATION_LABELS_020.md](docs/OPERATION_LABELS_020.md). Победное прохождение 0.0.19 на Android — [отчёт](docs/DEVICE_VICTORY_019_2026-11-05.md). Утверждённые радиусы: штаб 15, здания 12, пост 18 — [HEADQUARTERS_SIGHT_019.md](docs/HEADQUARTERS_SIGHT_019.md).
+Актуальные документы и границы реализации — [docs/README.md](docs/README.md). Актуальная основа **женского пользовательского аниме-аватара — v2**, уже подготовлены четыре 2D вида и комплект для Meshy Pro; **3D GLB и редактор не готовы**: [ТЗ v2](docs/PRODUCTION_MESHY_FEMALE_BASE_V2_2026-11-06.md). Автокамера мира, скорость, исправление логов и частичный физический тест 0.0.22 — [WORLD_CAMERA_AND_LOGS_022.md](docs/WORLD_CAMERA_AND_LOGS_022.md). Подписи узлов и плотной базы 0.0.20 — [OPERATION_LABELS_020.md](docs/OPERATION_LABELS_020.md). Победное прохождение 0.0.19 на Android — [отчёт](docs/DEVICE_VICTORY_019_2026-11-05.md). Утверждённые радиусы: штаб 15, здания 12, пост 18 — [HEADQUARTERS_SIGHT_019.md](docs/HEADQUARTERS_SIGHT_019.md).
 
 ## Первый участок мира · 0.0.21
 
