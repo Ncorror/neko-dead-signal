@@ -265,14 +265,19 @@ func _discover() -> void:
         _event("site_discovered", {"site": i, "at": str(hero.position)})
 
 func _ground(at: Vector2) -> Variant:
-    var start := camera.project_ray_origin(at)
-    var query := PhysicsRayQueryParameters3D.create(start, start + camera.project_ray_normal(at) * 350, 1)
-    query.hit_back_faces = true
-    var hit := get_world_3d().direct_space_state.intersect_ray(query)
-    if hit.is_empty():
-        return null
-    var point: Vector3 = hit["position"]
-    return point if absf(point.x) <= TERRAIN.PLAY_LIMIT and absf(point.z) <= TERRAIN.PLAY_LIMIT else null
+    # A subpixel retry covers a ray landing exactly on a shared triangle edge.
+    # Every result still comes from the terrain collider, never a flat plane.
+    for offset in [Vector2.ZERO, Vector2(0.25, 0), Vector2(-0.25, 0), Vector2(0, 0.25), Vector2(0, -0.25)]:
+        var pixel: Vector2 = at + offset
+        var start := camera.project_ray_origin(pixel)
+        var query := PhysicsRayQueryParameters3D.create(start, start + camera.project_ray_normal(pixel) * 350, 1)
+        query.hit_back_faces = true
+        var hit := get_world_3d().direct_space_state.intersect_ray(query)
+        if hit.is_empty():
+            continue
+        var point: Vector3 = hit["position"]
+        return point if absf(point.x) <= TERRAIN.PLAY_LIMIT and absf(point.z) <= TERRAIN.PLAY_LIMIT else null
+    return null
 
 func _tap(at: Vector2) -> void:
     var point: Variant = _ground(at)
