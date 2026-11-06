@@ -504,7 +504,12 @@ func _tap(at: Vector2) -> void:
 func _move_to(point: Vector3) -> bool:
     if combat_view.model.enabled and combat_view.model.hp <= 0:
         return false
-    var planned: Array[Vector3] = navigation.get_path(hero.position, point)
+    var avoid: Array[Vector3] = []
+    if combat_view.model.enabled:
+        for enemy in combat_view.model.enemies:
+            if enemy["hp"] > 0:
+                avoid.append(enemy["at"])
+    var planned: Array[Vector3] = navigation.get_path(hero.position, point, avoid)
     if planned.is_empty():
         return false
     combat_view.cancel_orders()

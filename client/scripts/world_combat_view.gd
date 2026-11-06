@@ -239,6 +239,9 @@ func before_movement(delta: float) -> void:
 
 func tick(delta: float) -> void:
     model.tick(delta, zone.hero.position)
+    if chasing and not model.alive(model.attack_target):
+        zone._clear_route()
+        chasing = false
     _events()
     for i in range(effects.size() - 1, -1, -1):
         effects[i]["left"] -= delta
