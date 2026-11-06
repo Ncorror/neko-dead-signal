@@ -9,6 +9,7 @@ var officer_name: String = "Амина — штурмовой ДД"
 var last_report := ""
 var officers_by_faction: Array[int] = [0, 0]
 var world_progress_path := "user://world/progress-v1.json"
+var surface_progress_path := "user://surface/sector01-v1.json"
 
 func _ready() -> void:
     var cfg := ConfigFile.new()

@@ -17,6 +17,7 @@ on:
       - fix/world-camera-logs-v022
       - feat/world-assault-combat-v023
       - feat/world-pve-sector-v024
+      - feat/surface-128-v025
       - fix/base-sight-radius-v018
       - fix/building-sight-touch-v017
       - feat/economy-power-objectives-v016
@@ -102,7 +103,8 @@ jobs:
           mkdir -p build
           godot --headless --path client --editor --import --quit 2>&1 | tee build/godot-import.log
           godot --headless --path client res://scenes/world_zone.tscn --quit-after 2 2>&1 | tee build/world-smoke.log
-          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log build/world-smoke.log; then
+          godot --headless --path client res://scenes/surface_sector_01_prototype.tscn --quit-after 2 2>&1 | tee build/surface-smoke.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/godot-import.log build/world-smoke.log build/surface-smoke.log; then
             exit 1
           fi
       - name: Test world profile checkpoints, one-time rewards and save recovery
@@ -112,6 +114,24 @@ jobs:
           timeout 45s godot --headless --path client res://tests/test_world_progress.tscn 2>&1 | tee build/rts-world-progress-test.log
           grep -q 'WORLD_PROGRESS_TEST_PASS' build/rts-world-progress-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-progress-test.log; then
+            exit 1
+          fi
+      - name: Validate 128x128 terrain geometry and independent surface saves
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_surface_terrain.tscn 2>&1 | tee build/rts-surface-terrain-test.log
+          grep -q 'SURFACE_TERRAIN_TEST_PASS' build/rts-surface-terrain-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-surface-terrain-test.log; then
+            exit 1
+          fi
+      - name: Walk all surface sites with real terrain picking and native Android gestures
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 150s godot --headless --path client res://tests/test_surface_sector.tscn 2>&1 | tee build/rts-surface-sector-test.log
+          grep -q 'SURFACE_SECTOR_TEST_PASS' build/rts-surface-sector-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-surface-sector-test.log; then
             exit 1
           fi
       - name: Test Rust Road boss tells, immunity, leashes and respawn timers
@@ -424,7 +444,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.24-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.25-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:

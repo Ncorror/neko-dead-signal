@@ -102,6 +102,7 @@ var selected_fleet: Label
 var cta: Button
 var world_button: Button
 var pve_button: Button
+var surface_button: Button
 var close_button: Button
 var exit_dialog: ConfirmationDialog
 
@@ -326,13 +327,18 @@ func _build_content(parent: VBoxContainer) -> void:
     var travel := HBoxContainer.new()
     travel.add_theme_constant_override("separation", 8)
     right.add_child(travel)
-    world_button = _button("МИР · СЕКТОР 01\nФОРПОСТ", true, 52)
-    world_button.add_theme_font_size_override("font_size", 14)
+    surface_button = _button("ПЛАНЕТА\n128 × 128", true, 52)
+    surface_button.add_theme_font_size_override("font_size", 13)
+    surface_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    surface_button.pressed.connect(_enter_surface)
+    travel.add_child(surface_button)
+    world_button = _button("ФОРПОСТ\nМАЯКИ", true, 52)
+    world_button.add_theme_font_size_override("font_size", 13)
     world_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     world_button.pressed.connect(_enter_world)
     travel.add_child(world_button)
-    pve_button = _button("PvE · СЕКТОР 02\nМОБЫ И БОСС", true, 52)
-    pve_button.add_theme_font_size_override("font_size", 14)
+    pve_button = _button("PvE\nМОБЫ · БОСС", true, 52)
+    pve_button.add_theme_font_size_override("font_size", 13)
     pve_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     pve_button.pressed.connect(_enter_sector)
     pve_button.tooltip_text = "Ржавый тракт · боевой набор Амины · вход без поручения"
@@ -469,7 +475,7 @@ func _refresh_selection() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
     var officer: Dictionary = OFFICERS[faction_index][officer_index]
     pve_button.disabled = faction_index != 0 or officer_index != 0
-    pve_button.text = "PvE · СЕКТОР 02\nМОБЫ И БОСС" if not pve_button.disabled else "PvE · СЕКТОР 02\nВЫБЕРИ АМИНУ"
+    pve_button.text = "PvE\nМОБЫ · БОСС" if not pve_button.disabled else "PvE\nЗА АМИНУ"
     for i in range(faction_buttons.size()):
         var active: bool = i == faction_index
         var f: Dictionary = FACTIONS[i]
@@ -549,6 +555,10 @@ func _deploy() -> void:
 func _enter_world() -> void:
     _store_selected_commander()
     get_tree().change_scene_to_file("res://scenes/world_zone.tscn")
+
+func _enter_surface() -> void:
+    _store_selected_commander()
+    get_tree().change_scene_to_file("res://scenes/surface_sector_01_prototype.tscn")
 
 func _enter_sector() -> void:
     if faction_index != 0 or officer_index != 0:
