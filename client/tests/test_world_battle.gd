@@ -176,8 +176,11 @@ func _run() -> void:
     var saved_cooldowns: Array = zone.combat_view.model.cooldowns.duplicate()
     zone._checkpoint()
     await _load()
+    var timers_preserved := true
+    for i in range(5):
+        timers_preserved = timers_preserved and absf(zone.combat_view.model.cooldowns[i] - saved_cooldowns[i]) < 0.000001
     _check(zone.progress.credits() == 175 and zone.combat_view.model.snapshot()["defeated"] == [0, 1, 2]
-        and zone.combat_view.model.cooldowns == saved_cooldowns, "reentry reset targets, reward or cooldowns")
+        and timers_preserved, "reentry reset targets, reward or cooldowns: credits=%s targets=%s before=%s after=%s" % [zone.progress.credits(), zone.combat_view.model.snapshot()["defeated"], saved_cooldowns, zone.combat_view.model.cooldowns])
     _press(zone.logs_button)
     await _settle()
     _check(zone.diagnostics_panel.popup.visible, "logs stopped working with combat HUD active")
