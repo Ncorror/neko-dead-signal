@@ -1,5 +1,7 @@
 # REINA: DEAD SIGNAL — PRODUCTION: женская модульная аниме-база v1 (Meshy → Godot)
 
+> **Актуальный эталон: v3.** v1 и v2 — только архивы. [Последние утверждённые четыре PNG, инструкции, Drive, SHA-256](PRODUCTION_FEMALE_BASE_V3_APPROVED_2026-11-06.md).
+
 > **АРХИВ / УСТАРЕЛО 2026-11-06:** пользователь утвердил новый более юный (взрослый) аниме-облик **human_female_base_v2**. **Для новой генерации Meshy использовать только [утверждённый production-пакет v2](PRODUCTION_MESHY_FEMALE_BASE_V2_2026-11-06.md) и его [Google Drive](https://drive.google.com/drive/folders/15-CCXvQxuXAZwlsJiABxtSO0Qmsg1tpU).** Файлы v1 перенесены в [архив Drive](https://drive.google.com/drive/folders/1ZTpHx7OWYbRULzbCCi8S6sgrx7gYZoZ1); ссылки ниже на v1 сохранены исключительно как исторические и не являются действующими инструкциями. Ниже — старое ТЗ.
 
 **Дата:** 2026-11-06 · **Статус:** рабочее техническое задание и последовательность производства. **Это не готовая GLB-модель, не реализованный редактор, не результаты теста.**
