@@ -15,6 +15,8 @@ var respawn_button: Button
 var death_dialog: AcceptDialog
 var aim_marker: MeshInstance3D
 var enemy_marker: MeshInstance3D
+var danger_marker: MeshInstance3D
+var boss_label: Label
 var aim_skill := -1
 var chase_age := 0.0
 var chasing := false
@@ -22,21 +24,30 @@ var effects: Array[Dictionary] = []
 
 func install(world, bottom: VBoxContainer) -> void:
     zone = world
-    model.configure(zone.navigation, zone.progress.state()["combat"])
-    for i in range(3):
+    model = zone.make_combat_model()
+    model.configure(zone.navigation, zone.combat_state())
+    for i in range(model.enemies.size()):
         var actor := Node3D.new()
         actor.name = "WorldEnemy_%d" % i
         add_child(actor)
-        if i == 2:
+        if model.enemies[i]["vehicle"]:
             zone._box(actor, Vector3.ZERO, Vector3(1.0, 1.1, 1.2), Color("#b25757"))
             zone._box(actor, Vector3(0, 1.1, 0.25), Vector3(0.2, 0.2, 1.0), Color("#e6a06c"))
         else:
             var body: Node3D = zone._person(actor, Vector3.ZERO, Color("#b76c65"), "Marauder")
             body.rotation.y = PI
         actors.append(actor)
-        labels.append(zone._caption(actor, "", 2.8))
+        var boss: bool = model.enemies[i].get("boss", false)
+        if boss:
+            actor.scale = Vector3.ONE * 1.8
+            zone._box(actor, Vector3(-0.65, 0.1, 0), Vector3(0.35, 0.6, 1.5), Color("#77615a"))
+            zone._box(actor, Vector3(0.65, 0.1, 0), Vector3(0.35, 0.6, 1.5), Color("#77615a"))
+        labels.append(zone._caption(actor, "", 2.1 if boss else 2.8))
     aim_marker = _ring(1.0, Color("#e9c16d"))
     enemy_marker = _ring(0.8, Color("#ef817b"))
+    danger_marker = _ring(2.8, Color("#ff785b"))
+    boss_label = zone._label(bottom, "", 15)
+    boss_label.hide()
     health_label = zone._label(bottom, "", 14)
     skills = HFlowContainer.new()
     bottom.add_child(skills)
@@ -93,20 +104,31 @@ func refresh() -> void:
     respawn_button.visible = model.hp <= 0
     if hint.text.is_empty():
         hint.text = "Коснись врага — подойти и атаковать. Граната / рывок — навык, затем цель."
-    for i in range(3):
+    for i in range(model.enemies.size()):
         var enemy: Dictionary = model.enemies[i]
         actors[i].visible = model.enabled and enemy["hp"] > 0
         var movement: Vector3 = enemy["at"] - actors[i].position
         if movement.length_squared() > 0.0001:
             actors[i].rotation.y = atan2(movement.x, movement.z)
         actors[i].position = enemy["at"]
-        var text: String = "%s · %d/%d" % [COMBAT.ENEMY_NAMES[i], ceili(enemy["hp"]), int(enemy["max_hp"])]
+        var text: String = "%s · %d/%d" % [enemy["name"], ceili(enemy["hp"]), int(enemy["max_hp"])]
         if enemy["returning"]:
             text += "\nВОЗВРАЩАЕТСЯ"
         elif enemy["weak"] > 0:
             text += "\nБРОНЯ −10%"
         if labels[i].text != text:
             labels[i].text = text
+    boss_label.hide()
+    danger_marker.hide()
+    for enemy in model.enemies:
+        if not enemy.get("boss", false) or enemy["hp"] <= 0 or not enemy["aggro"]:
+            continue
+        boss_label.show()
+        boss_label.text = "БОСС · %s · ОЗ %d/%d%s" % [enemy["name"], ceili(enemy["hp"]), int(enemy["max_hp"]), " · ПЕРЕГРУЗКА" if enemy.get("enraged", false) else ""]
+        if enemy.get("windup", 0.0) > 0:
+            danger_marker.show()
+            danger_marker.position = enemy["blast_at"] + Vector3(0, 0.12, 0)
+            boss_label.text += " · ВЫЙДИ ИЗ КРУГА: %.1f с" % enemy["windup"]
     enemy_marker.visible = model.enabled and model.alive(model.attack_target)
     if enemy_marker.visible:
         enemy_marker.position = model.enemies[model.attack_target]["at"] + Vector3(0, 0.1, 0)
@@ -116,7 +138,7 @@ func pick_enemy(at: Vector2) -> int:
         return -1
     var nearest := -1
     var best := 30.0
-    for i in range(3):
+    for i in range(model.enemies.size()):
         if not model.alive(i) or zone.camera.is_position_behind(actors[i].position + Vector3.UP):
             continue
         var a: Vector2 = zone.camera.unproject_position(actors[i].position)
@@ -275,7 +297,12 @@ func _events() -> void:
             if details.has(key):
                 details[key] = str(details[key])
         zone._event(name, details)
-        if name in ["hero_shot", "enemy_shot"]:
+        if name == "boss_blast":
+            var ring := _ring(2.8, Color("#ffb06d"))
+            ring.position = event["to"] + Vector3(0, 0.14, 0)
+            ring.show()
+            _effect(ring, 0.35)
+        elif name in ["hero_shot", "enemy_shot"]:
             _trace(event["from"], event["to"], Color("#b1f8ed") if name == "hero_shot" else Color("#ef9c75"))
         elif name == "skill_cast" and event["skill"] in [1, 2, 4]:
             var ring := _ring(3.0 if event["skill"] == 4 else (2.5 if event["skill"] == 1 else 0.6), Color("#e9c16d"))

@@ -6,6 +6,7 @@ const PROGRESS := preload("res://scripts/world_progress.gd")
 const FIT := preload("res://scripts/rts_character_fit.gd")
 const DIAGNOSTICS := preload("res://scripts/rts_diagnostics_ui.gd")
 const COMBAT_VIEW := preload("res://scripts/world_combat_view.gd")
+const COMBAT := preload("res://scripts/world_combat.gd")
 const AMINA := "res://assets/characters/amina/preview.glb"
 const LIMIT := 30.0
 const SPEED := 4.2
@@ -50,6 +51,8 @@ var minus_button: Button
 var plus_button: Button
 var return_button: Button
 var logs_button: Button
+var sector_button: Button
+var zone_title: Label
 var conversation: ConfirmationDialog
 var journal: AcceptDialog
 var notice: AcceptDialog
@@ -73,7 +76,7 @@ func _ready() -> void:
     navigation.configure(LIMIT)
     progress.open_profile(GameState.world_progress_path, GameState.faction_index, GameState.officer_index)
     _create_world()
-    var saved: Dictionary = progress.state()
+    var saved: Dictionary = world_state()
     var restored := Vector3(float(saved["position"][0]), 0, float(saved["position"][1]))
     hero.position = restored if navigation.is_walkable(navigation.world_to_cell(restored)) else PROGRESS.SPAWN
     zoom = float(saved["zoom"])
@@ -90,6 +93,15 @@ func _ready() -> void:
     elif progress.recovered:
         save_label.text = "Прогресс восстановлен из резервной копии."
     _event("zone_entered", {"character": progress.character_id, "recovered": progress.recovered})
+
+func world_state() -> Dictionary:
+    return progress.state()
+
+func combat_state() -> Dictionary:
+    return progress.state()["combat"]
+
+func make_combat_model():
+    return COMBAT.new()
 
 func _material(color: Color) -> StandardMaterial3D:
     var mat := StandardMaterial3D.new()
@@ -176,6 +188,10 @@ func _create_world() -> void:
         relay_labels.append(_caption(relay, "", 3.6))
         relays.append(relay)
         navigation.set_blocked_box(relay.position, Vector3(1.4, 2.8, 1.4), 0.5)
+    _create_hero()
+    _create_camera_and_marker()
+
+func _create_hero() -> void:
     hero = _person(self, PROGRESS.SPAWN, Color("#91c6bc"), "WorldHero")
     if GameState.faction_index == 0 and GameState.officer_index == 0 and ResourceLoader.exists(AMINA):
         var packed := load(AMINA) as PackedScene
@@ -186,6 +202,7 @@ func _create_world() -> void:
         mount.add_child(model)
         if FIT.fit_to_height(model, 1.9).get("ok", false):
             hero.get_node("Placeholder").hide()
+func _create_camera_and_marker() -> void:
     target_marker = MeshInstance3D.new()
     var ring := TorusMesh.new()
     ring.inner_radius = 0.45
@@ -238,7 +255,7 @@ func _create_ui() -> void:
     var body := VBoxContainer.new()
     body.add_theme_constant_override("separation", 6)
     top_panel.add_child(body)
-    _label(body, "СЕКТОР 01 · ПРИБРЕЖНЫЙ УЗЕЛ", 23)
+    zone_title = _label(body, "СЕКТОР 01 · ПРИБРЕЖНЫЙ УЗЕЛ", 23)
     status = _label(body, "", 15)
     quest_label = _label(body, "", 17)
     var bar := HFlowContainer.new()
@@ -257,6 +274,9 @@ func _create_ui() -> void:
     diagnostics_panel.install(self, bar)
     logs_button = diagnostics_panel.open_button
     bar.add_child(return_button)
+    sector_button = _button("МОБЫ И БОСС ›", _travel_sector)
+    sector_button.visible = progress.character_id == "amina"
+    bar.add_child(sector_button)
     bottom_panel = PanelContainer.new()
     bottom_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
     bottom_panel.offset_left = 16
@@ -306,7 +326,7 @@ func _refresh() -> void:
     var saved: Dictionary = progress.state()
     status.text = "%s · Опыт %d · Кредиты %d · Локальная зона" % [GameState.officer_name.split(" — ")[0], progress.experience(), progress.credits()]
     if saved["claimed"]:
-        quest_label.text = "СИГНАЛ ВОССТАНОВЛЕН · Награда получена. Можно исследовать сектор."
+        quest_label.text = "СИГНАЛ ВОССТАНОВЛЕН · Награда получена." + (" «МОБЫ И БОСС» — боевой сектор." if progress.character_id == "amina" else " Можно исследовать сектор.")
     elif not saved["accepted"]:
         quest_label.text = "Поговори со связистом Вегой возле посадочной площадки."
     elif saved["relays"].size() == 3:
@@ -692,6 +712,14 @@ func _return_to_ship() -> void:
         return
     _event("zone_left", {"character": progress.character_id})
     get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+func _travel_sector() -> void:
+    if progress.character_id != "amina":
+        return
+    if not _checkpoint():
+        _show_notice(progress.error_text)
+        return
+    get_tree().change_scene_to_file("res://scenes/world_sector.tscn")
 
 func _handle_back() -> void:
     _reset_gesture()

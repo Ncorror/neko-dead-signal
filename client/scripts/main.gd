@@ -101,6 +101,7 @@ var faction_details: Label
 var selected_fleet: Label
 var cta: Button
 var world_button: Button
+var pve_button: Button
 var close_button: Button
 var exit_dialog: ConfirmationDialog
 
@@ -325,6 +326,10 @@ func _build_content(parent: VBoxContainer) -> void:
     world_button = _button("МИР · СЕКТОР 01    ›", true, 52)
     world_button.pressed.connect(_enter_world)
     right.add_child(world_button)
+    pve_button = _button("PvE · МОБЫ И БОСС    ›", true, 44)
+    pve_button.pressed.connect(_enter_sector)
+    pve_button.tooltip_text = "Ржавый тракт · боевой набор Амины · вход без поручения"
+    right.add_child(pve_button)
     cta = _button("RTS · ВЫСАДКА    ›", false, 48)
     cta.pressed.connect(_deploy)
     right.add_child(cta)
@@ -456,6 +461,8 @@ func _reveal_selected_officer() -> void:
 func _refresh_selection() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
     var officer: Dictionary = OFFICERS[faction_index][officer_index]
+    pve_button.disabled = faction_index != 0 or officer_index != 0
+    pve_button.text = "PvE · МОБЫ И БОСС    ›" if not pve_button.disabled else "PvE · ВЫБЕРИ АМИНУ"
     for i in range(faction_buttons.size()):
         var active: bool = i == faction_index
         var f: Dictionary = FACTIONS[i]
@@ -535,3 +542,9 @@ func _deploy() -> void:
 func _enter_world() -> void:
     _store_selected_commander()
     get_tree().change_scene_to_file("res://scenes/world_zone.tscn")
+
+func _enter_sector() -> void:
+    if faction_index != 0 or officer_index != 0:
+        return
+    _store_selected_commander()
+    get_tree().change_scene_to_file("res://scenes/world_sector.tscn")

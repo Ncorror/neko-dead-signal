@@ -16,6 +16,7 @@ on:
       - feat/world-zone-v021
       - fix/world-camera-logs-v022
       - feat/world-assault-combat-v023
+      - feat/world-pve-sector-v024
       - fix/base-sight-radius-v018
       - fix/building-sight-touch-v017
       - feat/economy-power-objectives-v016
@@ -111,6 +112,24 @@ jobs:
           timeout 45s godot --headless --path client res://tests/test_world_progress.tscn 2>&1 | tee build/rts-world-progress-test.log
           grep -q 'WORLD_PROGRESS_TEST_PASS' build/rts-world-progress-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-progress-test.log; then
+            exit 1
+          fi
+      - name: Test Rust Road boss tells, immunity, leashes and respawn timers
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 60s godot --headless --path client res://tests/test_world_hunt.tscn 2>&1 | tee build/rts-world-hunt-test.log
+          grep -q 'WORLD_HUNT_TEST_PASS' build/rts-world-hunt-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-hunt-test.log; then
+            exit 1
+          fi
+      - name: Play native PvE travel, camps, boss and persistent reward
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 120s godot --headless --path client res://tests/test_world_sector.tscn 2>&1 | tee build/rts-world-sector-test.log
+          grep -q 'WORLD_SECTOR_TEST_PASS' build/rts-world-sector-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-sector-test.log; then
             exit 1
           fi
       - name: Play the one-hero world quest and return to RTS
@@ -405,7 +424,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.23-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.24-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:

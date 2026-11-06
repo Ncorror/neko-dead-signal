@@ -67,12 +67,25 @@ func configure(nav, saved: Dictionary) -> void:
     quiet = 0
     events.clear()
     enemies.clear()
-    for i in range(3):
-        var maximum := 120.0 if i == 2 else 65.0
-        enemies.append({"id": i, "home": HOMES[i], "at": HOMES[i], "hp": 0.0 if saved["defeated"].has(i) else maximum,
-            "max_hp": maximum, "vehicle": i == 2, "armor": 0.3 if i == 2 else 0.1,
+    for spec in enemy_specs():
+        var i: int = enemies.size()
+        var maximum: float = spec["max_hp"]
+        var enemy := spec.duplicate(true)
+        enemy.merge({"id": i, "at": spec["home"], "hp": 0.0 if saved["defeated"].has(i) else maximum,
             "aggro": false, "returning": false, "shot": 0.0, "stun": 0.0, "slow": 0.0, "weak": 0.0,
-            "path": [], "path_index": 0, "repath": 0.0})
+            "path": [], "path_index": 0, "repath": 0.0}, true)
+        enemies.append(enemy)
+
+func enemy_specs() -> Array[Dictionary]:
+    var specs: Array[Dictionary] = []
+    for i in range(3):
+        specs.append({"home": HOMES[i], "name": ENEMY_NAMES[i], "max_hp": 120.0 if i == 2 else 65.0,
+            "vehicle": i == 2, "armor": 0.3 if i == 2 else 0.1,
+            "damage": 4.0 if i == 2 else 3.0, "interval": 1.8})
+    return specs
+
+func _special_attack(_enemy: Dictionary, _delta: float, _hero_at: Vector3) -> bool:
+    return false
 
 func snapshot() -> Dictionary:
     var defeated: Array = []
@@ -150,7 +163,8 @@ func tick(seconds: float, hero_at: Vector3) -> void:
         if enemy["hp"] <= 0:
             continue
         for timer in ["shot", "stun", "slow", "weak"]:
-            enemy[timer] = maxf(0, enemy[timer] - delta)
+            var rate := 0.9 if timer == "shot" and enemy.get("boss", false) and enemy["slow"] > 0 else 1.0
+            enemy[timer] = maxf(0, enemy[timer] - delta * rate)
         if enemy["returning"] or hp <= 0 or in_safe(hero_at) or hero_at.distance_to(enemy["home"]) > 12.0:
             if enemy["aggro"] or enemy["returning"] or enemy["at"] != enemy["home"]:
                 _retreat(enemy, delta)
@@ -160,14 +174,16 @@ func tick(seconds: float, hero_at: Vector3) -> void:
             events.append({"type": "enemy_aggro", "enemy": enemy["id"]})
         if not enemy["aggro"] or enemy["stun"] > 0:
             continue
+        if _special_attack(enemy, delta, hero_at):
+            continue
         if not _can_shoot(enemy["at"], hero_at, 5.0):
-            _move_enemy(enemy, hero_at, delta, 2.6 * (0.8 if enemy["slow"] > 0 else 1.0))
+            _move_enemy(enemy, hero_at, delta, 2.6 * (0.8 if enemy["slow"] > 0 and not enemy.get("boss", false) else 1.0))
         elif enemy["shot"] <= 0:
-            var amount := 4.0 if enemy["vehicle"] else 3.0
+            var amount: float = enemy["damage"]
             hp = maxf(0, hp - amount)
             quiet = 0
             last_attacker = enemy["id"]
-            enemy["shot"] = 1.8
+            enemy["shot"] = enemy["interval"]
             events.append({"type": "enemy_shot", "enemy": enemy["id"], "from": enemy["at"], "to": hero_at, "damage": amount})
             if hp <= 0:
                 protocol = 0
@@ -270,7 +286,7 @@ func cast(skill: int, hero_at: Vector3, point: Vector3) -> Dictionary:
             _hit(enemy, DAMAGE * multiplier, "grenade")
             enemy["weak"] = 4.0
             if skill == 4:
-                enemy["stun"] = 0.7
+                enemy["stun"] = 0.0 if enemy.get("boss", false) else 0.7
                 enemy["slow"] = 2.0
     events.append({"type": "skill_cast", "skill": skill, "from": hero_at, "to": result["at"]})
     return result

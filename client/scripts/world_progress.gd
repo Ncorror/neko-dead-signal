@@ -10,8 +10,11 @@ const REWARD_CREDITS := 75
 const SPAWN := Vector3(-18, 0, 18)
 const CHARACTER_IDS := [["amina", "reina", "mira_kade", "lyra_voss"], ["saira_nel", "oralin"]]
 const COMBAT := preload("res://scripts/world_combat.gd")
+const HUNT := preload("res://scripts/world_hunt.gd")
 const COMBAT_XP := 150
 const COMBAT_CREDITS := 100
+const BOSS_XP := 200
+const BOSS_CREDITS := 150
 
 var file_path := DEFAULT_PATH
 var character_id := "amina"
@@ -44,7 +47,43 @@ func state() -> Dictionary:
         "position": [SPAWN.x, SPAWN.z], "zoom": DEFAULT_ZOOM, "camera_preset": CAMERA_PRESET}).duplicate(true)
     if not result.has("combat"):
         result["combat"] = COMBAT.fresh_profile()
+    if not result.has("hunt"):
+        result["hunt"] = {"defeated": [], "respawns": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "claimed": false, "position": [SPAWN.x, SPAWN.z], "zoom": DEFAULT_ZOOM}
     return result
+
+func hunt_combat_state() -> Dictionary:
+    var saved := state()
+    var result: Dictionary = saved["combat"].duplicate(true)
+    result["accepted"] = character_id == "amina"
+    result["defeated"] = saved["hunt"]["defeated"].duplicate()
+    result["respawns"] = saved["hunt"]["respawns"].duplicate()
+    return result
+
+func _valid_hunt(value: Variant) -> bool:
+    if not value is Dictionary or not value.get("claimed") is bool or not value.get("defeated") is Array:
+        return false
+    if not value.get("respawns") is Array or value["respawns"].size() != HUNT.COUNT:
+        return false
+    if not value.get("position") is Array or value["position"].size() != 2:
+        return false
+    var ids: Array = []
+    for id in value["defeated"]:
+        if not (id is int or id is float) or id != int(id) or id < 0 or id >= HUNT.COUNT or ids.has(int(id)):
+            return false
+        ids.append(int(id))
+    for i in range(HUNT.COUNT):
+        var timer: Variant = value["respawns"][i]
+        var maximum: float = HUNT.BOSS_RESPAWN_SECONDS if i == HUNT.BOSS else HUNT.RESPAWN_SECONDS
+        if not (timer is int or timer is float) or not is_finite(float(timer)) or timer < 0 or timer > maximum + 0.001:
+            return false
+        if not ids.has(i) and timer > 0:
+            return false
+    for coordinate in value["position"]:
+        if not (coordinate is int or coordinate is float) or not is_finite(float(coordinate)) or absf(coordinate) > 30:
+            return false
+    var scale: Variant = value.get("zoom")
+    return (scale is int or scale is float) and is_finite(float(scale)) and scale >= 8 and scale <= 30
 
 func _valid(root: Variant) -> bool:
     if not root is Dictionary or root.get("version") != SCHEMA or not root.get("characters") is Dictionary:
@@ -79,6 +118,8 @@ func _valid(root: Variant) -> bool:
         if item.has("combat"):
             if not COMBAT.valid_profile(item["combat"]) or (item["combat"]["accepted"] and (key != "amina" or not item["claimed"])):
                 return false
+        if item.has("hunt") and not _valid_hunt(item["hunt"]):
+            return false
     return true
 
 func _read(path: String) -> Variant:
@@ -104,6 +145,11 @@ func _read(path: String) -> Variant:
             for id in item["combat"]["defeated"]:
                 defeated.append(int(id))
             item["combat"]["defeated"] = defeated
+        if item.has("hunt"):
+            var hunt_ids: Array = []
+            for id in item["hunt"]["defeated"]:
+                hunt_ids.append(int(id))
+            item["hunt"]["defeated"] = hunt_ids
     return parser.data
 
 func _write_temp(path: String, value: Dictionary) -> bool:
@@ -198,7 +244,26 @@ func checkpoint(point: Vector3, zoom: float, combat: Dictionary = {}) -> bool:
     return _commit(next)
 
 func experience() -> int:
-    return (REWARD_XP if state()["claimed"] else 0) + (COMBAT_XP if state()["combat"]["claimed"] else 0)
+    return (REWARD_XP if state()["claimed"] else 0) + (COMBAT_XP if state()["combat"]["claimed"] else 0) + (BOSS_XP if state()["hunt"]["claimed"] else 0)
 
 func credits() -> int:
-    return (REWARD_CREDITS if state()["claimed"] else 0) + (COMBAT_CREDITS if state()["combat"]["claimed"] else 0)
+    return (REWARD_CREDITS if state()["claimed"] else 0) + (COMBAT_CREDITS if state()["combat"]["claimed"] else 0) + (BOSS_CREDITS if state()["hunt"]["claimed"] else 0)
+
+func checkpoint_sector(point: Vector3, scale: float, combat: Dictionary) -> bool:
+    if character_id != "amina":
+        return false
+    var next := state()
+    for key in ["hp", "cooldowns", "launcher", "protocol", "weapon"]:
+        if not combat.has(key):
+            return false
+        next["combat"][key] = combat[key]
+    for key in ["defeated", "respawns"]:
+        if not combat.has(key):
+            return false
+        next["hunt"][key] = combat[key]
+    next["hunt"]["position"] = [point.x, point.z]
+    next["hunt"]["zoom"] = scale
+    next["hunt"]["claimed"] = next["hunt"]["claimed"] or combat["defeated"].has(HUNT.BOSS)
+    if data["characters"].get(character_id, {}) == next:
+        return true
+    return _commit(next)
