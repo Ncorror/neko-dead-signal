@@ -236,7 +236,7 @@ func before_movement(delta: float) -> void:
     if model.enemies[model.attack_target]["returning"]:
         zone._stop()
         return
-    if zone.hero.position.distance_to(at) <= COMBAT.RANGE and zone.navigation.has_clear_shot(zone.hero.position, at):
+    if not model.in_safe(zone.hero.position) and zone.hero.position.distance_to(at) <= COMBAT.RANGE and zone.navigation.has_clear_shot(zone.hero.position, at):
         if chasing:
             zone._clear_route()
             chasing = false
@@ -246,7 +246,7 @@ func before_movement(delta: float) -> void:
         return
     chase_age = 0.4
     var destination := at.move_toward(zone.hero.position, COMBAT.RANGE * 0.85)
-    if not zone.navigation.has_clear_shot(destination, at):
+    if model.in_safe(destination) or not zone.navigation.has_clear_shot(destination, at):
         destination = at.move_toward(zone.hero.position, 1.8)
     var avoid: Array[Vector3] = []
     for enemy in model.enemies:
