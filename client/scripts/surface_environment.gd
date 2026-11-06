@@ -1,15 +1,16 @@
 extends Node3D
-## Reusable blockout modules; terrain/prop colliders and navigation share footprints.
+## Frontier v1 art modules over the physically verified 0.0.25 footprints.
 
 const TERRAIN := preload("res://scripts/surface_terrain.gd")
+const ASSETS := preload("res://scripts/surface_assets.gd")
 var terrain = TERRAIN.new()
+var kit = ASSETS.new()
 var navigation
 var terrain_body: StaticBody3D
 var obstacles: Array[Dictionary] = []
 var site_markers: Array[Node3D] = []
 var npc: Node3D
 var vegetation: MultiMeshInstance3D
-var shared_rock: SphereMesh
 var material_cache: Dictionary = {}
 
 func material(color: Color, glow: float = 0.0) -> StandardMaterial3D:
@@ -67,6 +68,13 @@ func _block(point: Vector3, size: Vector3) -> void:
     add_child(body)
     obstacles.append({"at": point, "size": size, "body": body})
 
+func _module_obstacle(id: String, at: Vector3, size: Vector3) -> MeshInstance3D:
+    var point: Vector3 = terrain.on_ground(at, 0)
+    var visual: MeshInstance3D = kit.place(self, id, point, size)
+    visual.set_meta("collision_size", size)
+    _block(point, size)
+    return visual
+
 func build(nav) -> void:
     navigation = nav
     terrain.build()
@@ -76,13 +84,13 @@ func build(nav) -> void:
     sky.background_mode = Environment.BG_COLOR
     sky.background_color = Color("#22333f")
     sky.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    sky.ambient_light_color = Color("#b3c8d8")
-    sky.ambient_light_energy = 0.7
+    sky.ambient_light_color = Color("#b7c4ce")
+    sky.ambient_light_energy = 0.62
     environment.environment = sky
     add_child(environment)
     var sun := DirectionalLight3D.new()
     sun.rotation_degrees = Vector3(-52, -32, 0)
-    sun.light_color = Color("#d1e1ef")
+    sun.light_color = Color("#fff1d3")
     sun.light_energy = 1.0
     add_child(sun)
     var ground := MeshInstance3D.new()
@@ -118,18 +126,14 @@ func build(nav) -> void:
 
 func _outpost() -> void:
     var pad: Vector3 = terrain.on_ground(TERRAIN.SITES[0], -0.02)
-    box(self, pad, Vector3(12, 0.05, 12), Color("#3d5965"))
-    for x in [-47.5, -38.5]:
-        box(self, Vector3(x, 0.64, 39), Vector3(0.1, 0.03, 9), Color("#76b8bd"), 0.3)
-    var hq := obstacle(Vector3(-50, 0, 41), Vector3(6, 3.2, 6), Color("#445f73"))
-    box(hq, Vector3(-2.8, 1.1, -3.04), Vector3(5.6, 0.45, 0.08), Color("#9cb9c4"))
-    obstacle(Vector3(-48, 0, 32), Vector3(3, 2.5, 2.5), Color("#567985"))
+    kit.place(self, "landing_pad", pad)
+    var hq := _module_obstacle("habitat", Vector3(-50, 0, 41), Vector3(6, 3.2, 6))
+    hq.rotation.y = PI
+    _module_obstacle("generator", Vector3(-48, 0, 32), Vector3(3, 2.5, 2.5))
     for at in [Vector3(-34.5, 0, 29.5), Vector3(-31.5, 0, 33.5)]:
-        var post: Vector3 = terrain.on_ground(at, 0)
-        obstacle(at, Vector3(0.7, 3.2, 0.7), Color("#5f7e8c"))
-        box(self, post + Vector3(0, 2.8, 0), Vector3(0.75, 0.2, 0.75), Color("#72d7d1"), 0.5)
+        _module_obstacle("gate_post", at, Vector3(0.7, 3.2, 0.7))
     for x in [-53, -49, -45]:
-        obstacle(Vector3(x, 0, 28), Vector3(3.3, 1.4, 0.7), Color("#5b727d"))
+        _module_obstacle("wall", Vector3(x, 0, 28), Vector3(3.3, 1.4, 0.7))
     npc = Node3D.new()
     npc.name = "SurfaceVega"
     npc.position = terrain.on_ground(Vector3(-42, 0, 33))
@@ -146,70 +150,44 @@ func _outpost() -> void:
     navigation.set_blocked_box(npc.position, Vector3(0.8, 1.8, 0.8), 0.6)
 
 func _wreck() -> void:
-    obstacle(Vector3(-11, 0, 11), Vector3(11, 2.5, 3.4), Color("#3d5263"))
-    var hull := MeshInstance3D.new()
-    var cylinder := CylinderMesh.new()
-    cylinder.top_radius = 1.6
-    cylinder.bottom_radius = 1.85
-    cylinder.height = 11.0
-    cylinder.radial_segments = 10
-    hull.mesh = cylinder
-    hull.material_override = material(Color("#71858e"))
-    hull.position = terrain.on_ground(Vector3(-11, 0, 11), 1.2)
-    hull.rotation.z = PI / 2
-    add_child(hull)
-    var wing := obstacle(Vector3(-6, 0, 7), Vector3(4.5, 0.45, 4), Color("#87969c"))
-    wing.rotation.z = 0.18
-    obstacle(Vector3(-18, 0, 13), Vector3(2.8, 2.4, 2.8), Color("#354752"))
-    for x in [-14, -11, -8]:
-        box(self, terrain.on_ground(Vector3(x, 0, 12.75), 1.4), Vector3(1.3, 0.2, 0.08), Color("#caac72"))
+    _module_obstacle("wreck_hull", Vector3(-11, 0, 11), Vector3(11, 2.5, 3.4))
+    _module_obstacle("wreck_wing", Vector3(-6, 0, 7), Vector3(4.5, 0.45, 4))
+    _module_obstacle("wreck_engine", Vector3(-18, 0, 13), Vector3(2.8, 2.4, 2.8))
 
 func _salvage() -> void:
     for at in [Vector3(34, 0, 22), Vector3(42, 0, 20), Vector3(39, 0, 9)]:
-        var container := obstacle(at, Vector3(4.4, 2.4, 2.8), Color("#476c78"))
-        for x in [-1.6, -0.5, 0.6, 1.7]:
-            box(container, Vector3(x, -1.0, 1.42), Vector3(0.1, 2.1, 0.08), Color("#78929b"))
-    obstacle(Vector3(47, 0, 12), Vector3(0.8, 7, 0.8), Color("#83949a"))
-    obstacle(Vector3(47, 0, 24), Vector3(0.8, 7, 0.8), Color("#83949a"))
-    var at: Vector3 = terrain.on_ground(Vector3(47, 0, 18), 6.6)
-    box(self, at, Vector3(1, 0.5, 13), Color("#a4b1b3"))
+        _module_obstacle("cargo", at, Vector3(4.4, 2.4, 2.8))
+    _module_obstacle("gantry_column", Vector3(47, 0, 12), Vector3(0.8, 7, 0.8))
+    _module_obstacle("gantry_column", Vector3(47, 0, 24), Vector3(0.8, 7, 0.8))
+    var first: Vector3 = terrain.on_ground(Vector3(47, 0, 12), 7)
+    var last: Vector3 = terrain.on_ground(Vector3(47, 0, 24), 7)
+    var beam: MeshInstance3D = kit.place(self, "gantry_beam", (first + last) * 0.5 - Vector3.UP * 0.25)
+    beam.rotation.x = -atan2(last.y - first.y, 12)
 
 func _ruins() -> void:
     for i in range(6):
         var angle := float(i) * TAU / 6
         var at: Vector3 = TERRAIN.SITES[3] + Vector3(cos(angle), 0, sin(angle)) * 8
-        var stone := obstacle(at, Vector3(1.7, 4.0 + float(i % 3), 1.7), Color("#71818d"))
-        box(stone, Vector3(0, -1.6, 0.87), Vector3(0.14, 2.8, 0.05), Color("#82c9c4"), 0.3)
-    var terminal := obstacle(Vector3(25, 0, -38), Vector3(1.4, 1.7, 1.4), Color("#4c6473"))
-    box(terminal, Vector3(-0.5, 0.7, -0.5), Vector3(1, 0.1, 1), Color("#9bcfca"), 0.4)
+        _module_obstacle("obelisk", at, Vector3(1.7, 4.0 + float(i % 3), 1.7))
+    _module_obstacle("terminal", Vector3(25, 0, -38), Vector3(1.4, 1.7, 1.4))
 
 func _canyon() -> void:
     for x in [-39, -29]:
-        obstacle(Vector3(x, 0, -40), Vector3(3.5, 6, 4), Color("#566b7b"))
-    box(self, terrain.on_ground(Vector3(-34, 0, -40), 5), Vector3(10.5, 1.3, 4), Color("#677d88"))
+        _module_obstacle("cave_pillar", Vector3(x, 0, -40), Vector3(3.5, 6, 4))
+    var left: Vector3 = terrain.on_ground(Vector3(-39, 0, -40), 5.4)
+    var right: Vector3 = terrain.on_ground(Vector3(-29, 0, -40), 5.4)
+    var arch: MeshInstance3D = kit.place(self, "cave_arch", (left + right) * 0.5)
+    arch.rotation.z = atan2(right.y - left.y, 10)
     # The entrance is a landmark, not a dungeon transition in this environment slice.
-    box(self, terrain.on_ground(Vector3(-34, 0, -42), 0), Vector3(6.5, 4.7, 0.15), Color("#152b37"))
+    kit.place(self, "cave_back", terrain.on_ground(Vector3(-34, 0, -42), 0))
 
 func _scatter() -> void:
     var random := RandomNumberGenerator.new()
     random.seed = 20261106
-    shared_rock = SphereMesh.new()
-    shared_rock.radius = 1
-    shared_rock.height = 2
-    shared_rock.radial_segments = 8
-    shared_rock.rings = 3
     var plants := MultiMesh.new()
     plants.transform_format = MultiMesh.TRANSFORM_3D
     plants.use_colors = true
-    var plant_mesh := CylinderMesh.new()
-    plant_mesh.top_radius = 0.0
-    plant_mesh.bottom_radius = 0.38
-    plant_mesh.height = 1.4
-    plant_mesh.radial_segments = 5
-    var plant_material := material(Color.WHITE).duplicate() as StandardMaterial3D
-    plant_material.vertex_color_use_as_albedo = true
-    plant_mesh.material = plant_material
-    plants.mesh = plant_mesh
+    plants.mesh = kit.mesh("flora_rosette")
     plants.instance_count = 180
     var planted := 0
     var rocks := 0
@@ -223,20 +201,20 @@ func _scatter() -> void:
             continue
         if rocks < 72:
             var size := Vector3(random.randf_range(1.2, 3.2), random.randf_range(1.4, 4), random.randf_range(1.2, 2.8))
-            var rock := MeshInstance3D.new()
-            rock.mesh = shared_rock
-            rock.position = terrain.on_ground(at, size.y * 0.35)
-            rock.scale = Vector3(size.x * 0.5, size.y * 0.5, size.z * 0.5)
-            rock.material_override = material(Color("#536c7c"))
+            var point: Vector3 = terrain.on_ground(at, 0)
+            var floor_height: float = point.y
+            for dx in [-0.35, 0.35]:
+                for dz in [-0.35, 0.35]:
+                    floor_height = minf(floor_height, terrain.height(at.x + dx * size.x, at.z + dz * size.z))
+            var rock: MeshInstance3D = kit.place(self, ["rock_a", "rock_b", "rock_c"][rocks % 3], Vector3(at.x, floor_height - 0.03, at.z), size)
             rock.visibility_range_end = 65
-            add_child(rock)
-            _block(terrain.on_ground(at, 0), size)
+            _block(point, size)
             rocks += 1
         elif planted < plants.instance_count:
             var scale_value := random.randf_range(0.35, 0.95)
             var basis := Basis(Vector3.UP, random.randf_range(0, TAU)).scaled(Vector3.ONE * scale_value)
-            plants.set_instance_transform(planted, Transform3D(basis, terrain.on_ground(at, scale_value * 0.7)))
-            plants.set_instance_color(planted, Color("#62979a").lerp(Color("#89a7b0"), random.randf()))
+            plants.set_instance_transform(planted, Transform3D(basis, terrain.on_ground(at, 0)))
+            plants.set_instance_color(planted, Color("#b5d0bf").lerp(Color.WHITE, random.randf()))
             planted += 1
         if planted == plants.instance_count and rocks == 72:
             break

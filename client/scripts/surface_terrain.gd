@@ -83,9 +83,9 @@ func build() -> void:
             var dx := _vertex(x + 1, z) - _vertex(x - 1, z)
             var dz := _vertex(x, z + 1) - _vertex(x, z - 1)
             normals[i] = Vector3(-dx * 0.5, 1, -dz * 0.5).normalized()
-            var rock := Color("#637c83").lerp(Color("#a0adb0"), clampf((y - 5) / 8, 0, 1))
-            var noise := sin(float(x * 17 + z * 31)) * 0.035
-            colors[i] = rock.lerp(Color("#415963"), road_weights[i] * 0.8).lightened(noise)
+            var rock := Color("#45585e").lerp(Color("#7d8786"), clampf((y - 5) / 8, 0, 1))
+            var noise := sin(float(x * 17 + z * 31)) * 0.025
+            colors[i] = rock.lerp(Color("#80755e"), road_weights[i] * 0.65).lightened(noise)
     # Clockwise faces viewed from above; height() uses precisely this diagonal.
     for z in range(SIZE):
         for x in range(SIZE):
