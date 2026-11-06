@@ -20,10 +20,11 @@ Google Drive → [Игра](https://drive.google.com/drive/folders/1nbYMKjf3j6d9
 | Левый профиль (нос направлен вправо на экране) | [04_LEFT_PROFILE.png](https://drive.google.com/file/d/1GR7zDtJA1Bv4BGPenMrf7m6DzeruW7yP/view) | 1024×1536 |
 | Превью всех четырёх | [00_CONTACT_SHEET_PREVIEW.jpg](https://drive.google.com/file/d/1IEQEBCA2Pn_Ro-je8CHylNX1WgUUNAII/view) | иллюстрация-указатель, НЕ источник одной 3D генерации |
 | Полный производственный архив | **[REINA_Female_Base_v3_APPROVED_4Views_2026-11-06.zip](https://drive.google.com/file/d/11qxuslgZGwMbX9DgZKIvgjgvRONqJmdN/view)** | **5 665 760 байт** |
+| [00_PROJECT_INDEX.md](https://drive.google.com/file/d/10DyJtyvrb6feTASXZUVdVw_eskn3rLz2/view) | Индекс Drive ↔ GitHub, статус и выбор AI-сервиса |
 | Манифест SHA256 и исходных имён | [manifest.json](https://drive.google.com/file/d/1GVBBrWtN2Kx5uNjJUGUD73aKoRJVKCj1/view) | контроль целостности |
 | Инструкция по вводу в Meshy/Tripo | [README.txt](https://drive.google.com/file/d/1YbawvXDdOl27M9J3cPwUVGWHc_ktFeqe/view) | техническая инструкция |
 
-**SHA256 ZIP:** 695c811f00ded32e20838b1080843f8c09a4f7f066f2c6110f6d48162951c3b1. Проверена структура ZIP, 7 файлов, отсутствие ошибок чтения. Проверена загрузка всех **8 объектов** непосредственно повторным просмотром Google Drive (4 PNG, preview, README, manifest, ZIP).
+**SHA256 ZIP:** 695c811f00ded32e20838b1080843f8c09a4f7f066f2c6110f6d48162951c3b1. Проверена структура ZIP, 7 файлов, отсутствие ошибок чтения. Проверена загрузка всех **9 объектов** непосредственно повторным просмотром Google Drive (4 PNG, preview, README, manifest, ZIP и индекс проекта).
 
 **Исходные генерации сохранены ПОБАЙТОВО**, без какого-либо пересжатия или редактирования файлов отдельных видов. Папка v2 по-прежнему существует: [архивный референс v2](https://drive.google.com/drive/folders/15-CCXvQxuXAZwlsJiABxtSO0Qmsg1tpU), v1 — [архив v1](https://drive.google.com/drive/folders/1ZTpHx7OWYbRULzbCCi8S6sgrx7gYZoZ1).
 
