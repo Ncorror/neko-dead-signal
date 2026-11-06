@@ -19,6 +19,7 @@ on:
       - feat/world-pve-sector-v024
       - feat/surface-128-v025
       - feat/surface-art-v026
+      - fix/surface-presentation-v027
       - fix/base-sight-radius-v018
       - fix/building-sight-touch-v017
       - feat/economy-power-objectives-v016
@@ -460,7 +461,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.26-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.27-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:

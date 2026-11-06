@@ -69,7 +69,50 @@ func _run() -> void:
     scene_triangles += plants.instance_count * plants.mesh.get_faces().size() / 3
     _check(placed == 100 and world.obstacles.size() == 96, "art update changed the established layout")
     _check(plants.mesh == kit.mesh("flora_rosette") and plants.instance_count == 180, "plants lost GPU instancing")
+    _backdrop(world)
     _check(scene_triangles < 120000, "whole surface geometry exceeds the initial budget: " + str(scene_triangles))
     if failures == 0:
         print("SURFACE_ASSETS_TEST_PASS glb=20 surfaces=one_each cache=shared materials=opaque_color footprints=preserved unique_triangles=%d scene_triangles=%d" % [unique_triangles, scene_triangles])
     get_tree().quit(0 if failures == 0 else 1)
+
+func _backdrop(world) -> void:
+    var backdrop = world.backdrop
+    _check(backdrop != null and backdrop.mesh != null, "distant terrain is missing")
+    if backdrop == null or backdrop.mesh == null:
+        return
+    var arrays: Array = backdrop.mesh.surface_get_arrays(0)
+    var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+    var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+    var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+    var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+    _check(backdrop.mesh.get_surface_count() == 1 and indices.size() / 3 <= 4096,
+        "distant terrain added too many draw surfaces or triangles")
+    _check(backdrop.find_children("*", "CollisionObject3D", true, false).is_empty(), "decorative terrain gained physics")
+    _check(world.terrain.mesh.get_aabb().size.x == 128 and backdrop.mesh.get_aabb().size.x >= 400,
+        "backdrop resized the playable terrain or fails to surround it")
+    var ground: Array = world.terrain.mesh.surface_get_arrays(0)
+    var ground_colors: PackedColorArray = ground[Mesh.ARRAY_COLOR]
+    var ground_normals: PackedVector3Array = ground[Mesh.ARRAY_NORMAL]
+    var max_normal_error := 0.0
+    for i in range(backdrop.PERIMETER):
+        var at := vertices[i]
+        var sample := (roundi(at.z) + 64) * 129 + roundi(at.x) + 64
+        var normal_error := normals[i].distance_to(ground_normals[sample])
+        max_normal_error = maxf(max_normal_error, normal_error)
+        # A second ArrayMesh packs/unpacks the normal again; allow its GPU
+        # attribute precision, not a visible change in direction (< 0.06 deg).
+        _check(absf(at.y - world.terrain.height(at.x, at.z)) < 0.001
+            and colors[i].is_equal_approx(ground_colors[sample])
+            and normal_error < 0.001, "visible seam at the playable terrain edge: at=%s height_error=%.6f normal_error=%.6f color=%s expected=%s" % [
+                at, absf(at.y - world.terrain.height(at.x, at.z)), normal_error, colors[i], ground_colors[sample]])
+    print("SURFACE_BACKDROP_DEBUG edge_vertices=%d max_normal_error=%.6f" % [backdrop.PERIMETER, max_normal_error])
+    for i in range(vertices.size()):
+        _check(vertices[i].is_finite() and normals[i].is_finite() and normals[i].y > 0
+            and absf(normals[i].length() - 1) < 0.001, "distant terrain contains an invalid vertex or normal")
+    for i in range(0, indices.size(), 3):
+        var a := vertices[indices[i]]
+        var b := vertices[indices[i + 1]]
+        var c := vertices[indices[i + 2]]
+        _check((b - a).cross(c - a).y < 0, "distant terrain winding faces away from the camera")
+    _check(world.get_node("SurfaceFill").light_energy > 0 and not world.get_node("SurfaceFill").shadow_enabled,
+        "fill light is missing or adds dynamic shadows")

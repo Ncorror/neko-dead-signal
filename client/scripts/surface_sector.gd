@@ -59,6 +59,7 @@ var logs_button: Button
 var site_buttons: Array[Button] = []
 var minus_button: Button
 var plus_button: Button
+var help_button: Button
 var journal: AcceptDialog
 var notice: AcceptDialog
 var return_dialog: ConfirmationDialog
@@ -135,7 +136,7 @@ func _label(parent: Node, text: String, size: int) -> Label:
 func _button(text: String, action: Callable) -> Button:
     var value := Button.new()
     value.text = text
-    value.custom_minimum_size = Vector2(84, 46)
+    value.custom_minimum_size = Vector2(44, 44)
     value.add_theme_font_size_override("font_size", 14)
     value.pressed.connect(action)
     return value
@@ -144,28 +145,38 @@ func _create_ui() -> void:
     var layer := CanvasLayer.new()
     add_child(layer)
     var style := StyleBoxFlat.new()
-    style.bg_color = Color(0.025, 0.065, 0.09, 0.94)
+    style.bg_color = Color(0.025, 0.065, 0.09, 0.88)
     style.border_color = Color("#486d7d")
     style.set_border_width_all(1)
-    style.set_content_margin_all(10)
+    style.set_content_margin_all(6)
     top_panel = PanelContainer.new()
     top_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-    top_panel.offset_left = 16
-    top_panel.offset_top = 10
-    top_panel.offset_right = -16
+    top_panel.offset_left = 8
+    top_panel.offset_top = 8
+    top_panel.offset_right = -8
     top_panel.add_theme_stylebox_override("panel", style)
     layer.add_child(top_panel)
-    var body := VBoxContainer.new()
+    var body := HBoxContainer.new()
+    body.add_theme_constant_override("separation", 10)
     top_panel.add_child(body)
-    _label(body, "ПЛАНЕТА · ПЕРВЫЙ СЕКТОР · 128 × 128", 21)
-    status = _label(body, "", 14)
+    var header := VBoxContainer.new()
+    header.custom_minimum_size.x = 232
+    body.add_child(header)
+    var title := _label(header, "СЕКТОР 01 · 128×128", 17)
+    title.autowrap_mode = TextServer.AUTOWRAP_OFF
+    status = _label(header, "", 13)
+    status.autowrap_mode = TextServer.AUTOWRAP_OFF
     var bar := HFlowContainer.new()
+    bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    bar.add_theme_constant_override("h_separation", 6)
+    bar.add_theme_constant_override("v_separation", 6)
     body.add_child(bar)
     sites_button = _button("ТОЧКИ ИНТЕРЕСА", _open_sites)
     follow_button = _button("К ГЕРОЮ", _follow)
     stop_button = _button("СТОП", _stop)
     minus_button = _button("−", _change_zoom.bind(1.2))
     plus_button = _button("+", _change_zoom.bind(1 / 1.2))
+    help_button = _button("?", _show_help)
     return_button = _button("НА КОРАБЛЬ", _request_return)
     for button in [sites_button, follow_button, stop_button, minus_button, plus_button]:
         bar.add_child(button)
@@ -173,12 +184,16 @@ func _create_ui() -> void:
     add_child(diagnostics_panel)
     diagnostics_panel.install(self, bar)
     logs_button = diagnostics_panel.open_button
+    if logs_button != null:
+        logs_button.custom_minimum_size = Vector2(64, 44)
+        logs_button.add_theme_font_size_override("font_size", 14)
+    bar.add_child(help_button)
     bar.add_child(return_button)
     bottom_panel = PanelContainer.new()
     bottom_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-    bottom_panel.offset_left = 16
-    bottom_panel.offset_right = -16
-    bottom_panel.offset_bottom = -10
+    bottom_panel.offset_left = 8
+    bottom_panel.offset_right = -8
+    bottom_panel.offset_bottom = -8
     bottom_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
     bottom_panel.add_theme_stylebox_override("panel", style)
     layer.add_child(bottom_panel)
@@ -187,11 +202,15 @@ func _create_ui() -> void:
     var info := VBoxContainer.new()
     info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     row.add_child(info)
-    target_label = _label(info, "", 16)
+    var action_row := HBoxContainer.new()
+    info.add_child(action_row)
+    target_label = _label(action_row, "", 16)
+    target_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    target_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     goal_button = _button("К ЦЕЛИ", _go_to_goal)
-    info.add_child(goal_button)
-    save_label = _label(info, "Новая локация сохраняется отдельно.", 13)
-    _label(info, "Касание — идти. Свайп — временный осмотр. Два пальца — масштаб. Вега — разговор.", 13)
+    goal_button.custom_minimum_size.x = 116
+    action_row.add_child(goal_button)
+    save_label = _label(info, "Прогресс сохраняется.", 13)
     minimap = MAP.new()
     row.add_child(minimap)
     minimap.install(self)
@@ -221,7 +240,7 @@ func _event(name: String, details: Dictionary = {}) -> void:
         RTSDiagnostics.event("surface", name, details)
 
 func _refresh() -> void:
-    status.text = "%s · Обследовано %d/5 · Высота %.1f" % [GameState.officer_name.split(" — ")[0], visited.size(), hero.position.y]
+    status.text = "%s · %d/5 · Высота %.1f" % [GameState.officer_name.split(" — ")[0], visited.size(), hero.position.y]
     var distance: float = Vector2(hero.position.x - TERRAIN.SITES[goal].x, hero.position.z - TERRAIN.SITES[goal].z).length()
     target_label.text = "%02d · %s · %.0f м" % [goal + 1, TERRAIN.SITE_NAMES[goal], distance]
     minimap.queue_redraw()
@@ -236,6 +255,9 @@ func _popup(dialog: AcceptDialog) -> void:
 func _show_notice(text: String) -> void:
     notice.dialog_text = text
     _popup(notice)
+
+func _show_help() -> void:
+    _show_notice("Коснись земли — герой пойдёт к указанной точке.\nСвайп — временный осмотр; камера затем вернётся к герою.\nДва пальца или −/+ — масштаб. «СТОП» отменяет движение.\n\n«ТОЧКИ ИНТЕРЕСА» показывает места; выбери одно и нажми «К ЦЕЛИ». Для обследования подойди героем.\nКоснись Веги, чтобы поговорить. Прогресс сохраняется автоматически.")
 
 func _open_sites() -> void:
     for i in range(site_buttons.size()):
@@ -358,7 +380,7 @@ func _process(delta: float) -> void:
 
 func _checkpoint() -> bool:
     var ok: bool = progress.checkpoint(hero.position, zoom, visited)
-    save_label.text = "Прогресс новой локации сохранён." if ok else progress.error_text
+    save_label.text = "Прогресс сохранён." if ok else progress.error_text
     return ok
 
 func _follow() -> void:
