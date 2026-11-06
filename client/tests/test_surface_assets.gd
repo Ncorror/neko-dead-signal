@@ -93,12 +93,19 @@ func _backdrop(world) -> void:
     var ground: Array = world.terrain.mesh.surface_get_arrays(0)
     var ground_colors: PackedColorArray = ground[Mesh.ARRAY_COLOR]
     var ground_normals: PackedVector3Array = ground[Mesh.ARRAY_NORMAL]
+    var max_normal_error := 0.0
     for i in range(backdrop.PERIMETER):
         var at := vertices[i]
         var sample := (roundi(at.z) + 64) * 129 + roundi(at.x) + 64
+        var normal_error := normals[i].distance_to(ground_normals[sample])
+        max_normal_error = maxf(max_normal_error, normal_error)
+        # A second ArrayMesh packs/unpacks the normal again; allow its GPU
+        # attribute precision, not a visible change in direction (< 0.06 deg).
         _check(absf(at.y - world.terrain.height(at.x, at.z)) < 0.001
             and colors[i].is_equal_approx(ground_colors[sample])
-            and normals[i].is_equal_approx(ground_normals[sample]), "visible seam at the playable terrain edge")
+            and normal_error < 0.001, "visible seam at the playable terrain edge: at=%s height_error=%.6f normal_error=%.6f color=%s expected=%s" % [
+                at, absf(at.y - world.terrain.height(at.x, at.z)), normal_error, colors[i], ground_colors[sample]])
+    print("SURFACE_BACKDROP_DEBUG edge_vertices=%d max_normal_error=%.6f" % [backdrop.PERIMETER, max_normal_error])
     for i in range(vertices.size()):
         _check(vertices[i].is_finite() and normals[i].is_finite() and normals[i].y > 0
             and absf(normals[i].length() - 1) < 0.001, "distant terrain contains an invalid vertex or normal")
