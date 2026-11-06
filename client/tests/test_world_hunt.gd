@@ -127,9 +127,9 @@ func _save_roundtrip(model) -> void:
     _check(store.checkpoint_sector(Vector3(17, 0, -16), 18, snapshot), "boss checkpoint failed")
     var loaded = STORE.new()
     loaded.open_profile(PATH, 0, 0)
-    _check(loaded.state()["position"] == [-4, 15] and loaded.state()["zoom"] == 13
-        and loaded.state()["hunt"]["position"] == [17, -16] and loaded.state()["hunt"]["zoom"] == 18,
-        "travel confused the two zone positions or zooms")
+    _check(loaded.state()["position"] == [-4.0, 15.0] and loaded.state()["zoom"] == 13
+        and loaded.state()["hunt"]["position"] == [17.0, -16.0] and loaded.state()["hunt"]["zoom"] == 18,
+        "travel confused the two zone positions or zooms: " + str(loaded.state()))
     _check(loaded.state()["combat"]["defeated"] == [0, 1, 2] and loaded.state()["combat"]["hp"] == 43
         and loaded.state()["combat"]["cooldowns"][0] == 19 and loaded.state()["hunt"]["defeated"] == [HUNT.BOSS]
         and loaded.state()["hunt"]["respawns"][HUNT.BOSS] == 120, "reentry lost kills, frozen spawn timers, shared vitals or old quest")

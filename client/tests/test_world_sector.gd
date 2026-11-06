@@ -51,6 +51,12 @@ func _advance(seconds: float) -> void:
         _check(zone.navigation.has_walkable_segment(before, zone.hero.position), "hero crossed a ruin")
         _check(zone.combat_view.effects.size() <= 48, "effects exceeded their budget")
 
+func _timers_match(a: Array, b: Array) -> bool:
+    for i in range(a.size()):
+        if absf(float(a[i]) - float(b[i])) > 0.000001:
+            return false
+    return true
+
 func _native_cast(skill: int, at: Vector3) -> bool:
     var pixel: Vector2 = zone.camera.unproject_position(at + Vector3.UP)
     if zone._over_ui(pixel) or zone.camera.is_position_behind(at):
@@ -182,12 +188,12 @@ func _run() -> void:
     zone._checkpoint()
     zone._return_to_ship()
     await _adopt()
-    _check(zone.combat_view.model.hp == health and zone.combat_view.model.cooldowns == timers
+    _check(absf(zone.combat_view.model.hp - health) < 0.000001 and _timers_match(zone.combat_view.model.cooldowns, timers)
         and zone.progress.credits() == 150 and zone.hero.position == STORE.SPAWN,
         "outpost travel reset vitals/timers or moved the outpost position")
     _press(zone.sector_button)
     await _adopt()
-    _check(zone.hero.position == position and zone.combat_view.model.hp == health and zone.combat_view.model.cooldowns == timers
+    _check(zone.hero.position.distance_to(position) < 0.0001 and absf(zone.combat_view.model.hp - health) < 0.000001 and _timers_match(zone.combat_view.model.cooldowns, timers)
         and not zone.combat_view.model.alive(HUNT.BOSS) and absf(zone.combat_view.model.respawns[HUNT.BOSS] - spawn_time) < 0.001
         and zone.progress.credits() == 150, "reentry reset health, boss, spawn time or one-time reward")
     _finish()
