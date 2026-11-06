@@ -15,6 +15,7 @@ on:
       - fix/victory-building-labels-v020
       - feat/world-zone-v021
       - fix/world-camera-logs-v022
+      - feat/world-assault-combat-v023
       - fix/base-sight-radius-v018
       - fix/building-sight-touch-v017
       - feat/economy-power-objectives-v016
@@ -137,6 +138,24 @@ jobs:
           timeout 90s godot --headless --path client res://tests/test_world_camera.tscn 2>&1 | tee build/rts-world-camera-test.log
           grep -q 'WORLD_CAMERA_TEST_PASS' build/rts-world-camera-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-camera-test.log; then
+            exit 1
+          fi
+      - name: Validate Assault PvE skill math, response fire, cover and cooldowns
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 120s godot --headless --path client res://tests/test_world_combat.tscn 2>&1 | tee build/rts-world-combat-test.log
+          grep -q 'WORLD_COMBAT_TEST_PASS' build/rts-world-combat-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-combat-test.log; then
+            exit 1
+          fi
+      - name: Play optional world combat quest, native skills, death and save reentry
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 120s godot --headless --path client res://tests/test_world_battle.tscn 2>&1 | tee build/rts-world-battle-test.log
+          grep -q 'WORLD_BATTLE_TEST_PASS' build/rts-world-battle-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-world-battle-test.log; then
             exit 1
           fi
       - name: Test dense-base captions, power warnings and camera zooms
@@ -386,7 +405,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.22-debug.apk
+          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.23-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:

@@ -9,6 +9,9 @@ const REWARD_XP := 100
 const REWARD_CREDITS := 75
 const SPAWN := Vector3(-18, 0, 18)
 const CHARACTER_IDS := [["amina", "reina", "mira_kade", "lyra_voss"], ["saira_nel", "oralin"]]
+const COMBAT := preload("res://scripts/world_combat.gd")
+const COMBAT_XP := 150
+const COMBAT_CREDITS := 100
 
 var file_path := DEFAULT_PATH
 var character_id := "amina"
@@ -36,9 +39,12 @@ func open_profile(path: String, faction: int, officer: int) -> bool:
     return writable
 
 func state() -> Dictionary:
-    return data["characters"].get(character_id, {
+    var result: Dictionary = data["characters"].get(character_id, {
         "accepted": false, "relays": [], "claimed": false,
         "position": [SPAWN.x, SPAWN.z], "zoom": DEFAULT_ZOOM, "camera_preset": CAMERA_PRESET}).duplicate(true)
+    if not result.has("combat"):
+        result["combat"] = COMBAT.fresh_profile()
+    return result
 
 func _valid(root: Variant) -> bool:
     if not root is Dictionary or root.get("version") != SCHEMA or not root.get("characters") is Dictionary:
@@ -70,6 +76,9 @@ func _valid(root: Variant) -> bool:
         var preset: Variant = item.get("camera_preset", 1)
         if not (preset is int or preset is float) or preset != int(preset) or int(preset) not in [1, CAMERA_PRESET]:
             return false
+        if item.has("combat"):
+            if not COMBAT.valid_profile(item["combat"]) or (item["combat"]["accepted"] and (key != "amina" or not item["claimed"])):
+                return false
     return true
 
 func _read(path: String) -> Variant:
@@ -90,6 +99,11 @@ func _read(path: String) -> Variant:
             ids.append(int(relay))
         item["relays"] = ids
         item["camera_preset"] = int(item.get("camera_preset", 1))
+        if item.has("combat"):
+            var defeated: Array = []
+            for id in item["combat"]["defeated"]:
+                defeated.append(int(id))
+            item["combat"]["defeated"] = defeated
     return parser.data
 
 func _write_temp(path: String, value: Dictionary) -> bool:
@@ -150,18 +164,41 @@ func claim_reward() -> bool:
     next["claimed"] = true
     return _commit(next)
 
-func checkpoint(point: Vector3, zoom: float) -> bool:
+func begin_combat() -> bool:
+    var next := state()
+    if character_id != "amina" or not next["claimed"]:
+        return false
+    if next["combat"]["accepted"]:
+        return true
+    next["combat"]["accepted"] = true
+    return _commit(next)
+
+func claim_combat_reward() -> bool:
+    var next := state()
+    if not next["combat"]["accepted"] or next["combat"]["defeated"].size() != 3:
+        return false
+    if next["combat"]["claimed"]:
+        return true
+    next["combat"]["claimed"] = true
+    return _commit(next)
+
+func checkpoint(point: Vector3, zoom: float, combat: Dictionary = {}) -> bool:
     var next := state()
     var coordinates := [point.x, point.z]
-    if next["position"] == coordinates and is_equal_approx(float(next["zoom"]), zoom) and next.get("camera_preset", 1) == CAMERA_PRESET:
-        return true
     next["position"] = coordinates
     next["zoom"] = zoom
     next["camera_preset"] = CAMERA_PRESET
+    if not combat.is_empty():
+        for key in ["defeated", "hp", "cooldowns", "launcher", "protocol", "weapon"]:
+            if not combat.has(key):
+                return false
+            next["combat"][key] = combat[key]
+    if data["characters"].get(character_id, {}) == next:
+        return true
     return _commit(next)
 
 func experience() -> int:
-    return REWARD_XP if state()["claimed"] else 0
+    return (REWARD_XP if state()["claimed"] else 0) + (COMBAT_XP if state()["combat"]["claimed"] else 0)
 
 func credits() -> int:
-    return REWARD_CREDITS if state()["claimed"] else 0
+    return (REWARD_CREDITS if state()["claimed"] else 0) + (COMBAT_CREDITS if state()["combat"]["claimed"] else 0)
