@@ -21,7 +21,7 @@
 | [03_back.png](https://drive.google.com/file/d/1m3TbKUw5XIPsYPJDKb72iLAP3hFFyGFi/view) | Вид со спины |
 | [04_left_mirrored.png](https://drive.google.com/file/d/1UuXprOUXl2JaeJ8HyhWEOHJgQFI42cdi/view) | **Левый профиль — ЗЕРКАЛЬНЫЙ, предварительный** |
 | [00_turnaround_master.png](https://drive.google.com/file/d/1xbkCdLo6QN7Ib2SO7fS556Y1CNyWYOiU/view) | Оригинальный общий лист, **НЕ загружать как один вход Meshy** |
-| [REINA_Female_Base_V2_Meshy_Refs.zip](https://drive.google.com/file/d/1Uf6bp3WqK-66AVB7TcFbUh_Rq_LgYdsl/view) | ZIP с кадрами, README и манифестом |
+| [REINA_Female_Base_V2_Meshy_Refs.zip](https://drive.google.com/file/d/1Eae53YsJodJgEkkgBJ6YNscY5EO_0Xz5/view) | ZIP с кадрами, README и манифестом |
 | [contact_sheet.jpg](https://drive.google.com/file/d/1wqjbBa1xnkNMrHEQLRhLzb8dcClc-o2j/view) | Сводка для визуальной проверки |
 
 **Проверено:** в папке v2 девять файлов. Шесть прежних v1-файлов перенесены, а не удалены: [Игра / _Архив_Female_Base_v1_2026-11-06](https://drive.google.com/drive/folders/1ZTpHx7OWYbRULzbCCi8S6sgrx7gYZoZ1).
