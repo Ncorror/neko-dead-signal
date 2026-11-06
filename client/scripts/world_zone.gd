@@ -1,10 +1,11 @@
 extends Node3D
-## One-person exploration slice; class combat and shared servers are separate stages.
+## One-person exploration and local Assault PvE. Shared servers remain a later stage.
 
 const NAV := preload("res://scripts/rts_navigation.gd")
 const PROGRESS := preload("res://scripts/world_progress.gd")
 const FIT := preload("res://scripts/rts_character_fit.gd")
 const DIAGNOSTICS := preload("res://scripts/rts_diagnostics_ui.gd")
+const COMBAT_VIEW := preload("res://scripts/world_combat_view.gd")
 const AMINA := "res://assets/characters/amina/preview.glb"
 const LIMIT := 30.0
 const SPEED := 4.2
@@ -54,6 +55,9 @@ var journal: AcceptDialog
 var notice: AcceptDialog
 var return_dialog: ConfirmationDialog
 var diagnostics_panel
+var combat_view
+var combat_offer_button: Button
+var conversation_kind := "signal"
 var contacts: Dictionary = {}
 var gesture_started := false
 var gesture_dragged := false
@@ -262,6 +266,10 @@ func _create_ui() -> void:
     bottom_panel.add_theme_stylebox_override("panel", style)
     var bottom := VBoxContainer.new()
     bottom_panel.add_child(bottom)
+    combat_view = COMBAT_VIEW.new()
+    combat_view.name = "WorldCombat"
+    add_child(combat_view)
+    combat_view.install(self, bottom)
     save_label = _label(bottom, "Прогресс сохраняется на устройстве.", 14)
     _label(bottom, "Касание — идти / подойти. Камера следует за героем. Свайп — осмотр. Два пальца — масштаб.", 14)
     conversation = ConfirmationDialog.new()
@@ -275,6 +283,12 @@ func _create_ui() -> void:
     notice = AcceptDialog.new()
     notice.title = "Сектор 01"
     add_child(notice)
+    combat_offer_button = notice.add_button("ПОРУЧЕНИЕ: ПОМЕХА", false, "combat")
+    combat_offer_button.hide()
+    notice.custom_action.connect(func(action: StringName):
+        if action == "combat":
+            notice.hide()
+            _offer_combat())
     return_dialog = ConfirmationDialog.new()
     return_dialog.title = "Вернуться на корабль?"
     return_dialog.dialog_text = "Положение и задание сохранятся. Продолжишь с этого места."
@@ -285,6 +299,7 @@ func _create_ui() -> void:
 
 func _popup(dialog: AcceptDialog) -> void:
     _reset_gesture()
+    combat_view.cancel_aim()
     dialog.popup_centered(Vector2i(620, 260))
 
 func _refresh() -> void:
@@ -298,6 +313,14 @@ func _refresh() -> void:
         quest_label.text = "МАЯКИ 3/3 · Вернись к Веге за наградой."
     else:
         quest_label.text = "СИГНАЛ С БЕРЕГА · Восстанови маяки: %d/3" % saved["relays"].size()
+    var battle: Dictionary = saved["combat"]
+    if battle["accepted"]:
+        if battle["claimed"]:
+            quest_label.text = "ПОМЕХА УСТРАНЕНА · Награда получена. Сектор свободен."
+        elif battle["defeated"].size() == 3:
+            quest_label.text = "ПОМЕХА · Противники 3/3. Вернись к Веге за наградой."
+        else:
+            quest_label.text = "ПОМЕХА · Устрани мародёров и боевой автомат: %d/3" % battle["defeated"].size()
     for i in range(relays.size()):
         var active: bool = saved["relays"].has(i)
         relay_labels[i].text = "МАЯК %d\n%s" % [i + 1, "В СЕТИ" if active else "ВОССТАНОВИТЬ"]
@@ -308,11 +331,13 @@ func _event(name: String, details: Dictionary = {}) -> void:
         RTSDiagnostics.event("world", name, details)
 
 func _show_notice(message: String) -> void:
+    combat_offer_button.hide()
     notice.dialog_text = message
     _popup(notice)
 
 func _open_journal() -> void:
     journal.dialog_text = "Вега просит вернуть связь с тремя береговыми маяками.\nКоснись связиста, чтобы принять задание, затем каждого маяка.\n\nМаяк 1: северо-запад. Маяк 2: северо-восток. Маяк 3: юго-восток.\n«ПОКАЗАТЬ ЦЕЛЬ» переносит камеру к следующей цели.\nПосле восстановления всех трёх вернись к Веге.\nНаграда: 100 опыта и 75 кредитов один раз.\n\n" + quest_label.text
+    journal.dialog_text += "\n\nПосле маяков Вега выдаёт Амине поручение «Помеха»: два мародёра и боевой автомат.\nНаграда: 150 опыта / 100 кредитов один раз.\nВраг — подойти и атаковать. Навык, затем цель — граната / рывок.\nПосадочная площадка безопасна; здесь ОЗ восстанавливаются после 5 с без урона.\nПосле гибели возвращаешься на площадку; откаты и выполненные цели сохраняются."
     _popup(journal)
 
 func _show_goal() -> void:
@@ -325,24 +350,34 @@ func _show_goal() -> void:
                 break
     following = false
     preview_seconds = GOAL_PREVIEW_SECONDS
+    if combat_view.model.enabled and not saved["combat"]["claimed"]:
+        for enemy in combat_view.model.enemies:
+            if enemy["hp"] > 0:
+                focus = enemy["at"]
+                break
 
 func _follow() -> void:
     following = true
     preview_seconds = 0.0
     focus = hero.position
 
-func _stop() -> void:
+func _clear_route() -> void:
     route.clear()
     route_index = 0
     interaction = -2
     target_marker.hide()
+
+func _stop() -> void:
+    _clear_route()
+    if combat_view != null:
+        combat_view.cancel_orders()
 
 func _change_zoom(factor: float) -> void:
     zoom = clampf(zoom * factor, 8, 30)
 
 func _modal_open() -> bool:
     var debug_open: bool = diagnostics_panel != null and diagnostics_panel.popup != null and diagnostics_panel.popup.visible
-    return conversation.visible or journal.visible or notice.visible or return_dialog.visible or debug_open
+    return conversation.visible or journal.visible or notice.visible or return_dialog.visible or debug_open or combat_view.death_dialog.visible
 
 func _over_ui(at: Vector2) -> bool:
     return _modal_open() or top_panel.get_global_rect().has_point(at) or bottom_panel.get_global_rect().has_point(at)
@@ -378,6 +413,8 @@ func _input(event: InputEvent) -> void:
         get_viewport().set_input_as_handled()
     elif event is InputEventScreenDrag and contacts.has(event.index):
         contacts[event.index] = event.position
+        if not _over_ui(event.position):
+            combat_view.aim_preview(event.position)
         if contacts.size() > 1:
             var points := contacts.values()
             var distance: float = points[0].distance_to(points[1])
@@ -437,6 +474,12 @@ func _ground(at: Vector2) -> Variant:
 func _tap(at: Vector2) -> void:
     if _over_ui(at):
         return
+    if combat_view.consume_tap(at):
+        return
+    var enemy: int = combat_view.pick_enemy(at)
+    if enemy >= 0:
+        combat_view.target_enemy(enemy)
+        return
     var best := 30.0
     var picked := -2
     var actors: Array[Node3D] = [npc]
@@ -459,9 +502,12 @@ func _tap(at: Vector2) -> void:
             _move_to(point)
 
 func _move_to(point: Vector3) -> bool:
+    if combat_view.model.enabled and combat_view.model.hp <= 0:
+        return false
     var planned: Array[Vector3] = navigation.get_path(hero.position, point)
     if planned.is_empty():
         return false
+    combat_view.cancel_orders()
     route = planned
     route_index = 0
     interaction = -2
@@ -487,8 +533,19 @@ func _interact(target: int) -> void:
     if target == -1:
         var saved: Dictionary = progress.state()
         if saved["claimed"]:
-            _show_notice("Связист Вега: связь устойчива. Спасибо! Награда уже получена.")
+            var battle: Dictionary = saved["combat"]
+            if battle["accepted"] and not battle["claimed"] and battle["defeated"].size() == 3:
+                conversation_kind = "combat_claim"
+                conversation.dialog_text = "Тракт свободен. Забирай награду за устранение помехи: 150 опыта и 100 кредитов."
+                conversation.ok_button_text = "ПОЛУЧИТЬ НАГРАДУ"
+                _popup(conversation)
+            elif battle["accepted"] and not battle["claimed"]:
+                _show_notice("Связист Вега: противники %d/3. Их группа к северу от центральных укрытий. «ПОКАЗАТЬ ЦЕЛЬ» наведёт камеру." % battle["defeated"].size())
+            else:
+                _show_notice("Связист Вега: связь устойчива. Награда за маяки уже получена." + ("\nЕсть работа: помеха от мародёров на северном тракте. Возьмёшь поручение?" if not battle["claimed"] and progress.character_id == "amina" else ""))
+                combat_offer_button.visible = not battle["accepted"] and progress.character_id == "amina"
             return
+        conversation_kind = "signal"
         if not saved["accepted"]:
             conversation.dialog_text = "Связь с береговыми маяками пропала. Восстанови три ретранслятора и вернись ко мне.\n\nКоснись маяка: герой подойдёт и включит его.\nНаграда: 100 опыта и 75 кредитов."
             conversation.ok_button_text = "ПРИНЯТЬ ЗАДАНИЕ"
@@ -515,6 +572,9 @@ func _interact(target: int) -> void:
 func _accept_conversation() -> void:
     if hero.position.distance_to(NPC_AT) > 3.0:
         return
+    if conversation_kind != "signal":
+        _accept_combat()
+        return
     var saved: Dictionary = progress.state()
     if saved["claimed"] or (saved["accepted"] and saved["relays"].size() < 3):
         return
@@ -527,8 +587,31 @@ func _accept_conversation() -> void:
     _refresh()
     _event("quest_rewarded" if progress.state()["claimed"] else "quest_accepted", {"xp": progress.experience(), "credits": progress.credits()})
 
+func _offer_combat() -> void:
+    if hero.position.distance_to(NPC_AT) > 3.0 or progress.character_id != "amina" or not progress.state()["claimed"] or progress.state()["combat"]["accepted"]:
+        return
+    conversation_kind = "combat_begin"
+    conversation.dialog_text = "На северном тракте два мародёра и боевой автомат глушат связь. Устрани троих и вернись.\n\nКасание врага — подойти и стрелять. Навык, затем цель — граната или рывок.\nНаграда: 150 опыта и 100 кредитов. До принятия поручения сектор остаётся мирным."
+    conversation.ok_button_text = "ПРИНЯТЬ ПОРУЧЕНИЕ"
+    _popup(conversation)
+
+func _accept_combat() -> void:
+    var ok: bool = progress.begin_combat() if conversation_kind == "combat_begin" else progress.claim_combat_reward()
+    if not ok:
+        _show_notice(progress.error_text if not progress.error_text.is_empty() else "Сначала заверши цели поручения.")
+        return
+    if conversation_kind == "combat_begin":
+        combat_view.model.configure(navigation, progress.state()["combat"])
+        combat_view.refresh()
+    _refresh()
+    _event("combat_accepted" if conversation_kind == "combat_begin" else "combat_rewarded", {"xp": progress.experience(), "credits": progress.credits()})
+
 func _physics_process(delta: float) -> void:
     if _modal_open():
+        return
+    combat_view.before_movement(delta)
+    if combat_view.model.enabled and combat_view.model.hp <= 0:
+        combat_view.tick(delta)
         return
     var travel := maxf(delta, 0) * SPEED
     while route_index < route.size() and travel > 0:
@@ -545,10 +628,11 @@ func _physics_process(delta: float) -> void:
     hero.rotation.y = lerp_angle(hero.rotation.y, heading, 1.0 - exp(-maxf(delta, 0) * 12))
     if not route.is_empty() and route_index >= route.size():
         var target := interaction
-        _stop()
+        _clear_route()
         _checkpoint()
         if target != -2:
             _interact(target)
+    combat_view.tick(delta)
 
 func _process(delta: float) -> void:
     _update_camera(delta)
@@ -559,7 +643,7 @@ func _process(delta: float) -> void:
     perf_age += delta
     perf_max_ms = maxf(perf_max_ms, delta * 1000)
     if perf_age >= 5:
-        _event("WORLD_PERF", {"fps": Engine.get_frames_per_second(), "max_frame_ms": snappedf(perf_max_ms, 0.1), "characters": 1, "route_points": route.size(), "camera_follow": following, "zoom": zoom, "speed": SPEED})
+        _event("WORLD_PERF", {"fps": Engine.get_frames_per_second(), "max_frame_ms": snappedf(perf_max_ms, 0.1), "characters": 1, "route_points": route.size(), "camera_follow": following, "zoom": zoom, "speed": SPEED, "combat": combat_view.model.enabled, "hp": combat_view.model.hp, "effects": combat_view.effects.size()})
         perf_age = 0
         perf_max_ms = 0
 
@@ -590,7 +674,7 @@ func _checkpoint() -> bool:
     if not progress.writable:
         save_label.text = progress.error_text
         return false
-    var ok: bool = progress.checkpoint(hero.position, zoom)
+    var ok: bool = progress.checkpoint(hero.position, zoom, combat_view.model.snapshot())
     save_label.text = "Прогресс сохранён." if ok else progress.error_text
     return ok
 
@@ -610,6 +694,8 @@ func _handle_back() -> void:
         if is_instance_valid(dialog) and dialog.visible:
             dialog.hide()
             return
+    if combat_view.handle_back():
+        return
     _request_return()
 
 func _notification(what: int) -> void:
@@ -617,6 +703,7 @@ func _notification(what: int) -> void:
         return
     if what in [NOTIFICATION_WM_WINDOW_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED]:
         _reset_gesture()
+        combat_view.cancel_aim()
         _checkpoint()
     elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
         _handle_back()
