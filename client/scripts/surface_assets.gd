@@ -28,7 +28,16 @@ func mesh(id: String) -> Mesh:
         root.free()
         return null
     var instance := meshes[0] as MeshInstance3D
-    var result: Mesh = instance.mesh
+    var result := instance.mesh.duplicate() as ArrayMesh
+    # Extract the effective imported material, then bind the colour attribute
+    # explicitly. A bare imported mesh may not retain the node's material flags.
+    for surface in range(result.get_surface_count()):
+        var imported := instance.get_active_material(surface) as BaseMaterial3D
+        var paint: BaseMaterial3D = imported.duplicate() as BaseMaterial3D if imported != null else StandardMaterial3D.new()
+        paint.albedo_color = Color.WHITE
+        paint.vertex_color_use_as_albedo = true
+        paint.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+        result.surface_set_material(surface, paint)
     cached[id] = result
     root.free()
     return result
