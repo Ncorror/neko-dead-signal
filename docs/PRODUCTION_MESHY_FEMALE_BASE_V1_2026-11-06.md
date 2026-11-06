@@ -102,3 +102,23 @@ One original adult female stylized anime sci-fi game-ready humanoid, neutral A-p
 > Сгенерировать ОДНУ оригинальную взрослую женскую аниме-модель для REINA: DEAD SIGNAL, A-pose, полный рост, чёткий front reference; нейтральные непрозрачные тёмные спортивный топ и плавки-шорты, без брони/оружия/аксессуаров; целевое назначение — модульный редактор персонажа в Godot, а не самостоятельный канонический NPC. Прислать reference PNG + исходный GLB + rigged GLB (если есть), запись об используемой модели Meshy и праве эксплуатации, 4 скриншота ракурсов, короткий `idle` и `walk` тест. Никаких изменений в сохранении и сценах RTS без отдельного этапа проверки.
 
 **Источник технических требований**: Meshy Multi-View https://help.meshy.ai/en/articles/16102789-meshy-multi-view-best-practices-angles-and-images ; Pose https://help.meshy.ai/en/articles/10255659-how-to-generate-3d-models-with-a-pose-t-pose-or-custom-poses ; Auto Rigging https://help.meshy.ai/en/articles/16231707-how-to-create-3d-animation-with-auto-rigging ; Godot glTF https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/importing_3d_scenes/available_formats.html ; Godot retarget https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/retargeting_3d_skeletons.html .
+
+
+## Фактический выпуск первых 2D-референсов · 2026-11-06
+
+**Выполнено:** создан один исходный 4-ракурсный референс-лист женской взрослой аниме-базы в **непрозрачном спортивном топе и плавках-шортах**; из листа подготовлены четыре отдельных кадра, каждый **960×1850 PNG**, собран ZIP с README/manifest/SHA-256. **Это ещё не GLB и не 3D модель.** Ни запуск Meshy, ни трата кредитов, ни риггинг, ни Godot-импорт не выполнялись.
+
+**Подтверждённая папка Google Drive:** [«Игра»](https://drive.google.com/drive/folders/1nbYMKjf3j6d9ThvTnw8Z7l4PObFtjJU2). Загрузка проверена через повторное чтение Drive метаданных с совпадающим parent ID.
+
+| Вид | Файл на Drive | Дальнейшее действие |
+|---|---|---|
+| Главный фронт | [01_FRONT.png](https://drive.google.com/file/d/1_0jl_ZtXAmCrMg1VSbDL3vXLV89mnK6x/view?usp=drivesdk) | Основной input для Meshy 7 Image-to-3D |
+| Правый профиль | [02_RIGHT.png](https://drive.google.com/file/d/1w6IRjcp9IPjVzf4cu72LrBONJYB7ZZJJ/view?usp=drivesdk) | Дополнительный ракурс |
+| Спина | [03_BACK.png](https://drive.google.com/file/d/1PZ5e9z-WYmZfMarA9mqDhujJvy7NRhh1/view?usp=drivesdk) | Дополнительный ракурс |
+| Левый профиль | [04_LEFT_mirrored.png](https://drive.google.com/file/d/19TYqqJtiOaX-YXb9rZeDD5feqXJzMPfJ/view?usp=drivesdk) | **Предварительный!** Отражён из второго правостороннего изображения; не считать точным независимо нарисованным ракурсом |
+| Мастер-лист | [00_MASTER.png](https://drive.google.com/file/d/13T5oLKk-872zsiHV74XFrwT18vBysQMU/view?usp=drivesdk) | Источник/архив, **НЕ** загружать целиком в Meshy Image-to-3D |
+| Архив | [Meshy_4views.zip](https://drive.google.com/file/d/1bp7mUCJg5ty3zcbtBA2upKZDhkHvRkD7/view?usp=drivesdk) | Общий комплект с README, manifest и 4 PNG |
+
+**Ограничения референса:** исходные четыре колонки были созданы единой генерацией; проверка идеальной геометрической согласованности их анатомии не проводилась. Четвёртая колонка имела ошибку (смотрела в ту же сторону, что вторая), поэтому была отражена, о чём явно сообщается в имени и манифесте. Не смешивать зеркальный ракурс с различиями асимметричных причёсок. **Для производственной 3D-модели предпочтительно сначала попробовать Meshy 7 Generate Multi-View из 01_FRONT** и сравнить согласованность автоматически восстановленных боковых видов с нашим комплектом. Официальная рекомендация: https://help.meshy.ai/en/articles/16102789-meshy-multi-view-best-practices-angles-and-images .
+
+**Стадия:** 2D inputs ready → **следующий этап** после фактической активации Meshy Pro: Meshy 7 Image to 3D → Multi-View (или Generate Multi-View) → Pose A → проверить меш и пальцы → Rig → GLB → Godot. Старые сцены RTS и сохранения не изменены.
