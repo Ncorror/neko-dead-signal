@@ -40,8 +40,11 @@ func _touch(at: Vector2, pressed: bool, canceled: bool = false, index: int = 0) 
 
 func _press(button: Button) -> void:
     _check(button.visible and button.get_viewport().get_visible_rect().encloses(button.get_global_rect()), "button clipped: " + button.text)
-    _touch(button.get_global_rect().get_center(), true)
-    _touch(button.get_global_rect().get_center(), false)
+    for down in [true, false]:
+        var touch := InputEventScreenTouch.new()
+        touch.position = button.get_global_rect().get_center()
+        touch.pressed = down
+        button.get_viewport().push_input(touch, true)
 
 func _tap_world(at: Vector3) -> void:
     var point: Vector2 = zone.camera.unproject_position(at + Vector3.UP)
@@ -93,7 +96,7 @@ func _run() -> void:
         _press(zone.conversation.get_ok_button())
         await _settle()
         _check(zone.combat_view.model.enabled and zone.progress.state()["combat"]["accepted"]
-            and zone.combat_view.skill_buttons.size() == 5, "native NPC acceptance did not enable the Assault kit")
+            and zone.combat_view.skill_buttons.size() == 5, "native NPC acceptance did not enable the Assault kit: " + str(zone.progress.state()))
         var bounds: Rect2 = zone.get_viewport().get_visible_rect()
         for button in zone.combat_view.skill_buttons:
             _check(bounds.encloses(button.get_global_rect()) and button.is_visible_in_tree(), "active skill clipped at " + str(size))
@@ -130,7 +133,7 @@ func _run() -> void:
     _advance(9)
     await _settle()
     _check(zone.combat_view.model.hp > 0 and zone.hero.position.distance_to(Vector3(7, 0, -10)) < 0.2,
-        "normal approach did not reach the encounter alive")
+        "normal approach did not reach the encounter alive: at=%s hp=%s route=%s" % [zone.hero.position, zone.combat_view.model.hp, zone.route])
     _press(zone.combat_view.skill_buttons[0])
     _check(zone.combat_view.model.protocol > 9, "native protocol button failed")
     _native_cast(1, 0)
@@ -158,7 +161,7 @@ func _run() -> void:
                     break
         _advance(0.3)
     _check(zone.combat_view.model.hp > 0 and zone.progress.state()["combat"]["defeated"].size() == 3,
-        "unboosted Assault kit could not finish the three-target PvE quest")
+        "unboosted Assault kit could not finish the three-target PvE quest: hp=%s enemies=%s" % [zone.combat_view.model.hp, zone.combat_view.model.enemies])
     zone._approach(-1)
     _advance(20)
     await _settle()
