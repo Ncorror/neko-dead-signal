@@ -309,7 +309,7 @@ func _events() -> void:
             ring.position = event["to"] + Vector3(0, 0.12, 0)
             ring.show()
             _effect(ring, 0.4)
-        elif name == "enemy_defeated":
+        elif name in ["enemy_defeated", "enemy_respawned"]:
             important = true
         elif name == "hero_defeated":
             zone._stop()

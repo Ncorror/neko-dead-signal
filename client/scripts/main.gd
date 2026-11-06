@@ -323,13 +323,20 @@ func _build_content(parent: VBoxContainer) -> void:
     else:
         right.add_child(_label("ИТОГ ПОСЛЕДНЕЙ ВЫСАДКИ", 12, CYAN))
         right.add_child(_label(GameState.last_report, 13, WHITE, false, true))
-    world_button = _button("МИР · СЕКТОР 01    ›", true, 52)
+    var travel := HBoxContainer.new()
+    travel.add_theme_constant_override("separation", 8)
+    right.add_child(travel)
+    world_button = _button("МИР · СЕКТОР 01\nФОРПОСТ", true, 52)
+    world_button.add_theme_font_size_override("font_size", 14)
+    world_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     world_button.pressed.connect(_enter_world)
-    right.add_child(world_button)
-    pve_button = _button("PvE · МОБЫ И БОСС    ›", true, 44)
+    travel.add_child(world_button)
+    pve_button = _button("PvE · СЕКТОР 02\nМОБЫ И БОСС", true, 52)
+    pve_button.add_theme_font_size_override("font_size", 14)
+    pve_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     pve_button.pressed.connect(_enter_sector)
     pve_button.tooltip_text = "Ржавый тракт · боевой набор Амины · вход без поручения"
-    right.add_child(pve_button)
+    travel.add_child(pve_button)
     cta = _button("RTS · ВЫСАДКА    ›", false, 48)
     cta.pressed.connect(_deploy)
     right.add_child(cta)
@@ -462,7 +469,7 @@ func _refresh_selection() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
     var officer: Dictionary = OFFICERS[faction_index][officer_index]
     pve_button.disabled = faction_index != 0 or officer_index != 0
-    pve_button.text = "PvE · МОБЫ И БОСС    ›" if not pve_button.disabled else "PvE · ВЫБЕРИ АМИНУ"
+    pve_button.text = "PvE · СЕКТОР 02\nМОБЫ И БОСС" if not pve_button.disabled else "PvE · СЕКТОР 02\nВЫБЕРИ АМИНУ"
     for i in range(faction_buttons.size()):
         var active: bool = i == faction_index
         var f: Dictionary = FACTIONS[i]

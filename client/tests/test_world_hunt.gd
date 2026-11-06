@@ -57,7 +57,7 @@ func _ready() -> void:
     for fps in [30, 60, 120]:
         model = _model()
         model.enemies[HUNT.BOSS]["blast_cd"] = 0.0
-        var step := 1.0 / fps
+        var step: float = 1.0 / fps
         model.tick(step, standing)
         var hit := _blast(model, standing, step)
         _check(not hit.is_empty() and hit["hit"] and model.hp == 82,
