@@ -3,7 +3,7 @@
 # No old game files are deleted. Old game UDP server remains running.
 set -Eeuo pipefail
 umask 077
-REPO="Ncorror/reina-dead-signal-rts"
+REPO="Ncorror/neko-dead-signal"
 DEPLOY_REF="${REINA_RTS_DEPLOY_REF:-main}"
 HOST="reina"
 for command in gh ssh scp base64; do
