@@ -42,11 +42,15 @@ func _run() -> void:
             _check(bounds.encloses(button.get_global_rect()), "button off-screen: " + button.text)
         _check(bounds.encloses(menu.hero_call.get_global_rect()), "officer info off-screen")
         var found_title := false
+        var found_footer := false
         for label in menu.find_children("*", "Label", true, false):
             if label.text == "NEKO: DEAD SIGNAL":
                 found_title = true
                 _check(label.size.y < 60 and label.size.x > 320, "title wraps into a vertical column")
+            if label.text.begins_with("NEKO SYSTEMS"):
+                found_footer = true
         _check(found_title, "NEKO: DEAD SIGNAL title missing from orbital menu")
+        _check(found_footer, "NEKO SYSTEMS footer missing from orbital menu")
         for ratio in [0.25, 0.5, 0.7]:
             _touch(get_viewport(), Vector2(bounds.end.x - 60, bounds.size.y * ratio))
             await tree.process_frame
