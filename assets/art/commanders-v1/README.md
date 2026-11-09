@@ -1,4 +1,4 @@
-# REINA: DEAD SIGNAL RTS — Character source art
+# NEKO: DEAD SIGNAL — Character source art
 
 Four human commander references are preserved in this private repository: **Amina, Reina, Lyra Voss, Mira Kade**. These are original 2D references, not automatically rigged game-ready models.
 
