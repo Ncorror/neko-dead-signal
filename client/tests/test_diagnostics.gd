@@ -37,7 +37,7 @@ func _run() -> void:
         _check(files.has("manifest.json"), "ZIP lacks manifest")
         _check(files.has("game/events-0.jsonl"), "ZIP lacks game events")
         var metadata: String = zip.read_file("manifest.json").get_string_from_utf8()
-        _check(metadata.contains("REINA: DEAD SIGNAL RTS"), "ZIP contains wrong project")
+        _check(metadata.contains("NEKO: DEAD SIGNAL"), "ZIP contains wrong project")
         zip.close()
     else:
         _check(false, "ZIP cannot be opened")
@@ -47,7 +47,7 @@ func _run() -> void:
     for i in range(90):
         logger.event("test", "long_report", {"payload": "x".repeat(800)})
     preview = logger.report_preview()
-    _check(preview.begins_with("REINA RTS DEBUG  |  version=") and preview.contains("session=")
+    _check(preview.begins_with("NEKO DEAD SIGNAL DEBUG  |  version=") and preview.contains("session=")
         and preview.length() <= 20000 and preview.contains("long_report"), "long clipboard report lost build/session header")
     logger.event("test", "focus_flush")
     logger.notification(NOTIFICATION_WM_WINDOW_FOCUS_OUT)

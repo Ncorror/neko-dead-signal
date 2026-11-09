@@ -185,7 +185,7 @@ func _build_header(parent: VBoxContainer) -> void:
     brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     brand.add_theme_constant_override("separation", 0)
     header.add_child(brand)
-    brand.add_child(_label("REINA: DEAD SIGNAL", 29, WHITE, true))
+    brand.add_child(_label("NEKO: DEAD SIGNAL", 29, WHITE, true))
     brand.add_child(_label("ORBITAL COMMAND  /  ПРЕДВАРИТЕЛЬНЫЙ ПРОТОТИП", 12, CYAN))
 
     var status := VBoxContainer.new()

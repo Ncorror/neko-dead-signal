@@ -120,7 +120,7 @@ func report_preview() -> String:
     if not enabled:
         return "Диагностика отключена в релизной сборке."
     _flush()
-    var header := "REINA RTS DEBUG  |  version=" + str(ProjectSettings.get_setting("application/config/version", "dev")) + "  |  session=" + _session + "\n"
+    var header := "NEKO DEAD SIGNAL DEBUG  |  version=" + str(ProjectSettings.get_setting("application/config/version", "dev")) + "  |  session=" + _session + "\n"
     header += "platform=" + OS.get_name() + "  fps=" + str(Engine.get_frames_per_second()) + "\n"
     header += "user_dir=" + OS.get_user_data_dir() + "\n\n"
     # Limit copied clipboard content even after long test sessions.
@@ -149,7 +149,7 @@ func make_report() -> String:
     if zip.open(path) != OK:
         return ""
     var manifest := {
-        "project": "REINA: DEAD SIGNAL RTS",
+        "project": "NEKO: DEAD SIGNAL",
         "version": ProjectSettings.get_setting("application/config/version", "dev"),
         "session": _session,
         "created_utc": Time.get_datetime_string_from_system(true),
