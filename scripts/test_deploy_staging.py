@@ -43,6 +43,7 @@ else:raise SystemExit(4)
             env = dict(os.environ, PATH=str(commands) + os.pathsep + os.environ['PATH'],
                        QA_TRACE=str(trace), QA_TRANSPORT=str(transport))
             env.pop('REINA_RTS_DEPLOY_REF', None)
+            env.pop('NEKO_DEAD_SIGNAL_DEPLOY_REF', None)
             if bad_sha:
                 env['QA_BAD_SHA'] = '1'
             result = subprocess.run(['bash', str(ROOT / 'ops/vienna/deploy-one-shot-termux.sh')],
@@ -56,6 +57,7 @@ else:raise SystemExit(4)
         files = [call[1] for call in calls if call[0] == 'api' and '/contents/' in call[1]]
         self.assertEqual(len(files), 5)
         self.assertTrue(all(item.endswith('?ref=' + SHA) for item in files))
+        self.assertTrue(all('repos/Ncorror/neko-dead-signal/contents/' in item for item in files))
         self.assertEqual(transports, ['scp', 'ssh'])
 
     def test_invalid_commit_stops_before_registration_or_upload(self):

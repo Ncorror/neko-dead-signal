@@ -9,11 +9,11 @@
 Исправный установленный runner не нужно переустанавливать для обычной сборки игры.
 
 ```bash
-gh api "repos/Ncorror/reina-dead-signal-rts/contents/ops/vienna/deploy-one-shot-termux.sh?ref=main" --jq '.content' | base64 -d > "$HOME/deploy-reina-rts-vienna.sh"
-bash "$HOME/deploy-reina-rts-vienna.sh"
+gh api "repos/Ncorror/neko-dead-signal/contents/ops/vienna/deploy-one-shot-termux.sh?ref=main" --jq '.content' | base64 -d > "$HOME/deploy-neko-dead-signal-vienna.sh"
+bash "$HOME/deploy-neko-dead-signal-vienna.sh"
 ```
 
-GitHub authorization, SSH alias `reina`, and sudo on Vienna are needed; do not paste credentials in chat. The launcher resolves the requested ref (main by default, or REINA_RTS_DEPLOY_REF) to one commit SHA and downloads all five deployment files from that exact commit. An invalid SHA aborts before registration or upload. It obtains a short-lived registration token, sends the bundle to Vienna, and calls sudo with an interactive terminal.
+GitHub authorization, SSH alias `reina`, and sudo on Vienna are needed; do not paste credentials in chat. The launcher resolves the requested ref (main by default, or NEKO_DEAD_SIGNAL_DEPLOY_REF, с совместимым алиасом REINA_RTS_DEPLOY_REF) to one commit SHA and downloads all five deployment files from that exact commit. An invalid SHA aborts before registration or upload. It obtains a short-lived registration token, sends the bundle to Vienna, and calls sudo with an interactive terminal.
 
 It first installs the isolated `reina-rts-vienna-01` Actions runner and localhost-only RTS health service. Once both are healthy, it stops and disables **only** the old game runner, unless that runner still has a live Worker. It does **not** stop `reina-dead-signal.service`, change firewall ports, delete the old runner's files, or destroy beta APKs.
 
@@ -27,4 +27,6 @@ The `reina-rts-bootstrap.service` on `127.0.0.1:18777` is only a health stub. It
 
 The separate Android workflow is `.github/workflows/vienna-rts-android.yml`, with required runner label `reina-rts-ci`. No APK is considered valid until workflow results and device tests confirm it.
 
-`full-audit.sh` и `preflight.sh` читают состояние хоста. `purge-legacy-game.sh` — отдельная необратимая утилита удаления старого проекта; она не входит в обычный аудит или обновление и в этой ревизии не запускалась. APK выдаётся из успешного workflow main, артефакт reina-rts-debug-N; reina-rts-ci-logs-N содержит только журналы.
+`full-audit.sh` и `preflight.sh` читают состояние хоста. `purge-legacy-game.sh` — отдельная необратимая утилита удаления старого проекта; она не входит в обычный аудит или обновление и в этой ревизии не запускалась. APK выдаётся из успешного workflow main, артефакт neko-dead-signal-debug-N; reina-rts-ci-logs-N содержит только журналы.
+
+**Имена действующей инфраструктуры:** runner `reina-rts-vienna-01`, метка `reina-rts-ci`, системные учётные записи, `/opt/reina-rts`, `reina-rts-bootstrap.service` и `reina-rts-debug.keystore` сохраняются ради совместимости с работающим VPS и существующей подписью. Это не название игрового продукта. Переименовывать/перерегистрировать живой runner без отдельного бэкапа и проверки нельзя. Репозиторий и новый исходный URL: `Ncorror/neko-dead-signal`.
