@@ -1,4 +1,4 @@
-# REINA: DEAD SIGNAL RTS — решение по движку и Meshy
+# NEKO: DEAD SIGNAL RTS — решение по движку и Meshy
 
 > **Исследование 2026-11-01, некоторые оценки устарели.** Для выбранной pure RTS-концепции и текущего бюджета героев использовать [GDD v0.2](ONLINE_WORLD_GDD_v0.2.md), [матрицу анимаций](ANIMATION_REQUIREMENTS_RTS.md) и [актуальный 3D-пайплайн](MESHY_PIPELINE.md).
 

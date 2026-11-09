@@ -1,4 +1,4 @@
-# REINA: DEAD SIGNAL — HUMAN FEMALE BASE v2 · актуальный Meshy Pro production-пакет
+# NEKO: DEAD SIGNAL — HUMAN FEMALE BASE v2 · актуальный Meshy Pro production-пакет
 
 > **СТАТУС: АРХИВ v2.** Более качественный согласованный образ **v3 утверждён 2026-11-06** и теперь является единственным производственным источником. [Production v3](PRODUCTION_FEMALE_BASE_V3_APPROVED_2026-11-06.md) и [Drive v3](https://drive.google.com/drive/folders/1EKHGcaXvoEKTyNs97xUw9mUvk395MOfd). Этот документ оставить для истории, не генерировать по ссылкам v2. [Решение по Meshy vs Tripo](AI_3D_MESHY_VS_TRIPO_DECISION_2026-11-06.md).
 
@@ -44,7 +44,7 @@
 **Промпт** (только при наличии поля для текста в выбранном режиме):
 
 ~~~text
-ONE original ADULT young woman (18+) in a refined anime science-fiction style compatible with REINA: DEAD SIGNAL. Preserve exactly the attached visual reference: youthful but adult gentle anime face, large violet eyes, short silver-lilac bob hairstyle, small magenta X hair clip, light skin, slender naturally athletic proportions. Neutral clean A-pose, separate arms and hands, five distinct fingers on each hand, legs slightly apart, full body. Opaque matte graphite sporty fitted crop training top and matching short athletic swim-shorts, restrained magenta seams and subtle small cat insignia. No armor, no weapon, no boots, no coat, no props, no background objects, no exaggerated anatomy, no changes to hair or clothing. Consistent appearance from front, profile and back, suitable for subsequent humanoid rigging and modular equipment, stable clean game-friendly mesh and anime shading.
+ONE original ADULT young woman (18+) in a refined anime science-fiction style compatible with NEKO: DEAD SIGNAL. Preserve exactly the attached visual reference: youthful but adult gentle anime face, large violet eyes, short silver-lilac bob hairstyle, small magenta X hair clip, light skin, slender naturally athletic proportions. Neutral clean A-pose, separate arms and hands, five distinct fingers on each hand, legs slightly apart, full body. Opaque matte graphite sporty fitted crop training top and matching short athletic swim-shorts, restrained magenta seams and subtle small cat insignia. No armor, no weapon, no boots, no coat, no props, no background objects, no exaggerated anatomy, no changes to hair or clothing. Consistent appearance from front, profile and back, suitable for subsequent humanoid rigging and modular equipment, stable clean game-friendly mesh and anime shading.
 ~~~
 
 Если текстового поля в Meshy нет, просто загружать PNG. Промпт сам по себе не создаёт правильный скелет, полноценную модульность и blend shapes.
