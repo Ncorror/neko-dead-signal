@@ -4,8 +4,8 @@
 set -Eeuo pipefail
 umask 077
 [[ $(id -u) -eq 0 ]] || { echo "Run via sudo"; exit 1; }
-STAGE="${1:?Usage: switch-vienna-root.sh /tmp/reina-rts-switch-XXXX}"
-[[ "$STAGE" == /tmp/reina-rts-switch-* && -d "$STAGE" ]] || { echo "Invalid staging path"; exit 1; }
+STAGE="${1:?Usage: switch-vienna-root.sh /tmp/neko-dead-signal-switch-XXXX}"
+[[ ( "$STAGE" == /tmp/neko-dead-signal-switch-* || "$STAGE" == /tmp/reina-rts-switch-* ) && -d "$STAGE" ]] || { echo "Invalid staging path"; exit 1; }
 [[ "$(hostname -s)" == "shy-ivory" ]] || { echo "Unexpected host; abort"; exit 1; }
 [[ "$(uname -m)" == "x86_64" ]] || { echo "Unexpected architecture; abort"; exit 1; }
 OLD_SERVICE="actions.runner.Ncorror-reina-dead-signal.reina-game-ci-01.service"
@@ -42,7 +42,7 @@ else
 fi
 [[ -f "$NEW_DIR/.service" ]] || { echo "New RTS runner registration not complete"; exit 1; }
 NEW_SERVICE="$(cat "$NEW_DIR/.service")"
-[[ "$NEW_SERVICE" == actions.runner.Ncorror-reina-dead-signal-rts.*.service ]] || {
+[[ "$NEW_SERVICE" == actions.runner.Ncorror-reina-dead-signal-rts.*.service || "$NEW_SERVICE" == actions.runner.Ncorror-neko-dead-signal.*.service ]] || {
   echo "Invalid RTS service name; abort"; exit 1;
 }
 systemctl is-active --quiet "$NEW_SERVICE" || { echo "New RTS runner is not active"; exit 1; }
