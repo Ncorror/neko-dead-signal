@@ -27,3 +27,10 @@
 - `Neko Dead Signal Android Debug`: Godot, сцены, тесты, экспорт ARM64, подпись нового APK; проверить конкретный run для итогового SHA, а не старый успех 0.0.28.
 - После успешного CI — PR в main, затем отдельная установка 0.0.29 на Android и проверка меню, старого приложения, сохранений, ZIP-отчёта и RTS/PvE.
 - Любые реальные миграции VPS, ключа подписи и прежнего Android пакета — отдельные действия с предохранителями.
+## Финальный результат CI и слияния · 2026-11-09
+
+- PR [#38](https://github.com/Ncorror/neko-dead-signal/pull/38) слит в `main` squash-коммитом [`3c9743a9577bb3fa8b779ba9b954e93ca5318675`](https://github.com/Ncorror/neko-dead-signal/commit/3c9743a9577bb3fa8b779ba9b954e93ca5318675); 47 изменённых файлов, никакие рабочие функции не удалены в рамках ребрендинга.
+- **Repository structure** [#42585574383](https://github.com/Ncorror/neko-dead-signal/actions/runs/42585574383): `completed/success` для merge-коммита.
+- **Neko Dead Signal Android Debug** [#42585574358](https://github.com/Ncorror/neko-dead-signal/actions/runs/42585574358): `completed/success` для merge-коммита, включая тесты Godot и подписанный export Android ARM64.
+- Артефакт `neko-dead-signal-debug-114` содержит `NEKO_DEAD_SIGNAL-0.0.29-debug.apk` (примерно 33,6 МБ внутри загруженного артефакта). Сам факт сборки не доказывает сохранение старых данных или удобство UI на физическом телефоне.
+- **Последняя проверенная точка:** исходники и документация версии 0.0.29 слиты; CI успешен. **Следующий шаг:** физическая установка новой APK, проверка launch/профиля/сохранений/диагностики и старой установки; затем отдельная работа с Meshy Pro female_base_v3 и MMO-бэкендом. Существующий VPS и системные ID не изменялись.
