@@ -30,7 +30,7 @@ install -d -m 0755 -o root -g root /opt/reina-rts /opt/reina-rts/server
 install -m 0644 -o root -g root "$SOURCE" /opt/reina-rts/server/control_api.py
 cat >"$UNIT" <<'EOF'
 [Unit]
-Description=REINA DEAD SIGNAL RTS bootstrap health service (not live gameplay)
+Description=NEKO DEAD SIGNAL bootstrap health service (not live gameplay)
 After=network.target
 
 [Service]
