@@ -1,4 +1,4 @@
-name: Vienna RTS Android Debug
+name: Neko Dead Signal Android Debug
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
       - feat/orbital-command-ui
       - feat/pure-rts-commanders
       - main
+      - chore/neko-dead-signal-rebrand-v028
       - fix/manual-preview-smooth-paths-v007
       - feat/orders-and-recon-v008
       - fix/defeat-sight-report-v009
@@ -452,20 +453,20 @@ jobs:
           set -Eeuo pipefail
           export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$HOME/.android/reina-rts-debug.keystore"
           mkdir -p client/build
-          godot --headless --path client --export-debug Android build/REINA_DEAD_SIGNAL_RTS-debug.apk 2>&1 | tee build/godot-export.log
-          test -s client/build/REINA_DEAD_SIGNAL_RTS-debug.apk
-          "$ANDROID_HOME/build-tools/36.1.0/apksigner" verify client/build/REINA_DEAD_SIGNAL_RTS-debug.apk
-          sha256sum client/build/REINA_DEAD_SIGNAL_RTS-debug.apk | tee client/build/SHA256SUMS
+          godot --headless --path client --export-debug Android build/NEKO_DEAD_SIGNAL-debug.apk 2>&1 | tee build/godot-export.log
+          test -s client/build/NEKO_DEAD_SIGNAL-debug.apk
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" verify client/build/NEKO_DEAD_SIGNAL-debug.apk
+          sha256sum client/build/NEKO_DEAD_SIGNAL-debug.apk | tee client/build/SHA256SUMS
       - name: Prepare tester APK
         shell: bash
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/REINA_DEAD_SIGNAL_RTS-debug.apk build/tester-bundle/REINA_RTS-0.0.27-debug.apk
+          cp client/build/NEKO_DEAD_SIGNAL-debug.apk build/tester-bundle/NEKO_DEAD_SIGNAL-0.0.28-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:
-          name: reina-rts-debug-${{ github.run_number }}
+          name: neko-dead-signal-debug-${{ github.run_number }}
           path: build/tester-bundle/
           retention-days: 14
           if-no-files-found: error
@@ -473,7 +474,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: reina-rts-ci-logs-${{ github.run_number }}
+          name: neko-dead-signal-ci-logs-${{ github.run_number }}
           path: |
             client/build/SHA256SUMS
             build/godot-*.log

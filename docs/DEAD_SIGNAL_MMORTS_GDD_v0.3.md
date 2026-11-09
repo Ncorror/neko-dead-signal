@@ -1,4 +1,4 @@
-# REINA: DEAD SIGNAL — MMORTS / Strategic MMORPG · GDD v0.3
+# NEKO: DEAD SIGNAL — MMORTS / Strategic MMORPG · GDD v0.3
 
 **Дата:** 2026-11-05. **Статус:** единая проектная концепция после обсуждения пользователя. **MMORPG-мир + RTS в специальных операциях**, а не постоянная RTS на каждой карте. Реализация в клиенте и сервере ещё НЕ сделана.
 

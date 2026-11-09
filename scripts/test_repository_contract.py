@@ -17,7 +17,7 @@ class RepositoryContract(unittest.TestCase):
         book = (ROOT / 'docs/DEVICE_TEST_RTS_008.html').read_text()
         workflow = (ROOT / '.github/workflows/vienna-rts-android.yml').read_text()
         self.assertIn('version/name="' + version + '"', export)
-        self.assertIn('REINA_RTS-' + version + '-debug.apk', workflow)
+        self.assertIn('NEKO_DEAD_SIGNAL-' + version + '-debug.apk', workflow)
         self.assertNotIn('cp docs/DEVICE_TEST_RTS_008.html', workflow)
         first = re.search(r'<select id="tested-version"><option value="([^"]+)"', book)[1]
         self.assertIn('REINA_RTS-' + first + '-debug.apk', book)
@@ -26,6 +26,24 @@ class RepositoryContract(unittest.TestCase):
         cases = re.findall(r'<section class="case" data-id="([^"]+)"', book)
         self.assertEqual(len(cases), len(set(cases)), 'duplicate testbook case IDs')
         self.assertEqual(len(cases), 36)
+
+    def test_neko_branding_identity(self):
+        project = (ROOT / 'client/project.godot').read_text()
+        export = (ROOT / 'client/export_presets.cfg').read_text()
+        menu = (ROOT / 'client/scripts/main.gd').read_text()
+        diagnostics = (ROOT / 'client/scripts/rts_diagnostics.gd').read_text()
+        workflow = (ROOT / '.github/workflows/vienna-rts-android.yml').read_text()
+        self.assertIn('config/name="NEKO: DEAD SIGNAL"', project)
+        self.assertIn('config/version="0.0.28"', project)
+        self.assertIn('package/unique_name="com.ncorror.neko.deadsignal"', export)
+        self.assertIn('package/name="NEKO DEAD SIGNAL"', export)
+        self.assertIn('version/code=28', export)
+        self.assertIn('export_path="build/NEKO_DEAD_SIGNAL-debug.apk"', export)
+        self.assertIn('_label("NEKO: DEAD SIGNAL",', menu)
+        self.assertIn('"project": "NEKO: DEAD SIGNAL"', diagnostics)
+        self.assertIn('NEKO DEAD SIGNAL DEBUG', diagnostics)
+        self.assertIn('NEKO_DEAD_SIGNAL-0.0.28-debug.apk', workflow)
+        self.assertIn('neko-dead-signal-debug-', workflow)
 
     def test_relative_markdown_links_exist(self):
         # Optional proof for a partial local checkout; normal CI checks real files.

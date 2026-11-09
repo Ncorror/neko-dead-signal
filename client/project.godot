@@ -1,8 +1,8 @@
 config_version=5
 
 [application]
-config/name="REINA: DEAD SIGNAL — RTS"
-config/version="0.0.27"
+config/name="NEKO: DEAD SIGNAL"
+config/version="0.0.28"
 run/main_scene="res://scenes/main.tscn"
 config/quit_on_go_back=false
 
