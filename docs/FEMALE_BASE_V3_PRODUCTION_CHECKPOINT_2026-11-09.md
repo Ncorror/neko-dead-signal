@@ -79,3 +79,5 @@ References: [Meshy rigging](https://docs.meshy.ai/en/webapp/guides/3d-model/rigg
 | Character Creator | **Designed, not built** | Existing design document | Implement on isolated branch once source geometry is known |
 
 **Last verified point (2026-11-09):** approved source art exists, existing Master recorded in prior Meshy screenshots, Meshy Pro confirmed, game preview mechanism verified in code. This branch adds a non-destructive GLB metadata inspector. The actual GLB export and model/animation validation have NOT occurred.
+
+**2026-11-09 CI:** `scripts/test_avatar_glb_inspect.py` (valid synthetic GLB + rejected corrupt file) passed in `Repository structure` on commit `db5dcb59893825f87a89d7af3e841a810730e221` (two successful runs). This verifies the utility on synthetic fixtures only; the real Meshy Master is still untested.
