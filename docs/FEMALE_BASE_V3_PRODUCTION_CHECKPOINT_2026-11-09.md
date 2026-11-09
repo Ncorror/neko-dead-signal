@@ -40,3 +40,12 @@
 **Следующее практическое действие:** открыть исходный `Meshy_AI_Neon_Catgirl_Athlete_1109091814_texture` в аккаунте Meshy Pro и выполнить **Remesh → Fixed → 10K**. После получения игровой сетки — **Animate → Rig (Humanoid)**. Новые генерации персонажа не нужны.
 
 Официальные руководства: [Remesh](https://docs.meshy.ai/en/webapp/guides/3d-model/remesh), [Rigging](https://docs.meshy.ai/en/webapp/guides/3d-model/rigging), [Animations](https://docs.meshy.ai/en/webapp/guides/animate).
+
+
+## 2026-11-09 — Hardware-visible Meshy 10K/30K/100K rigging defect
+
+**User-tested on Meshy Pro on Android, 2026-11-09:** after 10K Remesh + Humanoid rig, backside shorts/pelvis deform and a limb may appear mutilated during animations; same issue reproduced at **30K and 100K**, including other topology/mesh experiments. Idle-like motion also appears smeared from behind. **Do not recommend any more polygon-count iterations as a fix.**
+
+**New independent read-only evidence:** the original untouched `Meshy_AI_Neon_Catgirl_Athlete_1109091814_texture.glb` was rendered from the back using vtkGLTFImporter, and its unanimated A-pose backside appears intact: symmetrical outfit, hips/legs, no comparable stretching. This does not prove whether post-Remesh or auto-skin weights introduced the damage, because exported *remeshed but unrigged* and *rigged* versions are not yet compared in the local runtime. The **likely** issue is rigging/weights at hips, pelvis and shorts, not a lack of triangles; also check UV/mesh after Remesh to distinguish sources precisely.
+
+**Action agreed:** stop creating new Remesh variants. Save/download **one** representative failing *rigged* model GLB with existing animations (prefer 30K if available) into the existing Drive folder `Игра / Модели`; do not alter the original Pro master. After receiving it, examine actual skin joints/weight indices and inspect mesh/UV, then repair bindings with Blender/DCC and validate visually from back in multiple motion frames. If model cannot be repaired without source post-Remesh model, obtain that same-generation unrigged GLB as needed, not another generation. Avoid claiming automatic weight repair is guaranteed. No Godot gameplay changes, APK, or spending more Meshy credits yet.
