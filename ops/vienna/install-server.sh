@@ -38,7 +38,7 @@ Type=simple
 User=reina-rts-svc
 Group=reina-rts-svc
 WorkingDirectory=/opt/reina-rts/server
-Environment=REINA_RTS_PORT=18777
+Environment=NEKO_DEAD_SIGNAL_PORT=18777
 ExecStart=/usr/bin/python3 -B -u /opt/reina-rts/server/control_api.py
 Restart=on-failure
 RestartSec=5
