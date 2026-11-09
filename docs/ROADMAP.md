@@ -2,6 +2,8 @@
 
 ## Новая траектория: MMORTS / Strategic MMORPG · 2026-11-05
 
+- [ ] 0.0.29: полный аудит старого бренда в клиенте, тестах, действующих URL деплоя и документах. Исправлен пропущенный тест заголовка. [Журнал](NEKO_BRANDING_PATH_AUDIT_029_2026-11-09.md). Код в ветке `chore/neko-paths-and-branding-audit-029`; Android CI, PR и тест на телефоне проверяем отдельно. Живые имена runner, systemd и ключа подписи сохраняются до отдельной миграции.
+
 - [x] 0.0.28: полный клиентский ребрендинг **NEKO: DEAD SIGNAL**, новый Android ID, меню, диагностический ZIP, APK и артефакты; PR #37 слит в `main` (`df30bff`). GitHub Actions `Neko Dead Signal Android Debug` [#42580703675](https://github.com/Ncorror/neko-dead-signal/actions/runs/42580703675) и `Repository structure` [#42580703771](https://github.com/Ncorror/neko-dead-signal/actions/runs/42580703771) прошли **SUCCESS** на этом коммите. Репозиторий переименован владельцем в `Ncorror/neko-dead-signal`, приватность и SHA `main` сохранены. **Физический тест APK 0.0.28 на Android ещё открыт**, старые данные другого package ID не мигрируют автоматически. [Контракт и журнал](NEKO_REBRAND_028_2026-11-09.md).
 - [x] Пользователь показал подписку **Meshy Pro** (2026-11-09). Основной 3D-пайплайн теперь Meshy Pro; next: экспорт female_base_v3, QA, rig, LOD и Android. Это не значит, что модели или анимации уже экспортированы.
 

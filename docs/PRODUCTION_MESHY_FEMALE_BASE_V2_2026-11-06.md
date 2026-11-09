@@ -1,3 +1,5 @@
+> **АРХИВ:** female_base_v2 заменена утверждённой v3; не использовать этот пакет как исходник для новой генерации Meshy Pro. [Актуальная female_base_v3](PRODUCTION_FEMALE_BASE_V3_APPROVED_2026-11-06.md).
+
 # NEKO: DEAD SIGNAL — HUMAN FEMALE BASE v2 · актуальный Meshy Pro production-пакет
 
 > **СТАТУС: АРХИВ v2.** Более качественный согласованный образ **v3 утверждён 2026-11-06** и теперь является единственным производственным источником. [Production v3](PRODUCTION_FEMALE_BASE_V3_APPROVED_2026-11-06.md) и [Drive v3](https://drive.google.com/drive/folders/1EKHGcaXvoEKTyNs97xUw9mUvk395MOfd). Этот документ оставить для истории, не генерировать по ссылкам v2. [Решение по Meshy vs Tripo](AI_3D_MESHY_VS_TRIPO_DECISION_2026-11-06.md).
