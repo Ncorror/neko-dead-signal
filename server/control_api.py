@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""REINA RTS control-plane health stub. NOT a playable multiplayer server.
+"""NEKO: DEAD SIGNAL control-plane health stub. NOT a playable multiplayer server.
 
 Loopback-only; real match simulation and authentication are future milestones.
 """
@@ -8,18 +8,18 @@ import json
 import os
 
 HOST = "127.0.0.1"
-PORT = int(os.environ.get("REINA_RTS_PORT", "18777"))
+PORT = int(os.environ.get("NEKO_DEAD_SIGNAL_PORT", os.environ.get("REINA_RTS_PORT", "18777")))
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "REINA-RTS-prealpha"
+    server_version = "NEKO-DEAD-SIGNAL-prealpha"
 
     def do_GET(self):
         if self.path not in ("/healthz", "/readyz"):
             self.send_error(404, "Not found")
             return
         payload = {
-            "service": "reina-dead-signal-rts",
+            "service": "neko-dead-signal",
             "phase": "bootstrap",
             "healthy": True,
             "match_server": False,

@@ -29,6 +29,7 @@ class HealthTests(unittest.TestCase):
     def test_health_is_alive_but_not_match_server(self):
         code, payload = self.fetch("/healthz")
         self.assertEqual(200, code)
+        self.assertEqual("neko-dead-signal", payload["service"])
         self.assertFalse(payload["match_server"])
         self.assertFalse(payload["online_gameplay"])
 

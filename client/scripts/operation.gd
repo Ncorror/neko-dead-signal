@@ -592,7 +592,7 @@ func _create_ui() -> void:
     top.offset_top = 9.0
 
     var title := Label.new()
-    title.text = "REINA: DEAD SIGNAL  /  RTS OPERATION"
+    title.text = "NEKO: DEAD SIGNAL  /  RTS OPERATION"
     title.add_theme_font_size_override("font_size", 22)
     title.mouse_filter = Control.MOUSE_FILTER_IGNORE
     top.add_child(title)
@@ -711,7 +711,7 @@ func _show_objectives() -> void:
 
 func _create_result_dialog() -> void:
     result_dialog = ConfirmationDialog.new()
-    result_dialog.title = "REINA RTS · Итог операции"
+    result_dialog.title = "NEKO: DEAD SIGNAL · Итог операции"
     result_dialog.min_size = Vector2i(640, 300)
     result_dialog.get_ok_button().text = "НА КОРАБЛЬ"
     result_dialog.get_cancel_button().text = "КАРТА"

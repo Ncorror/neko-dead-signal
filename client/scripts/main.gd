@@ -353,7 +353,7 @@ func _build_footer(parent: VBoxContainer) -> void:
     var footer := HBoxContainer.new()
     footer.add_theme_constant_override("separation", 12)
     parent.add_child(footer)
-    footer.add_child(_label("REINA SYSTEMS  /  ОБЩИЙ ЭКСПЕДИЦИОННЫЙ ФЛОТ", 11, MUTED))
+    footer.add_child(_label("NEKO SYSTEMS  /  ОБЩИЙ ЭКСПЕДИЦИОННЫЙ ФЛОТ", 11, MUTED))
     footer.add_child(_stretch_horizontal())
     footer.add_child(_label("ANDROID  •  PRE-ALPHA %s  •  WORLD ASSAULT PVE" % ProjectSettings.get_setting("application/config/version", "dev"), 11, Color("#87b2bf")))
 
