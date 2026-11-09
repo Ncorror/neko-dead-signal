@@ -7,6 +7,7 @@ on:
       - feat/orbital-command-ui
       - feat/pure-rts-commanders
       - main
+      - chore/neko-paths-and-branding-audit-029
       - chore/neko-dead-signal-rebrand-v028
       - fix/manual-preview-smooth-paths-v007
       - feat/orders-and-recon-v008
@@ -47,7 +48,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: reina-rts-android-${{ github.ref }}
+  group: neko-dead-signal-android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -462,7 +463,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/NEKO_DEAD_SIGNAL-debug.apk build/tester-bundle/NEKO_DEAD_SIGNAL-0.0.28-debug.apk
+          cp client/build/NEKO_DEAD_SIGNAL-debug.apk build/tester-bundle/NEKO_DEAD_SIGNAL-0.0.29-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:
