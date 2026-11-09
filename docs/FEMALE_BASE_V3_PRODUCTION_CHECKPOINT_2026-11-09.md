@@ -102,3 +102,18 @@ References: [Meshy rigging](https://docs.meshy.ai/en/webapp/guides/3d-model/rigg
 **Quality caveat:** neither Blender nor any GLB exporter guarantees identical byte streams or geometry after a deliberate pose change. UV/texture identifiers may remain, but vertex positions necessarily change and export/import may retriangulate or adjust normals. Verify source-versus-output rather than advertise "100% lossless".
 
 **Next action:** user uploads **the newly generated Pro-model's original GLB** (not screenshots or old Free Master) to existing Drive game folder or this chat. Then run read-only audit; only after a geometry decision make the first static relaxed pose copy. No source asset overwrite.
+
+
+## 2026-11-09 — COMPLETE: Pro Female Base v3 original audited; editor relaxed GLB produced
+
+This new result **supersedes the earlier "original GLB not received" / "Blender required" / "next: export the old pre-Pro master" statuses above**.
+
+- **Original new Pro asset:** `Meshy_AI_Neon_Catgirl_Athlete_1109091814_texture.glb` at [Drive / Игра / Модели](https://drive.google.com/file/d/1bbRnI-hDvyg7K_-R6sCZA4jvRby5rFUO/view). Original SHA-256: `47695f29591dd8562d5defbd3b454b2eb2bbd10e186fae9672e8ff65b782064c`. Kept unchanged.
+- **Source inspection completed on actual original:** 34,775,728 bytes; GLB 2.0, 319,307 vertices, 566,986 triangles, 1 mesh / 1 primitive, 1 material, 3 embedded JPEG images; skins=0, animations=0. VTK viewer preview rendered successfully.
+- **Static relaxed editor model created and added to the same Drive folder:** [`female_base_v3_editor_relaxed.glb`](https://drive.google.com/file/d/1ALs9BIDp9QgkVh-XoSCgZ8ne0fPYjYBA/view). Output SHA-256: `7cc75e795daea65520520d0547762a6c0e6e18e3432be5a1ded753d999983b6a` (local generated copy); 34,775,728 bytes, 319,307 vertices, 566,986 triangles.
+- **Method:** geometry-local, smoothly weighted symmetric arm repositioning (22° nominal from the approved A-pose), **not Meshy regeneration and no Blender/temporary rig required**. Reproducible script: `tools/avatar/pose_female_base_v3_static.py` (Python 3 + NumPy); use only with this approved base model, output to a different path.
+- **Local geometry checks PASS:** original and output have identical index accessor; all three embedded JPEG byte-hashes match; UV buffers and materials unchanged; zero inverted face normals in an original-vs-output all-triangle comparison (0 / 566,986); skins=0; animations=0.
+- **Visual review:** output rendered from front, side, 3/4 and back with VTK offscreen; arms are near the sides, visible texture and face appearance retained, no black elbow tears in the accepted output. This is a local render check, **not a Godot / Android deployment test**.
+- **No gameplay changes**; original 3D and all approved source art untouched; no Meshy credits spent.
+- **Verified delivery:** Drive reported upload success and metadata readback returned 34,775,728 bytes in the intended `Модели` folder.
+- **NEXT:** integrate this static GLB (not rig/animations) into the character-creator/inventory 3D preview and validate on actual Android device. Character creator scene not yet implemented; preserve the existing RTS save formats and gameplay systems.
