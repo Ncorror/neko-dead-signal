@@ -128,3 +128,14 @@ This new result **supersedes the earlier "original GLB not received" / "Blender 
 - Godot test `client/tests/test_character_creator.tscn` is wired to Android CI to check real imported mesh, both tabs, standalone profile roundtrip, old save formats and navigation. Actual CI result must be checked separately; this paragraph documents intended test, not proof of a PASS.
 - **No persistent rig, gameplay animation, Meshy regeneration, or generic equipment swapping** in this step: only a fixed static base model exists.
 - **NEXT:** CI import/smoke + Android APK tester verification, then expandable appearance and inventory components when actual modular assets exist.
+
+
+## 2026-11-09 — Android ARM64 APK built and uploaded — CI PASS
+
+**Verified commit (code):** `4b222d5fe6ca2c9dcdaa63abbfa78cb23a9f7ad9` (includes smoke-test lifetime correction). **Godot Android workflow:** [run 42610511901](https://github.com/Ncorror/neko-dead-signal/actions/runs/42610511901), **conclusion success**.
+
+- Pinned Drive model download: PASS. Godot import: PASS. `client/tests/test_character_creator.tscn`: PASS, checks actual relaxed static GLB, editor/inventory tabs, separate local profile save/load and back navigation. Existing RTS tests also PASS.
+- Signed Android ARM64 debug APK: CI export and `apksigner verify` PASS. GitHub artifact: `neko-dead-signal-debug-116` (run 42610511901); debug APK version remains 0.0.28. APK size: 86,437,243 bytes; SHA-256 `26a703b87976a289cac2418019a209d7e96539b4974a32d916798136fd98ca64`.
+- **Independent extracted APK inspection:** ZIP structure valid; packaged assets include `.godot/imported/editor_relaxed.glb-....scn`, three `editor_relaxed_N.jpg` texture imports, `scenes/character_creator.tscn.remap`, `scripts/character_creator.gdc`, `scripts/avatar_static_preview.gdc`, and `scripts/character_profile_store.gdc`. This proves packaging, not on-device graphics quality.
+- **Still to verify on user Android:** open `МОЙ ПЕРСОНАЖ`, inspect body material and four angles, touch orbit and pinch zoom, editor ↔ inventory switch, name save/reload and Android Back. Screenshots/logs if defects observed. No other work is blocked.
+- **Merge status:** PR #39 remains draft for an actual device visual acceptance. `main`, current RTS saves, and source GLB remain unchanged.
