@@ -13,6 +13,8 @@ func _check(condition: bool, detail: String) -> void:
 
 func _run() -> void:
     var tree := get_tree()
+    # Keep the test runner alive while replacing the current editor/menu scenes.
+    tree.current_scene = null
     var previous_commander: String = ""
     if FileAccess.file_exists("user://commander_selection.cfg"):
         previous_commander = FileAccess.get_file_as_string("user://commander_selection.cfg")
