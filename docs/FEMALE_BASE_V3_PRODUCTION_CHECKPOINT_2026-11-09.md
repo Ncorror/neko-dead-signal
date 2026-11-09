@@ -81,3 +81,24 @@ References: [Meshy rigging](https://docs.meshy.ai/en/webapp/guides/3d-model/rigg
 **Last verified point (2026-11-09):** approved source art exists, existing Master recorded in prior Meshy screenshots, Meshy Pro confirmed, game preview mechanism verified in code. This branch adds a non-destructive GLB metadata inspector. The actual GLB export and model/animation validation have NOT occurred.
 
 **2026-11-09 CI:** `scripts/test_avatar_glb_inspect.py` (valid synthetic GLB + rejected corrupt file) passed in `Repository structure` on commit `db5dcb59893825f87a89d7af3e841a810730e221` (two successful runs). This verifies the utility on synthetic fixtures only; the real Meshy Master is still untested.
+
+
+## 2026-11-09 — Decision: static pose for Character Creator and Inventory, no gameplay rig yet
+
+**New evidence from the user's Meshy Pro UI screenshots:** a newly generated high-detail Female Base v3 is visible in Meshy Viewer, natural-looking A-pose; selected generation settings shown: Ultra 2K geometry, Multi-view, Meshy 7 textures 4K, A-pose, Image Enhancement off, Private license. The new generated GLB has NOT been downloaded or evaluated by us. Do not conflate the earlier Free-plan `reina_master_model` and this newly generated Pro-plan asset until asset IDs and original exports are verified.
+
+**User decision:** current scope is **only static, high-quality Character Creator / Inventory presentation**. Do **not** add persistent skeletal rig, idle/walk/run, or gameplay LOD as part of this current step; those are deferred and remain future goals. The previously documented Gates 2–4 for game motion are therefore **deferred**, not mandatory next actions.
+
+**Direct response from Meshy Agent, pasted by user:** Meshy cannot manually repose the *existing* GLB without regeneration, and cannot bake the modified pose into a separately exported **static skeleton-free** GLB. Agent suggested a Blender DCC workflow with a temporary armature, posing, applying deformation, and export without skeleton; it stated it did not run any tool or spend credits. Treat these as Agent's product claims, not independent proof of its ability to preserve every vertex/texture exactly.
+
+**Chosen safe route:**
+
+1. Preserve original **new paid-plan** Meshy GLB (with textures), record original asset ID, file hash, and backup (prefer existing Drive `Игра`). Do not spend more Meshy credits to rerender the character just to lower the arms.
+2. On **a copy** of the GLB, inventory vertices/primitives/materials, check if separate components or connected mesh exist. Use `tools/avatar/inspect_glb.py` for the structural report; real mesh analysis and look inspection still required.
+3. Use Blender as a **temporary authoring tool** on server or GitHub runner (no user PC required); deform arms/hands/shoulders with a temporary helper armature + weights if needed or proportional mesh editing. Temporary rig is **NOT** part of the final GLB. High-poly auto skinning may fail, especially if the model is welded; this is not a one-click guaranteed conversion.
+4. Apply/bake deformation to a duplicate static mesh; remove helper skeleton and animations from exported GLB. Verify in Godot: skins=0, animations=0, original look maintained, relaxed standing posture, correct material/UV mapping and no joint artifacts. Result naming: `female_base_v3_editor_relaxed.glb`. Use for both creator and inventory initially, rather than making unnecessary separate complete meshes.
+5. All optional rigging, blinking, procedural poses and gameplay animation work waits for explicit renewed scope; static GLB can rotate/zoom as a scene node but cannot perform skeleton-based gestures/idle.
+
+**Quality caveat:** neither Blender nor any GLB exporter guarantees identical byte streams or geometry after a deliberate pose change. UV/texture identifiers may remain, but vertex positions necessarily change and export/import may retriangulate or adjust normals. Verify source-versus-output rather than advertise "100% lossless".
+
+**Next action:** user uploads **the newly generated Pro-model's original GLB** (not screenshots or old Free Master) to existing Drive game folder or this chat. Then run read-only audit; only after a geometry decision make the first static relaxed pose copy. No source asset overwrite.
