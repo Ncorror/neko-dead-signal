@@ -117,3 +117,14 @@ This new result **supersedes the earlier "original GLB not received" / "Blender 
 - **No gameplay changes**; original 3D and all approved source art untouched; no Meshy credits spent.
 - **Verified delivery:** Drive reported upload success and metadata readback returned 34,775,728 bytes in the intended `Модели` folder.
 - **NEXT:** integrate this static GLB (not rig/animations) into the character-creator/inventory 3D preview and validate on actual Android device. Character creator scene not yet implemented; preserve the existing RTS save formats and gameplay systems.
+
+
+## 2026-11-09 — Godot player avatar integration (branch implementation)
+
+- Runtime files authored for this branch: `client/scenes/character_creator.tscn`, `client/scripts/character_creator.gd`, `client/scripts/avatar_static_preview.gd`, `client/scripts/character_profile_store.gd`.
+- Main orbital menu gains `МОЙ ПЕРСОНАЖ` entry. It does not alter the existing commander roster, 3D commander preview or operation paths.
+- Screen has functional **editor/inventory** views around ONE shared static Female Base v3 GLB, orbit by touch/mouse, two-finger/wheel zoom and reset view. Editor can save and reload the local player's name and immutable static base ID in a **new** `user://characters/profiles-v1.json`.
+- **Asset source of truth remains Drive, not high-poly Git blobs.** The Android CI installs the SHA-256-pinned 34.8 MB relaxed GLB before Godot import using `scripts/install_female_base_v3.py` (idempotent, never overwrites a different existing file). Thus the packaged APK includes the asset; source checkouts install it explicitly.
+- Godot test `client/tests/test_character_creator.tscn` is wired to Android CI to check real imported mesh, both tabs, standalone profile roundtrip, old save formats and navigation. Actual CI result must be checked separately; this paragraph documents intended test, not proof of a PASS.
+- **No persistent rig, gameplay animation, Meshy regeneration, or generic equipment swapping** in this step: only a fixed static base model exists.
+- **NEXT:** CI import/smoke + Android APK tester verification, then expandable appearance and inventory components when actual modular assets exist.

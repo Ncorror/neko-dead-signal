@@ -104,6 +104,7 @@ var world_button: Button
 var pve_button: Button
 var surface_button: Button
 var close_button: Button
+var avatar_button: Button
 var exit_dialog: ConfirmationDialog
 
 func _ready() -> void:
@@ -202,6 +203,11 @@ func _build_header(parent: VBoxContainer) -> void:
         var debug_panel := DIAGNOSTICS_UI.new()
         add_child(debug_panel)
         debug_panel.install(self, header)
+    avatar_button = _button("МОЙ ПЕРСОНАЖ", false, 52)
+    avatar_button.custom_minimum_size = Vector2(172, 52)
+    avatar_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    avatar_button.pressed.connect(_open_character_creator)
+    header.add_child(avatar_button)
     header.add_child(close_button)
 
 func _build_content(parent: VBoxContainer) -> void:
@@ -565,3 +571,6 @@ func _enter_sector() -> void:
         return
     _store_selected_commander()
     get_tree().change_scene_to_file("res://scenes/world_sector.tscn")
+
+func _open_character_creator() -> void:
+    get_tree().change_scene_to_file("res://scenes/character_creator.tscn")

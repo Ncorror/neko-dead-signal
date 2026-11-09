@@ -7,6 +7,7 @@ on:
       - feat/orbital-command-ui
       - feat/pure-rts-commanders
       - main
+      - feature/female-base-v3-production
       - chore/neko-dead-signal-rebrand-v028
       - fix/manual-preview-smooth-paths-v007
       - feat/orders-and-recon-v008
@@ -105,6 +106,13 @@ jobs:
             echo "XDG_CACHE_HOME=$CACHE_DIR"
           } >> "$GITHUB_ENV"
           test -w "$DATA_DIR/godot"
+      - name: Install approved static Female Base v3 for editor and inventory
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m venv "$RUNNER_TEMP/neko-avatar-venv"
+          "$RUNNER_TEMP/neko-avatar-venv/bin/pip" -q install "gdown==5.2.0"
+          "$RUNNER_TEMP/neko-avatar-venv/bin/python" scripts/install_female_base_v3.py
       - name: Import and validate RTS project
         shell: bash
         run: |
@@ -420,6 +428,15 @@ jobs:
           timeout 45s godot --headless --path client res://tests/test_large_map.tscn 2>&1 | tee build/rts-large-map-test.log
           grep -q 'RTS_LARGE_MAP_TEST_PASS' build/rts-large-map-test.log
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-large-map-test.log; then
+            exit 1
+          fi
+      - name: Validate editor, inventory and original static Female Base v3 in Godot
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 90s godot --headless --path client res://tests/test_character_creator.tscn 2>&1 | tee build/neko-avatar-test.log
+          grep -q 'NEKO_AVATAR_EDITOR_TEST_PASS' build/neko-avatar-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/neko-avatar-test.log; then
             exit 1
           fi
       - name: Smoke-test orbital screen and landing scene
