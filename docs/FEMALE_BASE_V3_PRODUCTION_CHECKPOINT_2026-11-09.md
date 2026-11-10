@@ -77,3 +77,24 @@
 - **Not yet verified:** actual user Android visual quality (pelvis/shorts skinning, feet, facial details, weapon alignment, frame rate), and all 20 animations individually visually reviewed; the automated Godot test loads 20 and exercises representative motion/playback. Existing reports of severe skinning defects in older Meshy variants must remain open until actual mobile inspection of this newer GLB.
 
 **Last successful functional commit:** `229053265e9fd00d0881ba512ed32e74b523e94c`. **Production branch:** `feature/female-base-v3-production`, PR #39 (draft, not merged). **Next concrete step:** on-device acceptance of 3D menu Lyra, movement and all 20 manual clip previews; collect screenshot/log only if defects. Keep `main` and all gameplay save formats unchanged. 
+
+
+## 2026-11-10 — Visual defect regression: Lyra ready stance and missing world models
+
+**On-device screenshots from user:** menu shows Lyra frozen in the middle of a walk cycle (wide stride and raised foot); `surface_sector` 128x128 shows a cyan capsule labeled Lyra, despite the approved GLB being installed; RTS shows real Lyra plus adjacent green capsule. RTS green capsule verified in code as the **separate EscortUnit**, not a duplicate hero. Other screenshot: RTS heading still said REINA.
+
+**Root causes, fixed without changing GLB or user saves:**
+- `lyra_voss_animations.gd` sampled `Walking` at t=0.25 as fake neutral; actual glTF bone audit showed a ~0.6m moving stride. New `hold_ready_pose` combines standing lower-body frame from `Standing_Reload` t=0 with relaxed shoulders/arms from `Walking` t=0, preserving all 20 imported source tracks.
+- Godot GLTF importer sanitizes `mixamorig:` names; normalized bone-index fallback now searches actual Skeleton3D names by suffix.
+- `surface_sector.gd` and `world_zone.gd` previously mounted 3D only for human officer **Amina index 0**. Added shared `LYRA.mount(parent, 1.9)` for **Lyra index 3**; motion hooks use existing route state and `Walking`/stop; both zones suppress only their own old hero capsule. This also applies to `world_sector.gd` through its inherited `world_zone.gd` base implementation.
+- RTS keeps the green **EscortUnit** capsule as its legitimate second troop, now explicitly labeled `ЭСКОРТ · ЗАГЛУШКА` so it is not mistaken for Lyra. Hero capsule itself is tested hidden. RTS title and orbital menu footer were updated to NEKO naming.
+- No sniper skill values, combat result conditions, enemy AI, navigation, profile storage, or other officers were changed.
+
+**Verification sequence:** 
+- Code commits `3c827fbb` (rig/stance/all scene fixes), `0ef06a73` (new real Godot tests for neutral stance, skeletal foot separation, WorldZone, Surface128, RTS capsule visibility and route animations), `202811df` (imported Godot bone-name matching).
+- The initial expanded Godot test failed with `LYRA_RIG_TEST_FAIL Missing rig foot bones`: root cause confirmed as imported Skeleton3D bone naming; corrected rather than bypassed.
+- [GitHub Actions run **42795094370**](https://github.com/Ncorror/neko-dead-signal/actions/runs/42795094370) **SUCCESS**. Exact 40MB original GLB downloaded+SHA verified; Godot imported without errors; expanded Lyra 3D cross-scene test and all existing RTS/world/128x128 tests PASS; Android ARM64 APK exported, signed, uploaded as GitHub Actions artifact `neko-dead-signal-debug-120`.
+- APK `NEKO_DEAD_SIGNAL-0.0.28-LyraVoss-VisualFix-debug.apk`, 66,972,633 bytes, SHA256 `b6a6d339bdf84f1e32f363d445e0a847d232631fede8e369f7f4b1c2dcd78a97`. APK ZIP integrity: PASS. File delivered in ChatGPT conversation. **The optional attempt to copy that APK into Drive failed twice due to Files connector `container_session_expired`; do NOT claim this version is on Drive.** The prior 0.0.28 Lyra APK on Drive is the older buggy variant.
+- The Model GLB on Drive is unchanged; no Meshy credits used.
+
+**Known limits / acceptance:** New pose verified mechanically (feet placement), not visually on user's Android. The user must check face/arms/fabric deformation and post-pose shift with screenshots. Asset remains without a real `Idle`, sniper rifle model and proper rifle firing animation. Fixes stay on existing draft PR #39; main intentionally unchanged. 
