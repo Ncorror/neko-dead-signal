@@ -80,6 +80,13 @@ func _run() -> void:
     await tree.scene_changed
     var battle = tree.current_scene
     _check(battle.hero.get_node_or_null("LyraRig") != null, "Lyra not attached to hero")
+    _check(absf(battle.hero.weapon_range - 16.0) < 0.001, "Lyra RTS base range must be 16")
+    battle._update_visibility(0.0, true)
+    _check(battle.visibility._observer_radii.has(16.0), "Lyra sniper sight source missing")
+    battle.unit_paths[battle.hero] = [battle.hero.position + Vector3(1, 0, 0)]
+    _check(not battle._auto_fire_allowed(battle.hero), "Lyra must not auto-fire while moving")
+    battle.unit_paths.erase(battle.hero)
+    _check(battle._auto_fire_allowed(battle.hero), "Stationary Lyra auto-fire remained blocked")
     _check(LYRA.has_weapon(battle.hero.get_node_or_null("LyraRig")), "RTS rifle missing")
     _check(battle.animation_players.has(battle.hero), "RTS rig not animated")
     if battle.animation_players.has(battle.hero):
