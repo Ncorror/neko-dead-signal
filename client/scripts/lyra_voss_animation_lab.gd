@@ -7,6 +7,7 @@ var model_view: SubViewportContainer
 var player: AnimationPlayer
 var status: Label
 var entries: VBoxContainer
+var preview_origin := Vector3.ZERO
 
 func _ready() -> void:
     var background := ColorRect.new()
@@ -73,19 +74,38 @@ func _load() -> void:
         b.disabled = LYRA.resolve_clip(player, str(clip)).is_empty()
         b.pressed.connect(_play.bind(str(clip)))
         entries.add_child(b)
+    preview_origin = model_view.active_model.position
     status.text = "Загружено %d / 20 анимаций" % LYRA.loaded_count(player)
     _hold()
 
 func _hold() -> void:
+    if model_view != null and model_view.active_model != null:
+        model_view.active_model.position = preview_origin
     if player != null and LYRA.hold_ready_pose(player):
         status.text = "Стойка: исходная нейтральная поза скелета; винтовка за спиной."
 
 func _play(clip: String) -> void:
+    if model_view != null and model_view.active_model != null:
+        model_view.active_model.position = preview_origin
     if player != null:
         if LYRA.play_preview(player, clip):
             status.text = "Проигрывается: " + clip
         else:
             status.text = "Отсутствует: " + clip
+
+func _process(_delta: float) -> void:
+    if player == null or model_view == null or model_view.active_model == null:
+        return
+    if str(player.get_meta("neko_lyra_motion", "")) != "preview":
+        return
+    var offset: Vector3 = LYRA.root_motion_offset(player)
+    var model := model_view.active_model
+    model.position = Vector3(
+        preview_origin.x - offset.x * model.scale.x,
+        preview_origin.y,
+        preview_origin.z - offset.z * model.scale.z
+    )
+
 
 func _back() -> void:
     get_tree().change_scene_to_file("res://scenes/main.tscn")
