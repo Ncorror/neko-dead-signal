@@ -2,6 +2,7 @@ extends Node3D
 ## World adapter: touch targeting, bounded effects, HP/skills and PvE actor views.
 
 const COMBAT := preload("res://scripts/world_combat.gd")
+const LYRA := preload("res://scripts/lyra_voss_animations.gd")
 var model = COMBAT.new()
 var zone
 var actors: Array[Node3D] = []
@@ -21,6 +22,9 @@ var aim_skill := -1
 var chase_age := 0.0
 var chasing := false
 var effects: Array[Dictionary] = []
+var attack_serial := 0
+var death_pending := false
+var death_ready := false
 
 func install(world, bottom: VBoxContainer) -> void:
     zone = world
@@ -106,7 +110,7 @@ func refresh() -> void:
         skill_buttons[i].visible = not is_lyra
         skill_buttons[i].disabled = is_lyra or model.hp <= 0 or model.cooldowns[i] > 0
     cancel_button.visible = aim_skill >= 0
-    respawn_button.visible = model.hp <= 0
+    respawn_button.visible = model.hp <= 0 and death_ready
     if hint.text.is_empty():
         hint.text = "Коснись врага — подойти и открыть снайперский огонь. Навыки Лиры подключим отдельным набором." if is_lyra else "Коснись врага — подойти и атаковать. Граната / рывок — навык, затем цель."
     for i in range(model.enemies.size()):
@@ -265,7 +269,8 @@ func before_movement(delta: float) -> void:
         chasing = true
 
 func tick(delta: float) -> void:
-    model.tick(delta, zone.hero.position)
+    var hero_can_fire := model.profile_id != "lyra_voss" or zone.route.is_empty()
+    model.tick(delta, zone.hero.position, hero_can_fire)
     if chasing and not model.alive(model.attack_target):
         zone._clear_route()
         chasing = false
@@ -309,8 +314,16 @@ func _events() -> void:
             ring.position = event["to"] + Vector3(0, 0.14, 0)
             ring.show()
             _effect(ring, 0.35)
-        elif name in ["hero_shot", "enemy_shot"]:
-            _trace(event["from"], event["to"], Color("#b1f8ed") if name == "hero_shot" else Color("#ef9c75"))
+        elif name == "hero_shot":
+            _trace(event["from"], event["to"], Color("#b1f8ed"))
+            if model.profile_id == "lyra_voss" and zone.hero_motion != null:
+                attack_serial += 1
+                var token := attack_serial
+                var duration := LYRA.play_attack(zone.hero_motion)
+                if duration > 0:
+                    _restore_lyra_after_attack(token, duration)
+        elif name == "enemy_shot":
+            _trace(event["from"], event["to"], Color("#ef9c75"))
         elif name == "skill_cast" and event["skill"] in [1, 2, 4]:
             var ring := _ring(3.0 if event["skill"] == 4 else (2.5 if event["skill"] == 1 else 0.6), Color("#e9c16d"))
             ring.position = event["to"] + Vector3(0, 0.12, 0)
@@ -321,20 +334,51 @@ func _events() -> void:
         elif name == "hero_defeated":
             zone._stop()
             important = true
-            call_deferred("_show_death")
+            _begin_death()
     if important:
         if not zone._checkpoint():
             zone._show_notice(zone.progress.error_text)
         zone._refresh()
 
-func _show_death() -> void:
-    if model.hp <= 0:
-        zone._popup(death_dialog)
+func _restore_lyra_after_attack(token: int, seconds: float) -> void:
+    await get_tree().create_timer(maxf(seconds, 0.05)).timeout
+    if token != attack_serial or model.hp <= 0 or zone.hero_motion == null:
+        return
+    LYRA.restore_ready(zone.hero_motion)
+
+
+func _begin_death() -> float:
+    if death_pending:
+        return 0.0
+    death_pending = true
+    death_ready = false
+    attack_serial += 1
+    var delay := 0.85
+    if model.profile_id == "lyra_voss" and zone.hero_motion != null:
+        delay = maxf(delay, LYRA.play_death(zone.hero_motion))
+    _show_death_after(delay)
+    refresh()
+    return delay
+
+
+func _show_death_after(seconds: float) -> void:
+    await get_tree().create_timer(maxf(seconds, 0.05)).timeout
+    if not death_pending or model.hp > 0:
+        return
+    death_ready = true
+    refresh()
+    zone._popup(death_dialog)
+
 
 func _respawn() -> void:
     if model.respawn():
+        death_pending = false
+        death_ready = false
+        attack_serial += 1
         death_dialog.hide()
         zone._stop()
+        if model.profile_id == "lyra_voss" and zone.hero_motion != null:
+            LYRA.restore_ready(zone.hero_motion)
         zone.hero.position = zone.PROGRESS.SPAWN
         zone._follow()
         _events()
