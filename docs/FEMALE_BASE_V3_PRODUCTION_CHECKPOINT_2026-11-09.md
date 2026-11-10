@@ -109,3 +109,13 @@
 **Corrections:** Replace mid-walk or multi-clip pose blending with the verified symmetric skeleton **rest pose** (`Skeleton3D.reset_bone_poses()`), validated from GLB source foot positions (left and right toes at approximately identical Z and Y). The rifle installs separately as a **back-mounted** `BoneAttachment3D` under Lyra's `Spine2`, available in the orbital preview, RTS and 128×128 / world scenes. This is a visual weapon only; because source clips contain no rifle fire pose it is NOT yet modeled as right-hand sniper firing and does not change gameplay damage or hit decisions. Add actual GLB import, weapon mount and stronger pose tests in CI.
 
 **Next acceptance:** real Android screenshot of front/back menu and surface, plus all 20 clips under Animation Lab. Validate skinning (hips/shorts), weapon orientation, clipping and scale before merging PR.
+
+
+### 2026-11-10 — Lyra rifle visual-fix Android delivery verified
+
+- **Successful code commit:** `1d8447cf0c6a6f037e476cbf9a0ab687ab5fc33b` on existing draft PR #39; main was not modified.
+- **CI source:** [Neko Dead Signal Android Debug run 42796543368](https://github.com/Ncorror/neko-dead-signal/actions/runs/42796543368): **PASS (52 successful steps)** including SHA-pinned downloads of 20-clip Lyra GLB + new user-made 8.37MB rifle GLB, Godot import, detailed rig/weapon/neutral-feet tests, existing 128×128 and world zone validations, RTS regressions, Android export and signing.
+- **Packaged signed APK:** `NEKO_DEAD_SIGNAL-0.0.28-Lyra-Rifle-Fix.apk`, 74,772,175 bytes, SHA-256 `0412e40576b2cfc3131e63a9e76c34c714f3ffb75f93aa4b3ca2fde14c0dfd1e`; ZIP integrity PASS. APK contents explicitly include imported rifle mesh/textures, Lyra rig, both planet scenes and the animation lab.
+- **Drive delivery verified:** [new Android APK](https://drive.google.com/file/d/1GZbnQ4NZ8maHMVdEaIlM8gxWOxD8J162/view) is stored in `Игра / Модели`, Google file ID `1GZbnQ4NZ8maHMVdEaIlM8gxWOxD8J162` with expected size; this does **not** replace older retained APKs.
+- **Remaining visual validation required:** actual device screenshots before promising that rigging/skin mesh looks correct, rifle is oriented acceptably or that every animation is safe. The rifle is currently stowed on the back; no pretend rifle-in-hands firing pose or extra damage mechanics implemented.
+- **Next step:** user tests the above exact APK on Android; inspect Lyra front/back, feet and hips/shorts, gun stow on orbital screen + planet + RTS, before PR merge or gameplay weapon-fire implementation.
