@@ -25,6 +25,8 @@ var effects: Array[Dictionary] = []
 func install(world, bottom: VBoxContainer) -> void:
     zone = world
     model = zone.make_combat_model()
+    if model.has_method("set_profile"):
+        model.set_profile(zone.progress.character_id)
     model.configure(zone.navigation, zone.combat_state())
     for i in range(model.enemies.size()):
         var actor := Node3D.new()
@@ -56,6 +58,7 @@ func install(world, bottom: VBoxContainer) -> void:
         button.custom_minimum_size = Vector2(126, 54)
         button.add_theme_font_size_override("font_size", 13)
         button.tooltip_text = COMBAT.SKILL_NAMES[i].replace("\n", " ") + " · КД %d с" % COMBAT.COOLDOWNS[i]
+        button.visible = model.profile_id != "lyra_voss"
         skills.add_child(button)
         skill_buttons.append(button)
     cancel_button = zone._button("ОТМЕНА", cancel_aim)
@@ -88,8 +91,9 @@ func refresh() -> void:
     health_label.visible = model.enabled
     skills.visible = model.enabled
     hint.visible = model.enabled
-    health_label.text = "АМИНА · ОЗ %d/100 · Взрывной специалист: гранаты ослабляют броню на 10%% / 4 с" % ceili(model.hp)
-    if model.protocol > 0:
+    var is_lyra: bool = model.profile_id == "lyra_voss"
+    health_label.text = ("ЛИРА ВОСС · ОЗ %d/100 · СНАЙПЕР · ДАЛЬНОСТЬ 16" % ceili(model.hp)) if is_lyra else ("АМИНА · ОЗ %d/100 · Взрывной специалист: гранаты ослабляют броню на 10%% / 4 с" % ceili(model.hp))
+    if model.protocol > 0 and not is_lyra:
         health_label.text += " · ПРОТОКОЛ: %d с" % ceili(model.protocol)
     for i in range(5):
         var label: String = COMBAT.SKILL_NAMES[i]
@@ -99,11 +103,12 @@ func refresh() -> void:
             label = "◆ " + label
         if skill_buttons[i].text != label:
             skill_buttons[i].text = label
-        skill_buttons[i].disabled = model.hp <= 0 or model.cooldowns[i] > 0
+        skill_buttons[i].visible = not is_lyra
+        skill_buttons[i].disabled = is_lyra or model.hp <= 0 or model.cooldowns[i] > 0
     cancel_button.visible = aim_skill >= 0
     respawn_button.visible = model.hp <= 0
     if hint.text.is_empty():
-        hint.text = "Коснись врага — подойти и атаковать. Граната / рывок — навык, затем цель."
+        hint.text = "Коснись врага — подойти и открыть снайперский огонь. Навыки Лиры подключим отдельным набором." if is_lyra else "Коснись врага — подойти и атаковать. Граната / рывок — навык, затем цель."
     for i in range(model.enemies.size()):
         var enemy: Dictionary = model.enemies[i]
         actors[i].visible = model.enabled and enemy["hp"] > 0
@@ -236,7 +241,7 @@ func before_movement(delta: float) -> void:
     if model.enemies[model.attack_target]["returning"]:
         zone._stop()
         return
-    if not model.in_safe(zone.hero.position) and zone.hero.position.distance_to(at) <= COMBAT.RANGE and zone.navigation.has_clear_shot(zone.hero.position, at):
+    if not model.in_safe(zone.hero.position) and zone.hero.position.distance_to(at) <= model.weapon_range and zone.navigation.has_clear_shot(zone.hero.position, at):
         if chasing:
             zone._clear_route()
             chasing = false
@@ -245,7 +250,7 @@ func before_movement(delta: float) -> void:
     if chase_age > 0:
         return
     chase_age = 0.4
-    var destination := at.move_toward(zone.hero.position, COMBAT.RANGE * 0.85)
+    var destination := at.move_toward(zone.hero.position, model.weapon_range * 0.85)
     if model.in_safe(destination) or not zone.navigation.has_clear_shot(destination, at):
         destination = at.move_toward(zone.hero.position, 1.8)
     var avoid: Array[Vector3] = []
@@ -283,9 +288,12 @@ func _trace(from: Vector3, to: Vector3, color: Color) -> void:
     var distance := start.distance_to(end)
     if distance < 0.05:
         return
-    var trace: MeshInstance3D = zone._box(self, (start + end) * 0.5 - Vector3(0, 0.025, 0), Vector3(0.05, 0.05, distance), color)
+    var trace: MeshInstance3D = zone._box(self, start, Vector3(0.05, 0.05, 0.34), color)
     trace.look_at(end)
-    _effect(trace, 0.14)
+    var flight := clampf(distance / 85.0, 0.045, 0.11)
+    var tween := create_tween()
+    tween.tween_property(trace, "position", end, flight).set_trans(Tween.TRANS_LINEAR)
+    _effect(trace, flight + 0.03)
 
 func _events() -> void:
     var important := false
