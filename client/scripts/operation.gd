@@ -8,6 +8,7 @@ const PATH_GRID := preload("res://scripts/rts_navigation.gd")
 const FORMATION := preload("res://scripts/rts_formation.gd")
 const DIAGNOSTICS_UI := preload("res://scripts/rts_diagnostics_ui.gd")
 const RIGGED_AMINA := "res://assets/characters/amina/amina_rigged.glb"
+const LYRA_MOTION := preload("res://scripts/lyra_voss_animations.gd")
 const STATIC_AMINA_PREVIEW := "res://assets/characters/amina/preview.glb"
 const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
 const VISIBILITY := preload("res://scripts/rts_visibility.gd")
@@ -25,6 +26,8 @@ const OBJECTIVES := preload("res://scripts/rts_objectives.gd")
 const BUILDING_LABELS := preload("res://scripts/rts_building_labels.gd")
 const STATIC_AMINA_WORLD_HEIGHT := 1.90
 const STATIC_AMINA_FRONT_YAW_DEGREES := 0.0
+const LYRA_BASE_RANGE := 16.0
+const LYRA_SIGHT_RADIUS := 16.0
 
 const MAP_LIMIT := BATTLEFIELD.PLAYABLE_LIMIT
 const OFFICER_SPEED := 5.8
@@ -248,9 +251,13 @@ func _update_visibility(delta: float, force: bool = false) -> void:
         for unit in units:
             if unit.hull > 0:
                 observers.append(unit.position)
+                if _is_lyra_unit(unit):
+                    # Long-range scout contribution without changing escort sight.
+                    building_observers.append(unit.position)
+                    building_radii.append(LYRA_SIGHT_RADIUS)
         if outcome == Outcome.ACTIVE and not units.is_empty():
-            building_observers = construction.local_observers()
-            building_radii = construction.observer_radii()
+            building_observers.append_array(construction.local_observers())
+            building_radii.append_array(construction.observer_radii())
         if force:
             while visibility.scanning:
                 visibility.advance(navigation, 128)
@@ -442,6 +449,11 @@ func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool
     if not is_commander:
         unit.hull = 80
         unit.damage = 16
+    elif GameState.faction_index == 0 and GameState.officer_index == 3:
+        # Approved base sniper distance. Prepared Position extends this to 18
+        # only when that active skill is implemented; do not grant it passively.
+        unit.weapon_range = LYRA_BASE_RANGE
+        unit.set_meta("neko_class", "lyra_sniper")
     unit.name = unit_name
     unit.position = at
     add_child(unit)
@@ -453,8 +465,17 @@ func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool
     visual.position.y = 0.95 if is_commander else 0.825
     visual.material_override = _material(color)
     unit.add_child(visual)
+    if not is_commander and unit_name == "EscortUnit":
+        var caption := Label3D.new()
+        caption.name = "EscortLabel"
+        caption.text = "ЭСКОРТ · ЗАГЛУШКА"
+        caption.position.y = 2.2
+        caption.pixel_size = 0.012
+        caption.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+        unit.add_child(caption)
     if is_commander:
         _attach_optional_rigged_amina(unit, visual)
+        _attach_optional_rigged_lyra(unit, visual)
         # A static Meshy mesh can be inspected on the battlefield, but it
         # never impersonates a rigged, animated character.
         if visual.visible:
@@ -498,6 +519,21 @@ func _attach_optional_rigged_amina(unit: Node3D, placeholder: MeshInstance3D) ->
     _set_unit_animation(unit, false)
     print("RTS_AMINA_RIG_READY: ", player.get_animation_list())
 
+
+func _attach_optional_rigged_lyra(unit: Node3D, placeholder: MeshInstance3D) -> void:
+    if GameState.faction_index != 0 or GameState.officer_index != 3:
+        return
+    var result: Dictionary = LYRA_MOTION.mount(unit, 1.9)
+    if not bool(result.get("ok", false)):
+        push_warning("RTS_LYRA_LOAD_FAILED " + str(result.get("reason", "unknown")))
+        return
+    placeholder.hide()
+    animation_players[unit] = result["player"]
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("visual", "lyra_rig_ready", {
+            "officer": 3, "clips": LYRA_MOTION.loaded_count(result["player"])
+        })
+
 func _attach_optional_static_amina(unit: Node3D, placeholder: MeshInstance3D) -> void:
     # Experimental visual-only landing test. Combat, AI, HP, navigation and
     # selection stay on the original Combatant node.
@@ -540,11 +576,24 @@ func _has_motion_clip(player: AnimationPlayer, keyword: String) -> bool:
             return true
     return false
 
+func _is_lyra_unit(unit: Node3D) -> bool:
+    return unit == hero and GameState.faction_index == 0 and GameState.officer_index == 3
+
+
+func _auto_fire_allowed(unit: Node3D) -> bool:
+    # Existing units keep fire-on-the-move. Lyra plants before a sniper shot.
+    return not (_is_lyra_unit(unit) and unit_paths.has(unit))
+
+
 func _set_unit_animation(unit: Node3D, moving: bool) -> void:
     if not animation_players.has(unit):
         return
     var player: AnimationPlayer = animation_players[unit]
     if not is_instance_valid(player):
+        return
+    if unit == hero and GameState.faction_index == 0 and GameState.officer_index == 3:
+        animation_state[unit] = LYRA_MOTION.play_movement(player, moving,
+            float(unit_move_speeds.get(unit, OFFICER_SPEED)))
         return
     var state := "walk" if moving else "idle"
     if animation_state.get(unit, "") == state:
@@ -711,7 +760,7 @@ func _show_objectives() -> void:
 
 func _create_result_dialog() -> void:
     result_dialog = ConfirmationDialog.new()
-    result_dialog.title = "NEKO: DEAD SIGNAL · Итог операции"
+    result_dialog.title = "NEKO RTS · Итог операции"
     result_dialog.min_size = Vector2i(640, 300)
     result_dialog.get_ok_button().text = "НА КОРАБЛЬ"
     result_dialog.get_cancel_button().text = "КАРТА"
@@ -1326,12 +1375,13 @@ func _shoot(shooter: Combatant, target: Combatant, reason: StringName = &"order"
         RTSDiagnostics.event("combat", "hit", {"from": shooter.name, "to": target.name, "health": target.hull, "reason": str(reason)})
     var origin := shooter.position + Vector3.UP
     var end := target.position + Vector3.UP
-    var tracer := _make_box(Vector3.ZERO, Vector3(0.07, 0.07, origin.distance_to(end)),
-        Color("#85f0ff") if units.has(shooter) else Color("#ff6c4f"))
-    tracer.position = (origin + end) * 0.5
-    tracer.look_at(end)
+    var color := Color("#85f0ff") if units.has(shooter) else Color("#ff6c4f")
+    # Old prototype used a full-length glowing box, which looked like a laser.
+    # Use a short fast projectile instead.
+    var tracer := _make_box(origin, Vector3(0.10, 0.10, 0.10), color)
+    var flight := clampf(origin.distance_to(end) / 70.0, 0.06, 0.18)
     var fade := create_tween()
-    fade.tween_interval(0.12)
+    fade.tween_property(tracer, "position", end, flight).set_trans(Tween.TRANS_LINEAR)
     fade.tween_callback(tracer.queue_free)
     if target.hull == 0:
         orders_ui_dirty = true

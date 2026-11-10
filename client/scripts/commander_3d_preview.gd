@@ -2,13 +2,14 @@ extends SubViewportContainer
 ## Lightweight 3D commander menu preview; hidden until an original GLB is installed.
 ## Static GLB can be previewed without a rig. Animation is optional.
 const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
+const LYRA_MOTION := preload("res://scripts/lyra_voss_animations.gd")
 const MENU_PREVIEW_HEIGHT := 2.75
 const MENU_FRONT_YAW_DEGREES := 0.0
 const MODELS := [
     ["res://assets/characters/amina/preview.glb",
      "res://assets/characters/reina/preview.glb",
      "res://assets/characters/mira_kade/preview.glb",
-     "res://assets/characters/lyra_voss/preview.glb"],
+     "res://assets/characters/lyra_voss/rigged.glb"],
     ["", ""]
 ]
 var preview: SubViewport
@@ -85,12 +86,24 @@ func set_commander(faction: int, officer: int) -> bool:
             "target_height": fit["target_height"],
             "scale": fit["scale"]
         })
-    for child in active_model.find_children("*", "AnimationPlayer", true, false):
-        var animation_player: AnimationPlayer = child as AnimationPlayer
-        for clip in animation_player.get_animation_list():
-            if clip.to_lower().contains("idle"):
-                animation_player.play(clip)
-                break
+    if faction == 0 and officer == 3:
+        var player: AnimationPlayer = LYRA_MOTION.find_player(active_model)
+        if player != null:
+            LYRA_MOTION.hold_ready_pose(player)
+            if not LYRA_MOTION.attach_weapon(active_model):
+                push_warning("LYRA_MENU_RIFLE_MISSING")
+            else:
+                var equipped_bounds: Dictionary = MODEL_FIT.measure_bounds(active_model)
+                if bool(equipped_bounds.get("ok", false)):
+                    model_bounds = equipped_bounds["bounds"]
+                    _frame_model()
+    else:
+        for child in active_model.find_children("*", "AnimationPlayer", true, false):
+            var animation_player: AnimationPlayer = child as AnimationPlayer
+            for clip in animation_player.get_animation_list():
+                if clip.to_lower().contains("idle"):
+                    animation_player.play(clip)
+                    break
     visible = true
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("visual", "3d_preview_loaded", {"faction": faction, "officer": officer})

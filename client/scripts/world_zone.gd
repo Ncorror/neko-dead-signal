@@ -8,8 +8,10 @@ const DIAGNOSTICS := preload("res://scripts/rts_diagnostics_ui.gd")
 const COMBAT_VIEW := preload("res://scripts/world_combat_view.gd")
 const COMBAT := preload("res://scripts/world_combat.gd")
 const AMINA := "res://assets/characters/amina/preview.glb"
+const LYRA := preload("res://scripts/lyra_voss_animations.gd")
 const LIMIT := 30.0
 const SPEED := 4.2
+const RUN_SPEED := 5.8
 const PAN_PREVIEW_SECONDS := 1.5
 const GOAL_PREVIEW_SECONDS := 4.0
 const NPC_AT := Vector3(-18, 0, 11)
@@ -22,6 +24,7 @@ const COVER := [
 var navigation = NAV.new()
 var progress = PROGRESS.new()
 var hero: Node3D
+var hero_motion: AnimationPlayer
 var npc: Node3D
 var relays: Array[Node3D] = []
 var lamps: Array[MeshInstance3D] = []
@@ -47,11 +50,13 @@ var journal_button: Button
 var goal_button: Button
 var follow_button: Button
 var stop_button: Button
+var speed_button: Button
 var minus_button: Button
 var plus_button: Button
 var return_button: Button
 var logs_button: Button
 var sector_button: Button
+var run_mode := false
 var zone_title: Label
 var conversation: ConfirmationDialog
 var journal: AcceptDialog
@@ -143,7 +148,8 @@ func _person(parent: Node3D, at: Vector3, color: Color, actor_name: String) -> N
     visual.position.y = 0.9
     visual.material_override = _material(color)
     actor.add_child(visual)
-    _box(actor, Vector3(0, 0.7, 0.4), Vector3(0.12, 0.12, 0.4), Color("#adf4f2"))
+    var direction_marker := _box(actor, Vector3(0, 0.7, 0.4), Vector3(0.12, 0.12, 0.4), Color("#adf4f2"))
+    direction_marker.name = "PlaceholderFacingBar"
     return actor
 
 func _create_world() -> void:
@@ -202,6 +208,15 @@ func _create_hero() -> void:
         mount.add_child(model)
         if FIT.fit_to_height(model, 1.9).get("ok", false):
             hero.get_node("Placeholder").hide()
+    elif GameState.faction_index == 0 and GameState.officer_index == 3:
+        var installed: Dictionary = LYRA.mount(hero, 1.9)
+        if bool(installed.get("ok", false)):
+            hero_motion = installed["player"]
+            hero.get_node("Placeholder").hide()
+            hero.get_node("PlaceholderFacingBar").hide()
+        else:
+            push_warning("WORLD_LYRA_LOAD_FAILED " + str(installed.get("reason", "")))
+
 func _create_camera_and_marker() -> void:
     target_marker = MeshInstance3D.new()
     var ring := TorusMesh.new()
@@ -264,10 +279,11 @@ func _create_ui() -> void:
     goal_button = _button("ПОКАЗАТЬ ЦЕЛЬ", _show_goal)
     follow_button = _button("К ГЕРОЮ", _follow)
     stop_button = _button("СТОП", _stop)
+    speed_button = _button("ХОДЬБА", _toggle_move_mode)
     minus_button = _button("−", _change_zoom.bind(1.2))
     plus_button = _button("+", _change_zoom.bind(1.0 / 1.2))
     return_button = _button("НА КОРАБЛЬ", _request_return)
-    for button in [journal_button, goal_button, follow_button, stop_button, minus_button, plus_button]:
+    for button in [journal_button, goal_button, follow_button, stop_button, speed_button, minus_button, plus_button]:
         bar.add_child(button)
     diagnostics_panel = DIAGNOSTICS.new()
     add_child(diagnostics_panel)
@@ -275,7 +291,7 @@ func _create_ui() -> void:
     logs_button = diagnostics_panel.open_button
     bar.add_child(return_button)
     sector_button = _button("МОБЫ И БОСС ›", _travel_sector)
-    sector_button.visible = progress.character_id == "amina"
+    sector_button.visible = progress.character_id in ["amina", "lyra_voss"]
     bar.add_child(sector_button)
     bottom_panel = PanelContainer.new()
     bottom_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -326,7 +342,7 @@ func _refresh() -> void:
     var saved: Dictionary = progress.state()
     status.text = "%s · Опыт %d · Кредиты %d · Локальная зона" % [GameState.officer_name.split(" — ")[0], progress.experience(), progress.credits()]
     if saved["claimed"]:
-        quest_label.text = "СИГНАЛ ВОССТАНОВЛЕН · Награда получена." + (" «МОБЫ И БОСС» — боевой сектор." if progress.character_id == "amina" else " Можно исследовать сектор.")
+        quest_label.text = "СИГНАЛ ВОССТАНОВЛЕН · Награда получена." + (" «МОБЫ И БОСС» — боевой сектор." if progress.character_id in ["amina", "lyra_voss"] else " Можно исследовать сектор.")
     elif not saved["accepted"]:
         quest_label.text = "Поговори со связистом Вегой возле посадочной площадки."
     elif saved["relays"].size() == 3:
@@ -391,6 +407,16 @@ func _stop() -> void:
     _clear_route()
     if combat_view != null:
         combat_view.cancel_orders()
+
+func current_move_speed() -> float:
+    return RUN_SPEED if run_mode else SPEED
+
+
+func _toggle_move_mode() -> void:
+    run_mode = not run_mode
+    speed_button.text = "БЕГ" if run_mode else "ХОДЬБА"
+    _event("move_mode", {"mode": "run" if run_mode else "walk", "speed": current_move_speed()})
+
 
 func _change_zoom(factor: float) -> void:
     zoom = clampf(zoom * factor, 8, 30)
@@ -638,7 +664,8 @@ func _physics_process(delta: float) -> void:
     if combat_view.model.enabled and combat_view.model.hp <= 0:
         combat_view.tick(delta)
         return
-    var travel := maxf(delta, 0) * SPEED
+    var move_speed := current_move_speed()
+    var travel := maxf(delta, 0) * move_speed
     while route_index < route.size() and travel > 0:
         var next: Vector3 = route[route_index]
         var distance := hero.position.distance_to(next)
@@ -657,6 +684,8 @@ func _physics_process(delta: float) -> void:
         _checkpoint()
         if target != -2:
             _interact(target)
+    if hero_motion != null:
+        LYRA.play_movement(hero_motion, not route.is_empty(), move_speed)
     combat_view.tick(delta)
 
 func _process(delta: float) -> void:
@@ -668,7 +697,7 @@ func _process(delta: float) -> void:
     perf_age += delta
     perf_max_ms = maxf(perf_max_ms, delta * 1000)
     if perf_age >= 5:
-        _event("WORLD_PERF", {"fps": Engine.get_frames_per_second(), "max_frame_ms": snappedf(perf_max_ms, 0.1), "characters": 1, "route_points": route.size(), "camera_follow": following, "zoom": zoom, "speed": SPEED, "combat": combat_view.model.enabled, "hp": combat_view.model.hp, "effects": combat_view.effects.size()})
+        _event("WORLD_PERF", {"fps": Engine.get_frames_per_second(), "max_frame_ms": snappedf(perf_max_ms, 0.1), "characters": 1, "route_points": route.size(), "camera_follow": following, "zoom": zoom, "speed": current_move_speed(), "move_mode": "run" if run_mode else "walk", "combat": combat_view.model.enabled, "hp": combat_view.model.hp, "effects": combat_view.effects.size()})
         perf_age = 0
         perf_max_ms = 0
 
@@ -714,7 +743,7 @@ func _return_to_ship() -> void:
     get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _travel_sector() -> void:
-    if progress.character_id != "amina":
+    if progress.character_id not in ["amina", "lyra_voss"]:
         return
     if not _checkpoint():
         _show_notice(progress.error_text)

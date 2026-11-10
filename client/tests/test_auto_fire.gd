@@ -11,8 +11,11 @@ func _check(ok: bool, message: String) -> void:
         failures += 1
         push_error("RTS_AUTO_FIRE_TEST_FAIL " + message)
 
-func _land(faction: int = 1):
-    GameState.set_selection(faction, 0, "Люди" if faction == 0 else "Саари", "Амина" if faction == 0 else "Сэйра Нэл")
+func _land(faction: int = 1, officer: int = 0):
+    var officer_name := "Сэйра Нэл"
+    if faction == 0:
+        officer_name = "Лира Восс — снайпер-разведчик" if officer == 3 else "Амина"
+    GameState.set_selection(faction, officer, "Люди" if faction == 0 else "Саари", officer_name)
     get_tree().change_scene_to_file("res://scenes/operation.tscn")
     await get_tree().scene_changed
     var op = get_tree().current_scene
@@ -208,6 +211,24 @@ func _run() -> void:
         op._stop_selected_units()
         _tap(op.auto_fire_button)
         _check(op.auto_fire.enabled, "native toggle failed to restore automatic fire")
+    # Lyra keeps auto-fire, but cannot fire while traversing a player route.
+    op = await _land(0, 3)
+    op.sentry.damage = 0
+    _check(absf(op.hero.weapon_range - 16.0) < 0.001, "Lyra sniper range is not 16")
+    op.hero.position = Vector3(3.5, 0, -6)
+    op.sentry.position = Vector3(10, 0, -6)
+    op.escort.position = Vector3(-40, 0, 40)
+    op._update_visibility(0, true)
+    op._issue_move(Vector3(12, 0, -6))
+    var lyra_target_hull: int = op.sentry.hull
+    _advance(op, 0.35)
+    _check(op.sentry.hull == lyra_target_hull,
+        "Lyra fired while moving; sniper must plant before shooting")
+    op._stop_selected_units()
+    _advance(op, 1.0)
+    _check(op.sentry.hull < lyra_target_hull,
+        "stationary Lyra failed to use automatic sniper fire")
+
     if failures == 0:
-        print("RTS_AUTO_FIRE_TEST_PASS factions=2 roles=3 move=ok queue=ok manual=ok cover=ok fog=ok")
+        print("RTS_AUTO_FIRE_TEST_PASS factions=2 roles=3 move=ok queue=ok manual=ok cover=ok fog=ok lyra_sniper=ok")
     get_tree().quit(0 if failures == 0 else 1)

@@ -9,8 +9,10 @@ const MAP := preload("res://scripts/surface_map.gd")
 const FIT := preload("res://scripts/rts_character_fit.gd")
 const DIAGNOSTICS := preload("res://scripts/rts_diagnostics_ui.gd")
 const AMINA := "res://assets/characters/amina/preview.glb"
+const LYRA := preload("res://scripts/lyra_voss_animations.gd")
 const CHARACTER_IDS := [["amina", "reina", "mira_kade", "lyra_voss"], ["saira_nel", "oralin"]]
 const SPEED := 4.2
+const RUN_SPEED := 5.8
 const DESCRIPTIONS := ["Форпост экспедиции. Вега просит обследовать четыре ориентира за воротами.",
     "Разбитый транспорт. Сохранились фюзеляж, двигатель и обломки крыла.",
     "Площадка утилизации. Контейнеры и кран стоят у восточного маршрута.",
@@ -21,6 +23,7 @@ var world = ENVIRONMENT.new()
 var navigation = NAV.new()
 var progress = STORE.new()
 var hero: Node3D
+var hero_motion: AnimationPlayer
 var camera: Camera3D
 var target_marker: MeshInstance3D
 var route: Array[Vector3] = []
@@ -53,8 +56,10 @@ var save_label: Label
 var sites_button: Button
 var follow_button: Button
 var stop_button: Button
+var speed_button: Button
 var goal_button: Button
 var return_button: Button
+var pve_button: Button
 var logs_button: Button
 var site_buttons: Array[Button] = []
 var minus_button: Button
@@ -65,6 +70,7 @@ var notice: AcceptDialog
 var return_dialog: ConfirmationDialog
 var diagnostics_panel
 var minimap
+var run_mode := false
 
 func _ready() -> void:
     var started := Time.get_ticks_msec()
@@ -113,6 +119,13 @@ func _create_hero() -> void:
         var model := packed.instantiate() as Node3D
         hero.add_child(model)
         loaded = FIT.fit_to_height(model, 1.9).get("ok", false)
+    elif GameState.faction_index == 0 and GameState.officer_index == 3:
+        var installed: Dictionary = LYRA.mount(hero, 1.9)
+        loaded = bool(installed.get("ok", false))
+        if loaded:
+            hero_motion = installed["player"]
+        else:
+            push_warning("SURFACE_LYRA_LOAD_FAILED " + str(installed.get("reason", "")))
     if not loaded:
         var actor := MeshInstance3D.new()
         var capsule := CapsuleMesh.new()
@@ -174,11 +187,15 @@ func _create_ui() -> void:
     sites_button = _button("ТОЧКИ ИНТЕРЕСА", _open_sites)
     follow_button = _button("К ГЕРОЮ", _follow)
     stop_button = _button("СТОП", _stop)
+    speed_button = _button("ХОДЬБА", _toggle_move_mode)
     minus_button = _button("−", _change_zoom.bind(1.2))
     plus_button = _button("+", _change_zoom.bind(1 / 1.2))
     help_button = _button("?", _show_help)
     return_button = _button("НА КОРАБЛЬ", _request_return)
-    for button in [sites_button, follow_button, stop_button, minus_button, plus_button]:
+    pve_button = _button("МОБЫ И БОСС", _enter_pve)
+    pve_button.tooltip_text = "Ржавый тракт · отдельная PvE-зона"
+    pve_button.visible = GameState.faction_index == 0 and GameState.officer_index in [0, 3]
+    for button in [sites_button, follow_button, stop_button, speed_button, minus_button, plus_button]:
         bar.add_child(button)
     diagnostics_panel = DIAGNOSTICS.new()
     add_child(diagnostics_panel)
@@ -188,6 +205,7 @@ func _create_ui() -> void:
         logs_button.custom_minimum_size = Vector2(64, 44)
         logs_button.add_theme_font_size_override("font_size", 14)
     bar.add_child(help_button)
+    bar.add_child(pve_button)
     bar.add_child(return_button)
     bottom_panel = PanelContainer.new()
     bottom_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -332,16 +350,29 @@ func _move_to(point: Vector3) -> bool:
     _event("move_order", {"to": str(point), "route_points": route.size()})
     return true
 
+func current_move_speed() -> float:
+    return RUN_SPEED if run_mode else SPEED
+
+
+func _toggle_move_mode() -> void:
+    run_mode = not run_mode
+    speed_button.text = "БЕГ" if run_mode else "ХОДЬБА"
+    _event("move_mode", {"mode": "run" if run_mode else "walk", "speed": current_move_speed()})
+
+
 func _stop() -> void:
     route.clear()
     route_index = 0
     talk_pending = false
     target_marker.hide()
+    if hero_motion != null:
+        LYRA.play_movement(hero_motion, false, current_move_speed())
 
 func _physics_process(delta: float) -> void:
     if _modal_open():
         return
-    var travel := maxf(delta, 0) * SPEED
+    var move_speed := current_move_speed()
+    var travel := maxf(delta, 0) * move_speed
     while route_index < route.size() and travel > 0:
         var next: Vector3 = route[route_index]
         var direction := Vector3(next.x - hero.position.x, 0, next.z - hero.position.z)
@@ -355,6 +386,8 @@ func _physics_process(delta: float) -> void:
         if distance <= step + 0.0001:
             route_index += 1
     hero.rotation.y = lerp_angle(hero.rotation.y, heading, 1 - exp(-maxf(delta, 0) * 12))
+    if hero_motion != null:
+        LYRA.play_movement(hero_motion, not route.is_empty(), move_speed)
     _discover()
     if not route.is_empty() and route_index >= route.size():
         var talk := talk_pending
@@ -486,6 +519,16 @@ func _input(event: InputEvent) -> void:
             _pan(event.relative)
     elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
         _handle_back()
+
+func _enter_pve() -> void:
+    if GameState.faction_index != 0 or GameState.officer_index not in [0, 3]:
+        return
+    if progress.writable and not _checkpoint():
+        _show_notice(progress.error_text)
+        return
+    _event("surface_to_pve", {"officer": GameState.officer_index})
+    get_tree().change_scene_to_file("res://scenes/world_sector.tscn")
+
 
 func _request_return() -> void:
     _popup(return_dialog)
