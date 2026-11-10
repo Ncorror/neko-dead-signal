@@ -55,7 +55,7 @@ func state() -> Dictionary:
 func hunt_combat_state() -> Dictionary:
     var saved := state()
     var result: Dictionary = saved["combat"].duplicate(true)
-    result["accepted"] = character_id == "amina"
+    result["accepted"] = character_id in ["amina", "lyra_voss"]
     result["defeated"] = saved["hunt"]["defeated"].duplicate()
     result["respawns"] = saved["hunt"]["respawns"].duplicate()
     return result
@@ -250,7 +250,7 @@ func credits() -> int:
     return (REWARD_CREDITS if state()["claimed"] else 0) + (COMBAT_CREDITS if state()["combat"]["claimed"] else 0) + (BOSS_CREDITS if state()["hunt"]["claimed"] else 0)
 
 func checkpoint_sector(point: Vector3, scale: float, combat: Dictionary) -> bool:
-    if character_id != "amina":
+    if character_id not in ["amina", "lyra_voss"]:
         return false
     var next := state()
     for key in ["hp", "cooldowns", "launcher", "protocol", "weapon"]:
