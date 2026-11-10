@@ -48,11 +48,22 @@ func _run() -> void:
                 _check(relaxed_spread < 0.58, "Ready pose still has A-pose arm spread")
         _check(LYRA.has_weapon(model), "Lyra menu is missing sniper rifle")
         var rifle_node := model.find_child("LyraSniperRifle", true, false) as Node3D
-        _check(rifle_node != null, "Rifle visual node missing")
+        var rifle_mount := model.find_child("LyraRifleBackMount", true, false) as BoneAttachment3D
+        _check(rifle_node != null and rifle_mount != null, "Rifle visual or mount node missing")
         if rifle_node != null:
             var rifle_at: Vector3 = model.to_local(rifle_node.global_position)
-            _check(absf(rifle_at.x) < 0.35 and rifle_at.y > 0.45 and rifle_at.y < 1.45 and rifle_at.z < -0.05,
-                "Rifle is not stowed against Lyra back: " + str(rifle_at))
+            _check(absf(rifle_at.x) < 0.30 and rifle_at.y > 0.55 and rifle_at.y < 1.40 and rifle_at.z < -0.02 and rifle_at.z > -0.20,
+                "Rifle is not close to Lyra back: " + str(rifle_at))
+        if rifle_mount != null:
+            _check(str(rifle_mount.bone_name).to_lower().ends_with("spine2"), "Rifle did not start stowed on Spine2")
+            var attack_time := LYRA.play_attack(p)
+            _check(attack_time > 0 and str(rifle_mount.bone_name).to_lower().ends_with("righthand")
+                and str(p.get_meta("neko_lyra_motion", "")) == "attack", "Attack did not move rifle into Lyra hand")
+            _check(LYRA.restore_ready(p) and str(rifle_mount.bone_name).to_lower().ends_with("spine2"),
+                "Attack did not restore rifle to Lyra back")
+            var death_time := LYRA.play_death(p)
+            _check(death_time >= 0.8 and str(p.get_meta("neko_lyra_motion", "")) == "death", "Death animation was not started")
+            _check(LYRA.restore_ready(p), "Death pose could not return to ready state")
         skeleton = LYRA.find_skeleton(p)
         _check(skeleton != null, "Missing Lyra Skeleton3D")
         if skeleton != null:
@@ -137,6 +148,12 @@ func _run() -> void:
     _check(not zone.hero.get_node("Placeholder").visible, "WorldZone Lyra capsule remained visible")
     _check(not zone.hero.get_node("PlaceholderFacingBar").visible, "WorldZone Lyra facing bar remained visible")
     _check(zone.hero_motion != null, "WorldZone animation player missing")
+    _check(zone.speed_button != null and zone.speed_button.text == "ХОДЬБА" and is_equal_approx(zone.current_move_speed(), zone.SPEED),
+        "WorldZone did not start in walking mode")
+    zone._toggle_move_mode()
+    _check(zone.speed_button.text == "БЕГ" and is_equal_approx(zone.current_move_speed(), zone.RUN_SPEED),
+        "WorldZone run toggle failed")
+    zone._toggle_move_mode()
     if zone.hero_motion != null:
         zone.route.append(zone.hero.position + Vector3(1, 0, 0))
         zone._physics_process(0.01)
@@ -159,6 +176,11 @@ func _run() -> void:
     _check(not surface_capsule, "Surface128 still displays the capsule")
     _check(sector.pve_button != null and sector.pve_button.visible, "Surface128 lost MOBS AND BOSS access for Lyra")
     _check("МОБЫ И БОСС" in sector.pve_button.text, "Surface128 PvE entry has wrong label")
+    _check(sector.speed_button != null and sector.speed_button.text == "ХОДЬБА", "Surface128 walking mode button missing")
+    sector._toggle_move_mode()
+    _check(sector.speed_button.text == "БЕГ" and is_equal_approx(sector.current_move_speed(), sector.RUN_SPEED),
+        "Surface128 run toggle failed")
+    sector._toggle_move_mode()
     if sector.hero_motion != null:
         sector.route.append(sector.hero.position + Vector3(1, 0, 0))
         sector._physics_process(0.01)
@@ -179,5 +201,5 @@ func _run() -> void:
     GameState.world_progress_path = original_world
     GameState.surface_progress_path = original_surface
     if failures == 0:
-        print("LYRA_RIG_TEST_PASS clips=20 stable_stance=ok rifle=ok menu=ok lab=ok battlefield=ok surface128=ok world=ok")
+        print("LYRA_RIG_TEST_PASS clips=20 stable_stance=ok rifle=hand,back death=animated movement=walk,run menu=ok lab=ok battlefield=ok surface128=ok world=ok")
     tree.quit(0 if failures == 0 else 1)
