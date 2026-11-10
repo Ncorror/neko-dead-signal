@@ -454,6 +454,14 @@ func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool
     visual.position.y = 0.95 if is_commander else 0.825
     visual.material_override = _material(color)
     unit.add_child(visual)
+    if not is_commander and unit_name == "EscortUnit":
+        var caption := Label3D.new()
+        caption.name = "EscortLabel"
+        caption.text = "ЭСКОРТ · ЗАГЛУШКА"
+        caption.position.y = 2.2
+        caption.pixel_size = 0.012
+        caption.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+        unit.add_child(caption)
     if is_commander:
         _attach_optional_rigged_amina(unit, visual)
         _attach_optional_rigged_lyra(unit, visual)
@@ -502,40 +510,17 @@ func _attach_optional_rigged_amina(unit: Node3D, placeholder: MeshInstance3D) ->
 
 
 func _attach_optional_rigged_lyra(unit: Node3D, placeholder: MeshInstance3D) -> void:
-    # Only Lyra (human index 3); Amina and all other officers stay unchanged.
     if GameState.faction_index != 0 or GameState.officer_index != 3:
         return
-    if not ResourceLoader.exists(LYRA_MOTION.MODEL_PATH):
-        push_warning("RTS_LYRA_RIG_MISSING")
-        return
-    var resource: Resource = load(LYRA_MOTION.MODEL_PATH)
-    if not (resource is PackedScene):
-        push_warning("RTS_LYRA_RIG_NOT_SCENE")
-        return
-    var instance: Node = (resource as PackedScene).instantiate()
-    if not (instance is Node3D):
-        instance.queue_free()
-        return
-    var rig: Node3D = instance as Node3D
-    rig.name = "LyraRig"
-    unit.add_child(rig)
-    var player: AnimationPlayer = LYRA_MOTION.find_player(rig)
-    if player == null or LYRA_MOTION.loaded_count(player) != 20:
-        push_warning("RTS_LYRA_RIG_MISSING_CLIPS")
-        rig.queue_free()
-        return
-    var fitted: Dictionary = MODEL_FIT.fit_to_height(rig, 1.9)
-    if not bool(fitted.get("ok", false)):
-        push_warning("RTS_LYRA_RIG_INVALID_BOUNDS")
-        rig.queue_free()
+    var result: Dictionary = LYRA_MOTION.mount(unit, 1.9)
+    if not bool(result.get("ok", false)):
+        push_warning("RTS_LYRA_LOAD_FAILED " + str(result.get("reason", "unknown")))
         return
     placeholder.hide()
-    animation_players[unit] = player
-    LYRA_MOTION.hold_ready_pose(player)
+    animation_players[unit] = result["player"]
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("visual", "lyra_rig_ready", {
-            "officer": GameState.officer_index, "clips": LYRA_MOTION.loaded_count(player),
-            "scale": fitted["scale"]
+            "officer": 3, "clips": LYRA_MOTION.loaded_count(result["player"])
         })
 
 func _attach_optional_static_amina(unit: Node3D, placeholder: MeshInstance3D) -> void:
@@ -636,7 +621,7 @@ func _create_ui() -> void:
     top.offset_top = 9.0
 
     var title := Label.new()
-    title.text = "REINA: DEAD SIGNAL  /  RTS OPERATION"
+    title.text = "NEKO: DEAD SIGNAL  /  RTS OPERATION"
     title.add_theme_font_size_override("font_size", 22)
     title.mouse_filter = Control.MOUSE_FILTER_IGNORE
     top.add_child(title)
@@ -755,7 +740,7 @@ func _show_objectives() -> void:
 
 func _create_result_dialog() -> void:
     result_dialog = ConfirmationDialog.new()
-    result_dialog.title = "REINA RTS · Итог операции"
+    result_dialog.title = "NEKO RTS · Итог операции"
     result_dialog.min_size = Vector2i(640, 300)
     result_dialog.get_ok_button().text = "НА КОРАБЛЬ"
     result_dialog.get_cancel_button().text = "КАРТА"

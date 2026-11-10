@@ -8,6 +8,7 @@ const DIAGNOSTICS := preload("res://scripts/rts_diagnostics_ui.gd")
 const COMBAT_VIEW := preload("res://scripts/world_combat_view.gd")
 const COMBAT := preload("res://scripts/world_combat.gd")
 const AMINA := "res://assets/characters/amina/preview.glb"
+const LYRA := preload("res://scripts/lyra_voss_animations.gd")
 const LIMIT := 30.0
 const SPEED := 4.2
 const PAN_PREVIEW_SECONDS := 1.5
@@ -22,6 +23,7 @@ const COVER := [
 var navigation = NAV.new()
 var progress = PROGRESS.new()
 var hero: Node3D
+var hero_motion: AnimationPlayer
 var npc: Node3D
 var relays: Array[Node3D] = []
 var lamps: Array[MeshInstance3D] = []
@@ -143,7 +145,8 @@ func _person(parent: Node3D, at: Vector3, color: Color, actor_name: String) -> N
     visual.position.y = 0.9
     visual.material_override = _material(color)
     actor.add_child(visual)
-    _box(actor, Vector3(0, 0.7, 0.4), Vector3(0.12, 0.12, 0.4), Color("#adf4f2"))
+    var direction_marker := _box(actor, Vector3(0, 0.7, 0.4), Vector3(0.12, 0.12, 0.4), Color("#adf4f2"))
+    direction_marker.name = "PlaceholderFacingBar"
     return actor
 
 func _create_world() -> void:
@@ -202,6 +205,15 @@ func _create_hero() -> void:
         mount.add_child(model)
         if FIT.fit_to_height(model, 1.9).get("ok", false):
             hero.get_node("Placeholder").hide()
+    elif GameState.faction_index == 0 and GameState.officer_index == 3:
+        var installed: Dictionary = LYRA.mount(hero, 1.9)
+        if bool(installed.get("ok", false)):
+            hero_motion = installed["player"]
+            hero.get_node("Placeholder").hide()
+            hero.get_node("PlaceholderFacingBar").hide()
+        else:
+            push_warning("WORLD_LYRA_LOAD_FAILED " + str(installed.get("reason", "")))
+
 func _create_camera_and_marker() -> void:
     target_marker = MeshInstance3D.new()
     var ring := TorusMesh.new()
@@ -657,6 +669,8 @@ func _physics_process(delta: float) -> void:
         _checkpoint()
         if target != -2:
             _interact(target)
+    if hero_motion != null:
+        LYRA.play_movement(hero_motion, not route.is_empty(), SPEED)
     combat_view.tick(delta)
 
 func _process(delta: float) -> void:

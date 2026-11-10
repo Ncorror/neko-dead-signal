@@ -86,16 +86,17 @@ func set_commander(faction: int, officer: int) -> bool:
             "target_height": fit["target_height"],
             "scale": fit["scale"]
         })
-    for child in active_model.find_children("*", "AnimationPlayer", true, false):
-        var animation_player: AnimationPlayer = child as AnimationPlayer
-        for clip in animation_player.get_animation_list():
-            if clip.to_lower().contains("idle"):
-                animation_player.play(clip)
-                break
     if faction == 0 and officer == 3:
         var player: AnimationPlayer = LYRA_MOTION.find_player(active_model)
         if player != null:
             LYRA_MOTION.hold_ready_pose(player)
+    else:
+        for child in active_model.find_children("*", "AnimationPlayer", true, false):
+            var animation_player: AnimationPlayer = child as AnimationPlayer
+            for clip in animation_player.get_animation_list():
+                if clip.to_lower().contains("idle"):
+                    animation_player.play(clip)
+                    break
     visible = true
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("visual", "3d_preview_loaded", {"faction": faction, "officer": officer})

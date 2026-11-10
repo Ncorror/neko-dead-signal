@@ -9,6 +9,7 @@ const MAP := preload("res://scripts/surface_map.gd")
 const FIT := preload("res://scripts/rts_character_fit.gd")
 const DIAGNOSTICS := preload("res://scripts/rts_diagnostics_ui.gd")
 const AMINA := "res://assets/characters/amina/preview.glb"
+const LYRA := preload("res://scripts/lyra_voss_animations.gd")
 const CHARACTER_IDS := [["amina", "reina", "mira_kade", "lyra_voss"], ["saira_nel", "oralin"]]
 const SPEED := 4.2
 const DESCRIPTIONS := ["Форпост экспедиции. Вега просит обследовать четыре ориентира за воротами.",
@@ -21,6 +22,7 @@ var world = ENVIRONMENT.new()
 var navigation = NAV.new()
 var progress = STORE.new()
 var hero: Node3D
+var hero_motion: AnimationPlayer
 var camera: Camera3D
 var target_marker: MeshInstance3D
 var route: Array[Vector3] = []
@@ -113,6 +115,13 @@ func _create_hero() -> void:
         var model := packed.instantiate() as Node3D
         hero.add_child(model)
         loaded = FIT.fit_to_height(model, 1.9).get("ok", false)
+    elif GameState.faction_index == 0 and GameState.officer_index == 3:
+        var installed: Dictionary = LYRA.mount(hero, 1.9)
+        loaded = bool(installed.get("ok", false))
+        if loaded:
+            hero_motion = installed["player"]
+        else:
+            push_warning("SURFACE_LYRA_LOAD_FAILED " + str(installed.get("reason", "")))
     if not loaded:
         var actor := MeshInstance3D.new()
         var capsule := CapsuleMesh.new()
@@ -337,6 +346,8 @@ func _stop() -> void:
     route_index = 0
     talk_pending = false
     target_marker.hide()
+    if hero_motion != null:
+        LYRA.play_movement(hero_motion, false, SPEED)
 
 func _physics_process(delta: float) -> void:
     if _modal_open():
@@ -355,6 +366,8 @@ func _physics_process(delta: float) -> void:
         if distance <= step + 0.0001:
             route_index += 1
     hero.rotation.y = lerp_angle(hero.rotation.y, heading, 1 - exp(-maxf(delta, 0) * 12))
+    if hero_motion != null:
+        LYRA.play_movement(hero_motion, not route.is_empty(), SPEED)
     _discover()
     if not route.is_empty() and route_index >= route.size():
         var talk := talk_pending
