@@ -101,6 +101,8 @@ func update_motion(unit, delta: float, op) -> void:
 func try_fire(unit, op) -> bool:
     if not enabled or op.outcome != op.Outcome.ACTIVE or unit.hull <= 0:
         return false
+    if op.has_method("_auto_fire_allowed") and not op._auto_fire_allowed(unit):
+        return false
     var enemy = null
     var best := INF
     var aggressor = memory.get(unit, {}).get("target", null)
