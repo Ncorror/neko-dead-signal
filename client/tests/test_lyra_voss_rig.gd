@@ -33,6 +33,7 @@ func _run() -> void:
         _check(LYRA.loaded_count(p) == 20, "Expected exactly 20 original clips")
         _check(LYRA.resolve_clip(p, "Idle").is_empty(), "Idle was not exported")
         _check(LYRA.hold_ready_pose(p), "Cannot hold ready stance")
+        _check(LYRA.has_weapon(model), "Lyra menu is missing sniper rifle")
         var skeleton: Skeleton3D = LYRA.find_skeleton(p)
         _check(skeleton != null, "Missing Lyra Skeleton3D")
         if skeleton != null:
@@ -47,8 +48,8 @@ func _run() -> void:
             if left_foot >= 0 and right_foot >= 0:
                 var lf: Vector3 = skeleton.get_bone_global_pose(left_foot).origin
                 var rf: Vector3 = skeleton.get_bone_global_pose(right_foot).origin
-                _check(absf(lf.z - rf.z) < 0.45, "Neutral stance frozen in a walking stride")
-                _check(absf(lf.y - rf.y) < 0.12, "Neutral stance leaves one foot raised")
+                _check(absf(lf.z - rf.z) < 0.15, "Neutral stance frozen in a walking stride")
+                _check(absf(lf.y - rf.y) < 0.065, "Neutral stance leaves one foot raised")
         _check(LYRA.play_movement(p, true, 4.0) == "walk", "Walk failed")
         _check(LYRA.play_movement(p, true, 5.8) == "run", "Run failed")
         _check(LYRA.play_movement(p, false, 0.0) == "idle", "Stop failed")
@@ -70,6 +71,7 @@ func _run() -> void:
     await tree.scene_changed
     var battle = tree.current_scene
     _check(battle.hero.get_node_or_null("LyraRig") != null, "Lyra not attached to hero")
+    _check(LYRA.has_weapon(battle.hero.get_node_or_null("LyraRig")), "RTS rifle missing")
     _check(battle.animation_players.has(battle.hero), "RTS rig not animated")
     if battle.animation_players.has(battle.hero):
         var player: AnimationPlayer = battle.animation_players[battle.hero]
@@ -96,6 +98,7 @@ func _run() -> void:
         await tree.process_frame
     var zone = tree.current_scene
     _check(zone.hero.get_node_or_null("LyraRig") != null, "WorldZone is missing 3D Lyra")
+    _check(LYRA.has_weapon(zone.hero.get_node_or_null("LyraRig")), "WorldZone rifle missing")
     _check(not zone.hero.get_node("Placeholder").visible, "WorldZone Lyra capsule remained visible")
     _check(not zone.hero.get_node("PlaceholderFacingBar").visible, "WorldZone Lyra facing bar remained visible")
     _check(zone.hero_motion != null, "WorldZone animation player missing")
@@ -112,6 +115,7 @@ func _run() -> void:
         await tree.process_frame
     var sector = tree.current_scene
     _check(sector.hero.get_node_or_null("LyraRig") != null, "Surface128 is missing 3D Lyra")
+    _check(LYRA.has_weapon(sector.hero.get_node_or_null("LyraRig")), "Surface128 rifle missing")
     _check(sector.hero_motion != null, "Surface128 animation player missing")
     var surface_capsule := false
     for child in sector.hero.get_children():
@@ -127,5 +131,5 @@ func _run() -> void:
     GameState.world_progress_path = original_world
     GameState.surface_progress_path = original_surface
     if failures == 0:
-        print("LYRA_RIG_TEST_PASS clips=20 stable_stance=ok menu=ok lab=ok battlefield=ok surface128=ok world=ok")
+        print("LYRA_RIG_TEST_PASS clips=20 stable_stance=ok rifle=ok menu=ok lab=ok battlefield=ok surface128=ok world=ok")
     tree.quit(0 if failures == 0 else 1)

@@ -113,6 +113,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/lyra-venv"
           "$RUNNER_TEMP/lyra-venv/bin/pip" -q install "gdown==5.2.0"
           "$RUNNER_TEMP/lyra-venv/bin/python" scripts/install_lyra_voss.py
+          "$RUNNER_TEMP/lyra-venv/bin/python" scripts/install_lyra_voss_weapon.py
           python3 tools/avatar/validate_game_glb.py client/assets/characters/lyra_voss/rigged.glb --min-clips 20
       - name: Import and validate RTS project
         shell: bash

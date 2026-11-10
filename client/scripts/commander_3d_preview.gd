@@ -90,6 +90,8 @@ func set_commander(faction: int, officer: int) -> bool:
         var player: AnimationPlayer = LYRA_MOTION.find_player(active_model)
         if player != null:
             LYRA_MOTION.hold_ready_pose(player)
+            if not LYRA_MOTION.attach_weapon(active_model):
+                push_warning("LYRA_MENU_RIFLE_MISSING")
     else:
         for child in active_model.find_children("*", "AnimationPlayer", true, false):
             var animation_player: AnimationPlayer = child as AnimationPlayer

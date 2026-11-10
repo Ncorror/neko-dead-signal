@@ -3,6 +3,7 @@ extends RefCounted
 ## Export contains no regular Idle: sample Walking at a stationary frame.
 const FIT := preload("res://scripts/rts_character_fit.gd")
 const MODEL_PATH := "res://assets/characters/lyra_voss/rigged.glb"
+const WEAPON_PATH := "res://assets/characters/lyra_voss/sniper_rifle.glb"
 const CLIP_NAMES = [
     "Running", "Walking", "Archery_Aim_with_Lateral_Scan",
     "Archery_Shot_2", "Bar_Hang_Idle", "Charged_Spell_Cast_1",
@@ -48,6 +49,55 @@ static func bone_index(skeleton: Skeleton3D, suffix: String) -> int:
             return index
     return -1
 
+static func has_weapon(rig: Node3D) -> bool:
+    if rig == null:
+        return false
+    for mount in rig.find_children("LyraRifleBackMount", "BoneAttachment3D", true, false):
+        if mount.get_node_or_null("LyraSniperRifle") != null:
+            return true
+    return false
+
+
+static func attach_weapon(rig: Node3D) -> bool:
+    # Keep the approved sniper rifle on the back for the neutral/movement
+    # poses. There is no rifle-specific firing clip yet; do not pretend
+    # the exported archery motions are realistic gun handling.
+    if rig == null or not ResourceLoader.exists(WEAPON_PATH):
+        return false
+    var skeleton: Skeleton3D = null
+    for child in rig.find_children("*", "Skeleton3D", true, false):
+        if child is Skeleton3D:
+            skeleton = child as Skeleton3D
+            break
+    if skeleton == null:
+        return false
+    var spine_index := bone_index(skeleton, "Spine2")
+    if spine_index < 0:
+        return false
+    if skeleton.get_node_or_null("LyraRifleBackMount") != null:
+        return true
+    var source: Resource = load(WEAPON_PATH)
+    if not (source is PackedScene):
+        return false
+    var weapon: Node = (source as PackedScene).instantiate()
+    if not (weapon is Node3D):
+        weapon.queue_free()
+        return false
+    var mount_node := BoneAttachment3D.new()
+    mount_node.name = "LyraRifleBackMount"
+    skeleton.add_child(mount_node)
+    mount_node.bone_name = skeleton.get_bone_name(spine_index)
+    var visual: Node3D = weapon as Node3D
+    visual.name = "LyraSniperRifle"
+    mount_node.add_child(visual)
+    # Meshy source spans 1.90m on X. Calibrate to ~1.03m and angle the
+    # rifle over the right shoulder. No mesh/skin modification.
+    visual.scale = Vector3.ONE * 0.54
+    visual.rotation_degrees = Vector3(0.0, 0.0, 68.0)
+    visual.position = Vector3(0.21, 0.03, -0.20)
+    return true
+
+
 static func mount(parent: Node3D, height: float) -> Dictionary:
     if not ResourceLoader.exists(MODEL_PATH):
         return {"ok": false, "reason": "missing asset"}
@@ -72,6 +122,9 @@ static func mount(parent: Node3D, height: float) -> Dictionary:
     if not hold_ready_pose(player):
         rig.queue_free()
         return {"ok": false, "reason": "invalid ready pose"}
+    if not attach_weapon(rig):
+        rig.queue_free()
+        return {"ok": false, "reason": "missing or unattachable sniper rifle"}
     return {"ok": true, "rig": rig, "player": player, "fit": fitted}
 
 static func find_player(root: Node) -> AnimationPlayer:
@@ -99,31 +152,20 @@ static func loaded_count(player: AnimationPlayer) -> int:
     return result
 
 static func hold_ready_pose(player: AnimationPlayer) -> bool:
-    # Source frame audit: Standing_Reload at t=0 has both feet planted.
-    # Walking at t=0 has relaxed arms. Combine skeleton poses, not a mid-stride freeze.
-    var standing := resolve_clip(player, "Standing_Reload")
-    var walking := resolve_clip(player, "Walking")
-    if standing.is_empty() or walking.is_empty():
-        return false
+    # Verified by source GLB joint transforms: the bind/rest pose has
+    # feet nearly equal in Y and Z. Prior Walking t=0.25 froze one leg
+    # forward by ~0.66m and must NEVER be used for idle/standing.
     var skeleton: Skeleton3D = find_skeleton(player)
-    var relaxed: Dictionary = {}
-    if skeleton != null:
-        player.play(walking)
-        player.seek(0.0, true)
-        player.pause()
-        for bone_name in UPPER_BONES:
-            var index: int = bone_index(skeleton, str(bone_name))
-            if index >= 0:
-                relaxed[index] = skeleton.get_bone_pose_rotation(index)
-    player.play(standing)
-    player.seek(0.0, true)
-    player.pause()
-    if skeleton != null:
-        for index in relaxed:
-            skeleton.set_bone_pose_rotation(int(index), relaxed[index])
-        skeleton.force_update_all_bone_transforms()
+    if skeleton == null:
+        return false
+    if bone_index(skeleton, "LeftFoot") < 0 or bone_index(skeleton, "RightFoot") < 0:
+        return false
+    player.stop()
+    skeleton.reset_bone_poses()
+    skeleton.force_update_all_bone_transforms()
     player.set_meta("neko_lyra_motion", "idle")
     return true
+
 
 static func play_movement(player: AnimationPlayer, moving: bool, speed: float) -> String:
     if player == null:

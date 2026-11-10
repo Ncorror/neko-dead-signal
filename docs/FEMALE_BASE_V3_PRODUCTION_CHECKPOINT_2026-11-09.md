@@ -98,3 +98,14 @@
 - The Model GLB on Drive is unchanged; no Meshy credits used.
 
 **Known limits / acceptance:** New pose verified mechanically (feet placement), not visually on user's Android. The user must check face/arms/fabric deformation and post-pose shift with screenshots. Asset remains without a real `Idle`, sniper rifle model and proper rifle firing animation. Fixes stay on existing draft PR #39; main intentionally unchanged. 
+
+
+## 2026-11-10 — user visual QA follow-up and standalone Lyra rifle
+
+**New original user-supplied asset:** `Игра / Модели / Оружие / Meshy_AI_futuristic_sniper_rif_1110094339_texture.glb` ([Drive](https://drive.google.com/file/d/1Zna4PSUJka1NuxdghxuW1DI4C3fx4G1n/view)), SHA-256 `fa324f0e3fdd5fc9e3447146c0322bd8b5422098275ddf1fe51202897bede47e`, 8,373,476 bytes, one 9,922-triangle rigid textured mesh, no skeleton or animation; longest dimension 1.90 m. No regenerated weapon or wasted Meshy credits.
+
+**User screenshots 2026-11-10 (APK 0.0.28):** bad mid-stride standing pose; on the 128×128 surface the avatar was still a capsule; on RTS a separate GREEN capsule appeared beside Lyra. In reviewed code the green capsule belongs to **EscortUnit**, not the rigged hero (now explicitly labeled `ЭСКОРТ · ЗАГЛУШКА`); previous screenshot represented an APK lacking the later surface model wiring. Do not delete the companion unit as a cosmetic fix.
+
+**Corrections:** Replace mid-walk or multi-clip pose blending with the verified symmetric skeleton **rest pose** (`Skeleton3D.reset_bone_poses()`), validated from GLB source foot positions (left and right toes at approximately identical Z and Y). The rifle installs separately as a **back-mounted** `BoneAttachment3D` under Lyra's `Spine2`, available in the orbital preview, RTS and 128×128 / world scenes. This is a visual weapon only; because source clips contain no rifle fire pose it is NOT yet modeled as right-hand sniper firing and does not change gameplay damage or hit decisions. Add actual GLB import, weapon mount and stronger pose tests in CI.
+
+**Next acceptance:** real Android screenshot of front/back menu and surface, plus all 20 clips under Animation Lab. Validate skinning (hips/shorts), weapon orientation, clipping and scale before merging PR.

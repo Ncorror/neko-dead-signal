@@ -78,7 +78,7 @@ func _load() -> void:
 
 func _hold() -> void:
     if player != null and LYRA.hold_ready_pose(player):
-        status.text = "Стойка: устойчивые ноги из Standing_Reload, руки из Walking."
+        status.text = "Стойка: исходная нейтральная поза скелета; винтовка за спиной."
 
 func _play(clip: String) -> void:
     if player != null:
