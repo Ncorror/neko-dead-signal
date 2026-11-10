@@ -158,6 +158,7 @@ func _run() -> void:
             surface_capsule = true
     _check(not surface_capsule, "Surface128 still displays the capsule")
     _check(sector.pve_button != null and sector.pve_button.visible, "Surface128 lost MOBS AND BOSS access for Lyra")
+    _check("МОБЫ И БОСС" in sector.pve_button.text, "Surface128 PvE entry has wrong label")
     if sector.hero_motion != null:
         sector.route.append(sector.hero.position + Vector3(1, 0, 0))
         sector._physics_process(0.01)
