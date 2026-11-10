@@ -92,6 +92,11 @@ func set_commander(faction: int, officer: int) -> bool:
             LYRA_MOTION.hold_ready_pose(player)
             if not LYRA_MOTION.attach_weapon(active_model):
                 push_warning("LYRA_MENU_RIFLE_MISSING")
+            else:
+                var equipped_bounds: Dictionary = MODEL_FIT.measure_bounds(active_model)
+                if bool(equipped_bounds.get("ok", false)):
+                    model_bounds = equipped_bounds["bounds"]
+                    _frame_model()
     else:
         for child in active_model.find_children("*", "AnimationPlayer", true, false):
             var animation_player: AnimationPlayer = child as AnimationPlayer
