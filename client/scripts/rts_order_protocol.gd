@@ -41,6 +41,17 @@ static func _valid_id(value: Variant) -> bool:
         return false
     return true
 
+const MAX_SAFE_JSON_INTEGER := 9007199254740991.0
+
+static func _wire_integer(value: Variant) -> bool:
+    ## Godot JSON.parse_string returns JSON numbers as floats, including 1 and 7.
+    ## Reject fractions, non-finite numbers and values past JSON's exact integer range.
+    if typeof(value) not in [TYPE_INT, TYPE_FLOAT]:
+        return false
+    var number: float = float(value)
+    return Vector2(number, 0.0).is_finite() and number == floorf(number) \
+        and absf(number) <= MAX_SAFE_JSON_INTEGER
+
 static func is_new_sequence(sequence: int, previously_accepted: int) -> bool:
     ## Caller owns independent counters per actor/connection; this function is stateless.
     return sequence > 0 and sequence > previously_accepted
@@ -50,11 +61,11 @@ static func decode(value: Variant, map_limit: float) -> Dictionary:
     if typeof(value) != TYPE_DICTIONARY:
         return _error("not_object")
     var raw: Dictionary = value
-    if typeof(raw.get("version")) != TYPE_INT or raw["version"] != VERSION:
+    if not _wire_integer(raw.get("version")) or int(raw["version"]) != VERSION:
         return _error("version")
     if not _valid_id(raw.get("match_id")) or not _valid_id(raw.get("actor_id")):
         return _error("id")
-    if typeof(raw.get("sequence")) != TYPE_INT or raw["sequence"] <= 0:
+    if not _wire_integer(raw.get("sequence")) or int(raw["sequence"]) <= 0:
         return _error("sequence")
     if typeof(raw.get("kind")) != TYPE_STRING:
         return _error("kind")
@@ -73,7 +84,7 @@ static func decode(value: Variant, map_limit: float) -> Dictionary:
     for key in raw.keys():
         if typeof(key) != TYPE_STRING or not allowed.has(key):
             return _error("unknown_field")
-    var command := _base(raw["match_id"], raw["actor_id"], raw["sequence"], kind, raw["queue"])
+    var command := _base(raw["match_id"], raw["actor_id"], int(raw["sequence"]), kind, raw["queue"])
     if kind == "move":
         if map_limit <= 0.0 or not Vector2(map_limit, 0.0).is_finite():
             return _error("map_limit")

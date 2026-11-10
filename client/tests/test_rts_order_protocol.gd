@@ -50,6 +50,15 @@ func _run() -> void:
     changed["sequence"] = 0
     _check(not _accepted(changed), "invalid sequence accepted")
     changed = move.duplicate(true)
+    changed["sequence"] = 7.5
+    _check(not _accepted(changed), "fractional sequence accepted")
+    changed = move.duplicate(true)
+    changed["sequence"] = 9007199254740992.0
+    _check(not _accepted(changed), "unsafe JSON integer accepted")
+    changed = move.duplicate(true)
+    changed["version"] = 1.5
+    _check(not _accepted(changed), "fractional version accepted")
+    changed = move.duplicate(true)
     changed["queue"] = "yes"
     _check(not _accepted(changed), "string used as queue flag")
     changed = move.duplicate(true)
