@@ -81,4 +81,4 @@ static func measure_bounds(model: Node3D) -> Dictionary:
                         upper = upper.max(point)
     if not ready:
         return {"ok": false}
-    return {"ok": true, "bounds": model.transform * AABB(lower, upper - lower)}
+    return {"ok": true, "bounds": AABB(lower, upper - lower)}
