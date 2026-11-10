@@ -1378,9 +1378,8 @@ func _shoot(shooter: Combatant, target: Combatant, reason: StringName = &"order"
     var color := Color("#85f0ff") if units.has(shooter) else Color("#ff6c4f")
     # Old prototype used a full-length glowing box, which looked like a laser.
     # Use a short fast projectile instead.
-    var tracer := _make_box(origin, Vector3(0.055, 0.055, 0.38), color)
-    tracer.look_at(end)
-    var flight := clampf(origin.distance_to(end) / 85.0, 0.045, 0.11)
+    var tracer := _make_box(origin, Vector3(0.10, 0.10, 0.10), color)
+    var flight := clampf(origin.distance_to(end) / 70.0, 0.06, 0.18)
     var fade := create_tween()
     fade.tween_property(tracer, "position", end, flight).set_trans(Tween.TRANS_LINEAR)
     fade.tween_callback(tracer.queue_free)
