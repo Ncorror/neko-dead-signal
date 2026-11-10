@@ -18,10 +18,10 @@ const CLIP_NAMES = [
 
 const UPPER_BONES = ["LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand", "RightShoulder", "RightArm", "RightForeArm", "RightHand"]
 
-static func find_skeleton(player: AnimationPlayer) -> Skeleton3D:
-    if player == null:
+static func find_skeleton(source: Node) -> Skeleton3D:
+    if source == null:
         return null
-    var root: Node = player.get_parent()
+    var root: Node = source
     for attempt in range(4):
         if root == null:
             break
@@ -83,15 +83,26 @@ static func attach_weapon(rig: Node3D) -> bool:
     mount_node.name = "LyraRifleBackMount"
     skeleton.add_child(mount_node)
     mount_node.bone_name = skeleton.get_bone_name(spine_index)
+    # Use a carrier whose origin is the actual geometric centre. This keeps
+    # Meshy's arbitrary source pivot from shifting the visible rifle.
+    var carrier := Node3D.new()
+    carrier.name = "LyraSniperRifle"
+    mount_node.add_child(carrier)
     var visual: Node3D = weapon as Node3D
-    visual.name = "LyraSniperRifle"
-    mount_node.add_child(visual)
-    # Source rifle is 1.90 m on X. At 0.50 scale it is ~0.95 m.
-    # Center sits below the shoulders and just behind the character mesh.
+    visual.name = "RifleGeometry"
+    carrier.add_child(visual)
+    var measured: Dictionary = FIT.measure_bounds(visual)
+    if not bool(measured.get("ok", false)):
+        carrier.queue_free()
+        return false
+    var source_bounds: AABB = measured["bounds"]
+    visual.position -= source_bounds.get_center()
+    # Author the carrier in skeleton/model coordinates, then convert into the
+    # rotated Spine2 attachment space. Visible rifle length is ~0.95 m.
     var desired_basis := Basis.from_euler(Vector3(0.0, 0.0, deg_to_rad(62.0)))
     var desired := Transform3D(desired_basis, Vector3(0.06, 0.96, -0.22))
-    visual.transform = skeleton.get_bone_global_rest(spine_index).affine_inverse() * desired
-    visual.scale *= 0.50
+    carrier.transform = skeleton.get_bone_global_rest(spine_index).affine_inverse() * desired
+    carrier.scale *= 0.50
     return true
 
 
