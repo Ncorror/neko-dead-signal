@@ -99,7 +99,7 @@ func _process(_delta: float) -> void:
     if str(player.get_meta("neko_lyra_motion", "")) != "preview":
         return
     var offset: Vector3 = LYRA.root_motion_offset(player)
-    var model := model_view.active_model
+    var model: Node3D = model_view.active_model
     model.position = Vector3(
         preview_origin.x - offset.x * model.scale.x,
         preview_origin.y,
