@@ -163,20 +163,36 @@ static func root_motion_offset(player: AnimationPlayer) -> Vector3:
     return skeleton.get_bone_global_pose(hips).origin - skeleton.get_bone_global_rest(hips).origin
 
 
-static func _relax_arm(skeleton: Skeleton3D, arm_suffix: String, forearm_suffix: String, desired: Vector3) -> bool:
+static func _relax_arm(skeleton: Skeleton3D, arm_suffix: String, hand_suffix: String, side: float) -> bool:
+    # Mixamo local bone axes differ between exports. Search the three local
+    # rotation axes once at mount time and choose the pose that puts the hand
+    # below its shoulder and close to the torso without crossing the body.
     var arm := bone_index(skeleton, arm_suffix)
-    var forearm := bone_index(skeleton, forearm_suffix)
-    if arm < 0 or forearm < 0:
+    var hand := bone_index(skeleton, hand_suffix)
+    var hips := bone_index(skeleton, "Hips")
+    if arm < 0 or hand < 0 or hips < 0:
         return false
-    var arm_rest: Transform3D = skeleton.get_bone_global_rest(arm)
-    var forearm_rest: Transform3D = skeleton.get_bone_global_rest(forearm)
-    var current := (forearm_rest.origin - arm_rest.origin).normalized()
-    if current.length_squared() < 0.5:
-        return false
-    var delta := Quaternion(current, desired.normalized())
-    var pose_basis := arm_rest.basis.inverse() * Basis(delta) * arm_rest.basis
-    skeleton.set_bone_pose_rotation(arm, pose_basis.get_rotation_quaternion())
-    return true
+    var best := Quaternion.IDENTITY
+    var best_score := INF
+    for axis in [Vector3.RIGHT, Vector3.UP, Vector3.BACK]:
+        for degrees in range(-100, 101, 5):
+            var candidate := Quaternion(axis, deg_to_rad(float(degrees)))
+            skeleton.set_bone_pose_rotation(arm, candidate)
+            skeleton.force_update_all_bone_transforms()
+            var shoulder_at: Vector3 = skeleton.get_bone_global_pose(arm).origin
+            var hand_at: Vector3 = skeleton.get_bone_global_pose(hand).origin
+            var hips_at: Vector3 = skeleton.get_bone_global_pose(hips).origin
+            var side_distance := side * (hand_at.x - hips_at.x)
+            var drop := shoulder_at.y - hand_at.y
+            if side_distance <= 0.02 or drop <= 0.18:
+                continue
+            var score := absf(hand_at.x - shoulder_at.x) + absf(hand_at.z - hips_at.z) * 0.20
+            if score < best_score:
+                best_score = score
+                best = candidate
+    skeleton.set_bone_pose_rotation(arm, best)
+    skeleton.force_update_all_bone_transforms()
+    return is_finite(best_score)
 
 
 static func hold_ready_pose(player: AnimationPlayer) -> bool:
@@ -189,8 +205,8 @@ static func hold_ready_pose(player: AnimationPlayer) -> bool:
         return false
     player.stop()
     skeleton.reset_bone_poses()
-    var left_ok := _relax_arm(skeleton, "LeftArm", "LeftForeArm", Vector3(-0.16, -0.98, 0.08))
-    var right_ok := _relax_arm(skeleton, "RightArm", "RightForeArm", Vector3(0.16, -0.98, 0.08))
+    var left_ok := _relax_arm(skeleton, "LeftArm", "LeftHand", -1.0)
+    var right_ok := _relax_arm(skeleton, "RightArm", "RightHand", 1.0)
     if not left_ok or not right_ok:
         return false
     skeleton.force_update_all_bone_transforms()
