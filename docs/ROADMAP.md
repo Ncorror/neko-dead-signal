@@ -2,6 +2,10 @@
 
 ## Новая траектория: MMORTS / Strategic MMORPG · 2026-11-05
 
+- [x] **2026-11-10 — каталог открытых стратегий и первичный разбор Godot RTS.** [19 проектов и точные ссылки](OPEN_SOURCE_STRATEGY_REFERENCES_2026-11-10.md); verified MIT: Open RTS/Banners, Apache-2.0: Battle Drones; сопоставлены навигация, туман и command bus с текущим кодом 0.0.29. Исходный код чужих игр не импортирован.
+- [ ] **Следующий технический шаг:** изучить текущую цепочку RTS-приказов и тесты, определить минимальный сериализуемый контракт для будущей авторитетной симуляции без регрессии локальных команд. Не объявлять сетевую MMO реализованной после одной схемы.
+
+
 - [x] 0.0.29: полный аудит старого бренда в клиенте, тестах, адресах GitHub/Termux и документации, исправлен пропущенный тест заголовка. [Журнал](NEKO_BRANDING_PATH_AUDIT_029_2026-11-09.md). PR [#38](https://github.com/Ncorror/neko-dead-signal/pull/38) слит в `main` (`3c9743a`); на этом коммите [Repository structure #42585574383](https://github.com/Ncorror/neko-dead-signal/actions/runs/42585574383) и [Android Debug #42585574358](https://github.com/Ncorror/neko-dead-signal/actions/runs/42585574358) завершились **SUCCESS**. Подписанный Android APK `NEKO_DEAD_SIGNAL-0.0.29-debug.apk` опубликован как `neko-dead-signal-debug-114`. **Физический тест 0.0.29 на телефоне ещё открыт.** Системные имена VPS, runner и ключа подписи остаются совместимыми, не удалены.
 
 - [x] 0.0.28: полный клиентский ребрендинг **NEKO: DEAD SIGNAL**, новый Android ID, меню, диагностический ZIP, APK и артефакты; PR #37 слит в `main` (`df30bff`). GitHub Actions `Neko Dead Signal Android Debug` [#42580703675](https://github.com/Ncorror/neko-dead-signal/actions/runs/42580703675) и `Repository structure` [#42580703771](https://github.com/Ncorror/neko-dead-signal/actions/runs/42580703771) прошли **SUCCESS** на этом коммите. Репозиторий переименован владельцем в `Ncorror/neko-dead-signal`, приватность и SHA `main` сохранены. **Физический тест APK 0.0.28 на Android ещё открыт**, старые данные другого package ID не мигрируют автоматически. [Контракт и журнал](NEKO_REBRAND_028_2026-11-09.md).
