@@ -59,16 +59,12 @@ static func has_weapon(rig: Node3D) -> bool:
 
 
 static func attach_weapon(rig: Node3D) -> bool:
-    # Keep the approved sniper rifle on the back for the neutral/movement
-    # poses. There is no rifle-specific firing clip yet; do not pretend
-    # the exported archery motions are realistic gun handling.
+    # Stowed weapon follows Spine2, but its desired transform is authored in
+    # skeleton/model coordinates. Converting through the bone rest transform
+    # prevents the rifle from floating because of Mixamo's rotated local axes.
     if rig == null or not ResourceLoader.exists(WEAPON_PATH):
         return false
-    var skeleton: Skeleton3D = null
-    for child in rig.find_children("*", "Skeleton3D", true, false):
-        if child is Skeleton3D:
-            skeleton = child as Skeleton3D
-            break
+    var skeleton: Skeleton3D = find_skeleton(rig)
     if skeleton == null:
         return false
     var spine_index := bone_index(skeleton, "Spine2")
@@ -87,24 +83,15 @@ static func attach_weapon(rig: Node3D) -> bool:
     mount_node.name = "LyraRifleBackMount"
     skeleton.add_child(mount_node)
     mount_node.bone_name = skeleton.get_bone_name(spine_index)
-    # Meshy GLB roots are not guaranteed to use the mesh centre as pivot.
-    # Mount a centred carrier so the rifle cannot float just because its
-    # source pivot is offset.
-    var carrier := Node3D.new()
-    carrier.name = "LyraSniperRifle"
-    mount_node.add_child(carrier)
     var visual: Node3D = weapon as Node3D
-    visual.name = "RifleGeometry"
-    carrier.add_child(visual)
-    var measured: Dictionary = FIT.measure_bounds(visual)
-    if not bool(measured.get("ok", false)):
-        carrier.queue_free()
-        return false
-    var source_bounds: AABB = measured["bounds"]
-    visual.position -= source_bounds.get_center()
-    carrier.scale = Vector3.ONE * 0.50
-    carrier.rotation_degrees = Vector3(0.0, 0.0, 58.0)
-    carrier.position = Vector3(0.0, -0.22, -0.12)
+    visual.name = "LyraSniperRifle"
+    mount_node.add_child(visual)
+    # Source rifle is 1.90 m on X. At 0.50 scale it is ~0.95 m.
+    # Center sits below the shoulders and just behind the character mesh.
+    var desired_basis := Basis.from_euler(Vector3(0.0, 0.0, deg_to_rad(62.0)))
+    var desired := Transform3D(desired_basis, Vector3(0.06, 0.96, -0.22))
+    visual.transform = skeleton.get_bone_global_rest(spine_index).affine_inverse() * desired
+    visual.scale *= 0.50
     return true
 
 
@@ -173,52 +160,27 @@ static func root_motion_offset(player: AnimationPlayer) -> Vector3:
     return skeleton.get_bone_global_pose(hips).origin - skeleton.get_bone_global_rest(hips).origin
 
 
-static func _relax_arm(skeleton: Skeleton3D, arm_suffix: String, hand_suffix: String, side: float) -> bool:
-    # Mixamo local bone axes differ between exports. Search the three local
-    # rotation axes once at mount time and choose the pose that puts the hand
-    # below its shoulder and close to the torso without crossing the body.
-    var arm := bone_index(skeleton, arm_suffix)
-    var hand := bone_index(skeleton, hand_suffix)
-    var hips := bone_index(skeleton, "Hips")
-    if arm < 0 or hand < 0 or hips < 0:
-        return false
-    var best := Quaternion.IDENTITY
-    var best_score := INF
-    for axis in [Vector3.RIGHT, Vector3.UP, Vector3.BACK]:
-        for degrees in range(-100, 101, 5):
-            var candidate := Quaternion(axis, deg_to_rad(float(degrees)))
-            skeleton.set_bone_pose_rotation(arm, candidate)
-            skeleton.force_update_all_bone_transforms()
-            var shoulder_at: Vector3 = skeleton.get_bone_global_pose(arm).origin
-            var hand_at: Vector3 = skeleton.get_bone_global_pose(hand).origin
-            var hips_at: Vector3 = skeleton.get_bone_global_pose(hips).origin
-            var side_distance := side * (hand_at.x - hips_at.x)
-            var drop := shoulder_at.y - hand_at.y
-            if side_distance <= 0.02 or drop <= 0.18:
-                continue
-            var score := absf(hand_at.x - shoulder_at.x) + absf(hand_at.z - hips_at.z) * 0.20
-            if score < best_score:
-                best_score = score
-                best = candidate
-    skeleton.set_bone_pose_rotation(arm, best)
-    skeleton.force_update_all_bone_transforms()
-    return is_finite(best_score)
-
-
 static func hold_ready_pose(player: AnimationPlayer) -> bool:
-    # The imported rest pose is an A-pose. Keep its stable feet/hips, but
-    # lower both upper arms into a relaxed standing silhouette.
+    # Bind/rest is an A-pose. Walking at 0.017 s has naturally lowered arms.
+    # Keep that upper-body silhouette, then reset hips and both leg chains to
+    # rest so the character stands evenly instead of freezing mid-stride.
     var skeleton: Skeleton3D = find_skeleton(player)
     if skeleton == null:
         return false
-    if bone_index(skeleton, "LeftFoot") < 0 or bone_index(skeleton, "RightFoot") < 0:
+    var name := resolve_clip(player, "Walking")
+    if name.is_empty():
         return false
-    player.stop()
-    skeleton.reset_bone_poses()
-    var left_ok := _relax_arm(skeleton, "LeftArm", "LeftHand", -1.0)
-    var right_ok := _relax_arm(skeleton, "RightArm", "RightHand", 1.0)
-    if not left_ok or not right_ok:
-        return false
+    player.play(name)
+    player.seek(0.017, true)
+    player.pause()
+    for suffix in [
+        "Hips",
+        "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase",
+        "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"
+    ]:
+        var index := bone_index(skeleton, suffix)
+        if index >= 0:
+            skeleton.reset_bone_pose(index)
     skeleton.force_update_all_bone_transforms()
     player.set_meta("neko_lyra_motion", "idle")
     return true

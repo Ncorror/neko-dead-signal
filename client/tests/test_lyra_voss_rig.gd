@@ -41,16 +41,18 @@ func _run() -> void:
             var right_hand := LYRA.bone_index(skeleton, "RightHand")
             skeleton.reset_bone_poses()
             skeleton.force_update_all_bone_transforms()
-            var rest_spread := 0.0
+            _check(LYRA.hold_ready_pose(p), "Cannot hold natural ready stance")
             if hips >= 0 and left_hand >= 0 and right_hand >= 0:
-                var hx: float = skeleton.get_bone_global_pose(hips).origin.x
-                rest_spread = absf(skeleton.get_bone_global_pose(left_hand).origin.x - hx) + absf(skeleton.get_bone_global_pose(right_hand).origin.x - hx)
-            _check(LYRA.hold_ready_pose(p), "Cannot hold relaxed ready stance")
-            if rest_spread > 0.01:
                 var hx2: float = skeleton.get_bone_global_pose(hips).origin.x
                 var relaxed_spread := absf(skeleton.get_bone_global_pose(left_hand).origin.x - hx2) + absf(skeleton.get_bone_global_pose(right_hand).origin.x - hx2)
-                _check(relaxed_spread < rest_spread * 0.88, "Relaxed pose still looks like imported A-pose")
+                _check(relaxed_spread < 0.58, "Ready pose still has A-pose arm spread")
         _check(LYRA.has_weapon(model), "Lyra menu is missing sniper rifle")
+        var rifle_node := model.find_child("LyraSniperRifle", true, false) as Node3D
+        _check(rifle_node != null, "Rifle visual node missing")
+        if rifle_node != null:
+            var rifle_at: Vector3 = model.to_local(rifle_node.global_position)
+            _check(absf(rifle_at.x) < 0.35 and rifle_at.y > 0.45 and rifle_at.y < 1.45 and rifle_at.z < -0.05,
+                "Rifle is not stowed against Lyra back: " + str(rifle_at))
         skeleton = LYRA.find_skeleton(p)
         _check(skeleton != null, "Missing Lyra Skeleton3D")
         if skeleton != null:
@@ -155,6 +157,7 @@ func _run() -> void:
         if child is MeshInstance3D and child.mesh is CapsuleMesh and child.visible:
             surface_capsule = true
     _check(not surface_capsule, "Surface128 still displays the capsule")
+    _check(sector.pve_button != null and sector.pve_button.visible, "Surface128 lost MOBS AND BOSS access for Lyra")
     if sector.hero_motion != null:
         sector.route.append(sector.hero.position + Vector3(1, 0, 0))
         sector._physics_process(0.01)

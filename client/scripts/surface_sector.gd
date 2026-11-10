@@ -57,6 +57,7 @@ var follow_button: Button
 var stop_button: Button
 var goal_button: Button
 var return_button: Button
+var pve_button: Button
 var logs_button: Button
 var site_buttons: Array[Button] = []
 var minus_button: Button
@@ -187,6 +188,9 @@ func _create_ui() -> void:
     plus_button = _button("+", _change_zoom.bind(1 / 1.2))
     help_button = _button("?", _show_help)
     return_button = _button("НА КОРАБЛЬ", _request_return)
+    pve_button = _button("МОБЫ И БОСС", _enter_pve)
+    pve_button.tooltip_text = "Ржавый тракт · отдельная PvE-зона"
+    pve_button.visible = GameState.faction_index == 0 and GameState.officer_index in [0, 3]
     for button in [sites_button, follow_button, stop_button, minus_button, plus_button]:
         bar.add_child(button)
     diagnostics_panel = DIAGNOSTICS.new()
@@ -197,6 +201,7 @@ func _create_ui() -> void:
         logs_button.custom_minimum_size = Vector2(64, 44)
         logs_button.add_theme_font_size_override("font_size", 14)
     bar.add_child(help_button)
+    bar.add_child(pve_button)
     bar.add_child(return_button)
     bottom_panel = PanelContainer.new()
     bottom_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -499,6 +504,16 @@ func _input(event: InputEvent) -> void:
             _pan(event.relative)
     elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
         _handle_back()
+
+func _enter_pve() -> void:
+    if GameState.faction_index != 0 or GameState.officer_index not in [0, 3]:
+        return
+    if progress.writable and not _checkpoint():
+        _show_notice(progress.error_text)
+        return
+    _event("surface_to_pve", {"officer": GameState.officer_index})
+    get_tree().change_scene_to_file("res://scenes/world_sector.tscn")
+
 
 func _request_return() -> void:
     _popup(return_dialog)
