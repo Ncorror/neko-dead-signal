@@ -288,9 +288,8 @@ func _trace(from: Vector3, to: Vector3, color: Color) -> void:
     var distance := start.distance_to(end)
     if distance < 0.05:
         return
-    var trace: MeshInstance3D = zone._box(self, start, Vector3(0.05, 0.05, 0.34), color)
-    trace.look_at(end)
-    var flight := clampf(distance / 85.0, 0.045, 0.11)
+    var trace: MeshInstance3D = zone._box(self, start, Vector3(0.10, 0.10, 0.10), color)
+    var flight := clampf(distance / 70.0, 0.06, 0.18)
     var tween := create_tween()
     tween.tween_property(trace, "position", end, flight).set_trans(Tween.TRANS_LINEAR)
     _effect(trace, flight + 0.03)
