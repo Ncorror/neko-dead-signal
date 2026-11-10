@@ -1,6 +1,6 @@
 extends RefCounted
 ## Lyra Voss uses the 20 verified imported Meshy/Mixamo clips.
-## Export contains no regular Idle: sample Walking at a stationary frame.
+## Export contains no authored Idle. Neutral state uses the symmetric skeleton rest pose.
 const FIT := preload("res://scripts/rts_character_fit.gd")
 const MODEL_PATH := "res://assets/characters/lyra_voss/rigged.glb"
 const WEAPON_PATH := "res://assets/characters/lyra_voss/sniper_rifle.glb"
@@ -150,6 +150,18 @@ static func loaded_count(player: AnimationPlayer) -> int:
         if not resolve_clip(player, clip).is_empty():
             result += 1
     return result
+
+static func root_motion_offset(player: AnimationPlayer) -> Vector3:
+    # Imported combat clips animate Mixamo Hips translation. RTS movement is
+    # driven by navigation; the animation lab cancels horizontal root travel.
+    var skeleton: Skeleton3D = find_skeleton(player)
+    if skeleton == null:
+        return Vector3.ZERO
+    var hips := bone_index(skeleton, "Hips")
+    if hips < 0:
+        return Vector3.ZERO
+    return skeleton.get_bone_global_pose(hips).origin - skeleton.get_bone_global_rest(hips).origin
+
 
 static func hold_ready_pose(player: AnimationPlayer) -> bool:
     # Verified by source GLB joint transforms: the bind/rest pose has
