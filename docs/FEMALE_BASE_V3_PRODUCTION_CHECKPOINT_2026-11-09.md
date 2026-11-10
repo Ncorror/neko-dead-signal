@@ -178,3 +178,31 @@
 - Prepared Position (16→18), aimed shot and the rest of Lyra's approved 5+1 class skills are not implemented in this correction pass.
 - Existing mob/boss PvE slice remains Amina-specific; Lyra-specific PvE requires her own skill profile rather than simply unlocking Amina's UI.
 - Real Android screenshots/FPS remain required for hips/shorts skinning, rifle clipping/orientation, animation appearance and mobile texture budget. Do not merge PR #39 until this device acceptance.
+
+
+## 2026-11-10 — device regression 0.0.30 → corrected 0.0.31
+
+**User device evidence from 0.0.30:** Lyra stopped in imported A-pose / arms spread; rifle appeared detached/floating around shoulder/back; user could not find the earlier mobs+boss PvE location from the 128×128 exploration flow; prototype shot visual still read as a beam. These are accepted regressions, not tester error.
+
+**Root causes found**
+- Replacing the bad mid-stride freeze with pure skeleton rest created the visible A-pose. A later procedural arm rotation attempt also failed the strengthened Godot test (`Relaxed pose still looks like imported A-pose`) and was rejected by CI.
+- Rifle transform had been authored directly in Spine2 local axes. Mixamo Spine2 has a rotated local basis, so apparently reasonable XYZ offsets did not correspond to model-space back placement. Meshy rifle source pivot also needed geometric centering.
+- Rust Road PvE still existed, but access/profile/UI was Amina-centric in several places and was not visible from the 128×128 surface route in the installed tester build.
+- Beam-looking prototype used elongated geometry; replaced with a compact moving projectile point in RTS and world PvE.
+
+**0.0.31 corrections**
+- Natural standing state samples `Walking` at **0.017 s** (verified from the raw GLB: hands are down/near torso) and resets hips + both complete leg chains to rest, keeping feet level while removing the A-pose upper-body silhouette. No fake `Idle` clip is added and the original 20 animations are untouched.
+- Rifle carrier is centered from measured weapon geometry, desired stowed transform authored in skeleton/model coordinates, then converted through `Spine2.get_bone_global_rest().affine_inverse()`. Stowed centre target: approximately `(0.06, 0.96, -0.22)`, visible length ≈0.95 m.
+- 128×128 top HUD now has explicit **«МОБЫ И БОСС»** entry for Amina/Lyra, checkpointing before transfer to `world_sector.tscn`.
+- Rust Road uses Lyra profile: real Lyra rig, weapon range 16, mobs/boss visible, Amina-only skill buttons hidden rather than leaked onto Lyra.
+- Shot rendering in both RTS and PvE is a compact moving 0.10 m projectile, not a full-length line/beam.
+- Test version bumped to **0.0.31 / code 31**.
+
+**Verification**
+- Several intermediate runs were intentionally red and blocked: one caught the still-A-pose procedural fix; one caught a typed `find_skeleton(AnimationPlayer)` mismatch after weapon refactor; structural contract caught obsolete pose assumptions. Each cause was fixed rather than bypassed.
+- Final functional head: `91969dbd78d4e9b328fff574cbb32055735bc5c6`.
+- Final Android run [42808634722](https://github.com/Ncorror/neko-dead-signal/actions/runs/42808634722): **PASS 52/52**, including imported GLBs, natural-ready arm-spread/feet tests, rifle placement bounds, surface PvE entry, Lyra Rust Road profile with 9 actors including boss, existing RTS and world regressions, Android export/signing.
+- APK: `NEKO_DEAD_SIGNAL-0.0.31-Lyra-Combat-Fix.apk`, 74,776,271 bytes, SHA-256 `f4e7637255e3b2469d61b0611d887345d833977e830546cdfbeb6bf26370efa3`, ZIP integrity PASS.
+- Drive: [0.0.31 tester APK](https://drive.google.com/file/d/1akbUTFcH8ilWdNoGWvqrrFn8-kn3bLVv/view), file ID `1akbUTFcH8ilWdNoGWvqrrFn8-kn3bLVv`.
+
+**Still requires actual Android visual acceptance:** exact attractiveness of the sampled neutral stance, rifle clipping/orientation from front/back/side, skinning around shorts/hips during all animations, projectile readability at real FPS. Do not merge PR #39 until those screenshots are checked.
