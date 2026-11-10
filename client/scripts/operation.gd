@@ -1375,12 +1375,14 @@ func _shoot(shooter: Combatant, target: Combatant, reason: StringName = &"order"
         RTSDiagnostics.event("combat", "hit", {"from": shooter.name, "to": target.name, "health": target.hull, "reason": str(reason)})
     var origin := shooter.position + Vector3.UP
     var end := target.position + Vector3.UP
-    var tracer := _make_box(Vector3.ZERO, Vector3(0.07, 0.07, origin.distance_to(end)),
-        Color("#85f0ff") if units.has(shooter) else Color("#ff6c4f"))
-    tracer.position = (origin + end) * 0.5
+    var color := Color("#85f0ff") if units.has(shooter) else Color("#ff6c4f")
+    # Old prototype used a full-length glowing box, which looked like a laser.
+    # Use a short fast projectile instead.
+    var tracer := _make_box(origin, Vector3(0.055, 0.055, 0.38), color)
     tracer.look_at(end)
+    var flight := clampf(origin.distance_to(end) / 85.0, 0.045, 0.11)
     var fade := create_tween()
-    fade.tween_interval(0.12)
+    fade.tween_property(tracer, "position", end, flight).set_trans(Tween.TRANS_LINEAR)
     fade.tween_callback(tracer.queue_free)
     if target.hull == 0:
         orders_ui_dirty = true
