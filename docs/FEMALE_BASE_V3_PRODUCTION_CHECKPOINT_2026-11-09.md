@@ -49,3 +49,31 @@
 **New independent read-only evidence:** the original untouched `Meshy_AI_Neon_Catgirl_Athlete_1109091814_texture.glb` was rendered from the back using vtkGLTFImporter, and its unanimated A-pose backside appears intact: symmetrical outfit, hips/legs, no comparable stretching. This does not prove whether post-Remesh or auto-skin weights introduced the damage, because exported *remeshed but unrigged* and *rigged* versions are not yet compared in the local runtime. The **likely** issue is rigging/weights at hips, pelvis and shorts, not a lack of triangles; also check UV/mesh after Remesh to distinguish sources precisely.
 
 **Action agreed:** stop creating new Remesh variants. Save/download **one** representative failing *rigged* model GLB with existing animations (prefer 30K if available) into the existing Drive folder `Игра / Модели`; do not alter the original Pro master. After receiving it, examine actual skin joints/weight indices and inspect mesh/UV, then repair bindings with Blender/DCC and validate visually from back in multiple motion frames. If model cannot be repaired without source post-Remesh model, obtain that same-generation unrigged GLB as needed, not another generation. Avoid claiming automatic weight repair is guaranteed. No Godot gameplay changes, APK, or spending more Meshy credits yet.
+
+
+## 2026-11-10 — Lyra Voss 20-clips Godot Android CI PASS
+
+**Identity correction (explicit user decision):** this 30K skinned character is **Лира Восс**, the human sniper/scout **officer index 3**, **NOT Амина** (officer index 0). Do not silently relabel it or replace existing Amina assets. Separate prior static Female Base v3 master remains on Drive.
+
+**Actual source input**
+- Drive: [`Meshy_AI_Anime_Female_30k_20261110_animated_mixamo_All_animation (1).glb`](https://drive.google.com/file/d/1pGFfupTnkiciqnsIxJcA5-leoDHFqT9N/view), 40,074,004 bytes.
+- Binary SHA-256: `2cdfae99b4dda6c69b608cdb3d46875d9003a7208e89e5683a2021592f9bf14e`.
+- GLB v2, 1 skinned mesh, 31,007 triangles, 1 skin with **66 bones**, 2 embedded textures, **20 distinct animation clips**.
+- Exported clips: `Running`, `Walking`, `Archery_Aim_with_Lateral_Scan`, `Archery_Shot_2`, `Bar_Hang_Idle`, `Charged_Spell_Cast_1`, `Dead`, `Fall_Dead_from_Abdominal_Injury`, `Hit_in_Back_While_Running`, `Kneeling_Reload`, `Roll_Dodge_1`, `Roll_Dodge_3`, `Roll_Dodge_4`, `Shot_and_Fall_Forward`, `Slow_Walk_Reload`, `Standing_Reload`, `Sword_Parry_Backward_3`, `air_squat`, `falling_down`, `walking_2`.
+
+**Implementation**
+- Code commits: `0fe6f259` (pinned downloader, Lyra motion catalog), `22905326` (menu 3D preview, RTS `LyraRig` under the original `Combatant`, 20-clip animation lab, Godot regressions and Android CI).
+- Importing from Drive is reproducible and SHA-256 pinned via `scripts/install_lyra_voss.py`; the large GLB is not committed as a Git blob. This preserves repository size and does not alter the Drive source.
+- Menu slot 3 displays Lyra with real skinned 3D. `ЛИРА / АНИМАЦИИ` opens `res://scenes/lyra_animation_lab.tscn`, presents all 20 clip names and manual clip playback + orbit touch. In RTS, an animated `LyraRig` accompanies the selected Lyra `Combatant` and responds to movement/stop. Other officers and their previews are unchanged.
+- `Running` and `Walking` are verified **in-place** from hips animation track endpoint displacement; only these are assigned to ordinary RTS locomotion. Several other clips have 1–4.5m translation and are **not** assigned as automatic RTS movement.
+- There is **no standalone Idle**. Current interim ready/idle presentation samples and pauses an existing `Walking` frame; no fake generated `Idle` clip is claimed.
+- No existing fire damage, sniper range, fog visibility, auto-fire or weapon logic was changed. Lyra's intended sniper range 16→18 and actual sniper rifle/shot animations remain separate incomplete gameplay work. `Archery_Shot_2` is NOT a verified rifle animation.
+
+**Verification**
+- [GitHub Android Debug CI run 42735246350](https://github.com/Ncorror/neko-dead-signal/actions/runs/42735246350): **success**, including Python contract tests, server RTS regressions, actual GLB download/inventory and Godot import, real Lyra rig smoke, Lyra animation lab navigation/playback, existing Amina visual test, remaining RTS tests, Android ARM64 signed APK export.
+- Android build ZIP artifact: `neko-dead-signal-debug-117`. Extracted **APK** (not archive) size **66,964,441 bytes**, SHA-256 **`ccade7c2a1f672a89c0745302409772581dbf6fbdd71e10e96aa423e6685cf96`**. Independent ZIP integrity check: PASS. Packaged imported `rigged.glb-....scn` and Lyra animation lab scene/scripts found.
+- APK uploaded to Drive and metadata verified: [`NEKO_DEAD_SIGNAL-0.0.28-LyraVoss-20Anims-debug.apk`](https://drive.google.com/file/d/1el4CVTNG18bg08sdkrE1Q7eDPBJNuxcr/view), stored in `Игра / Модели`.
+- Repository structure CI on implementation commit: **PASS**.
+- **Not yet verified:** actual user Android visual quality (pelvis/shorts skinning, feet, facial details, weapon alignment, frame rate), and all 20 animations individually visually reviewed; the automated Godot test loads 20 and exercises representative motion/playback. Existing reports of severe skinning defects in older Meshy variants must remain open until actual mobile inspection of this newer GLB.
+
+**Last successful functional commit:** `229053265e9fd00d0881ba512ed32e74b523e94c`. **Production branch:** `feature/female-base-v3-production`, PR #39 (draft, not merged). **Next concrete step:** on-device acceptance of 3D menu Lyra, movement and all 20 manual clip previews; collect screenshot/log only if defects. Keep `main` and all gameplay save formats unchanged. 
