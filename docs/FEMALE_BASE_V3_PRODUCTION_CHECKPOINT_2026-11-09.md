@@ -206,3 +206,19 @@
 - Drive: [0.0.31 tester APK](https://drive.google.com/file/d/1akbUTFcH8ilWdNoGWvqrrFn8-kn3bLVv/view), file ID `1akbUTFcH8ilWdNoGWvqrrFn8-kn3bLVv`.
 
 **Still requires actual Android visual acceptance:** exact attractiveness of the sampled neutral stance, rifle clipping/orientation from front/back/side, skinning around shorts/hips during all animations, projectile readability at real FPS. Do not merge PR #39 until those screenshots are checked.
+
+
+## 2026-11-10 — device regression correction 0.0.31
+
+User device screenshots of 0.0.30 exposed four visual/gameplay regressions that automated structural checks had not proven: imported A-pose used as idle, rifle visibly displaced around the shoulder/back, Rust Road mobs/boss not reachable while Lyra was selected (including from Sector 01 128×128), and the temporary shot effect rendering as a continuous laser-like box.
+
+**Corrected in functional head `91969dbd78d4e9b328fff574cbb32055735bc5c6`:**
+- Standing pose now samples the verified `Walking` clip at 0.017 s for a naturally lowered upper body, pauses it, and resets Hips plus both complete leg chains to rest. Test rejects excessive hand spread so raw A-pose cannot silently return.
+- Rifle is mounted through Spine2 using an authored skeleton-space transform; its GLB geometry is additionally re-centered inside a carrier so an arbitrary Meshy source pivot cannot move the visible gun. Test verifies stowed position against the back.
+- Rust Road PvE is available to Lyra from the ship/world flow and directly from Sector 01 128×128. Lyra's world PvE profile uses range 16; Amina's five skill buttons are hidden rather than falsely assigned to Lyra.
+- Continuous beam boxes were replaced in both RTS and world PvE with short moving projectile dots. Damage remains simulation-driven; visual projectile does not change hit timing.
+- Build bumped to **0.0.31 / code 31**.
+
+**Verification:** Android workflow run [42808634722](https://github.com/Ncorror/neko-dead-signal/actions/runs/42808634722) passed **52/52** at `91969dbd`; PR #39 remains clean/mergeable and draft. Tester APK `NEKO_DEAD_SIGNAL-0.0.31-Lyra-Fixes.apk` is **74,776,271 bytes**, SHA-256 `f4e7637255e3b2469d61b0611d887345d833977e830546cdfbeb6bf26370efa3`, ZIP integrity PASS. Drive: https://drive.google.com/file/d/1wha0a9GgRwmZqu-Yplb_vGzFMmPmabsy/view
+
+**Still open for device acceptance:** exact visual quality of the sampled standing pose, rifle clipping from front/back/side, projectile readability at RTS zoom, and hips/shorts deformation while walking/running. Do not merge PR #39 until these are visually accepted on Android.
