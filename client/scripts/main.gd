@@ -342,7 +342,7 @@ func _build_content(parent: VBoxContainer) -> void:
     pve_button.add_theme_font_size_override("font_size", 13)
     pve_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     pve_button.pressed.connect(_enter_sector)
-    pve_button.tooltip_text = "Ржавый тракт · боевой набор Амины · вход без поручения"
+    pve_button.tooltip_text = "Ржавый тракт · мобы и босс · доступно Амине и Лире"
     travel.add_child(pve_button)
     lyra_lab_button = _button("ЛИРА\nАНИМАЦИИ", true, 52)
     lyra_lab_button.add_theme_font_size_override("font_size", 13)
@@ -480,9 +480,9 @@ func _reveal_selected_officer() -> void:
 func _refresh_selection() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
     var officer: Dictionary = OFFICERS[faction_index][officer_index]
-    pve_button.disabled = faction_index != 0 or officer_index != 0
+    pve_button.disabled = faction_index != 0 or officer_index not in [0, 3]
     lyra_lab_button.visible = faction_index == 0 and officer_index == 3
-    pve_button.text = "PvE\nМОБЫ · БОСС" if not pve_button.disabled else "PvE\nЗА АМИНУ"
+    pve_button.text = "PvE\nМОБЫ · БОСС" if not pve_button.disabled else "PvE\nНЕДОСТУПНО"
     for i in range(faction_buttons.size()):
         var active: bool = i == faction_index
         var f: Dictionary = FACTIONS[i]
@@ -568,7 +568,7 @@ func _enter_surface() -> void:
     get_tree().change_scene_to_file("res://scenes/surface_sector_01_prototype.tscn")
 
 func _enter_sector() -> void:
-    if faction_index != 0 or officer_index != 0:
+    if faction_index != 0 or officer_index not in [0, 3]:
         return
     _store_selected_commander()
     get_tree().change_scene_to_file("res://scenes/world_sector.tscn")
