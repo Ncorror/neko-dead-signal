@@ -26,6 +26,8 @@ const OBJECTIVES := preload("res://scripts/rts_objectives.gd")
 const BUILDING_LABELS := preload("res://scripts/rts_building_labels.gd")
 const STATIC_AMINA_WORLD_HEIGHT := 1.90
 const STATIC_AMINA_FRONT_YAW_DEGREES := 0.0
+const LYRA_BASE_RANGE := 16.0
+const LYRA_SIGHT_RADIUS := 16.0
 
 const MAP_LIMIT := BATTLEFIELD.PLAYABLE_LIMIT
 const OFFICER_SPEED := 5.8
@@ -249,9 +251,13 @@ func _update_visibility(delta: float, force: bool = false) -> void:
         for unit in units:
             if unit.hull > 0:
                 observers.append(unit.position)
+                if _is_lyra_unit(unit):
+                    # Long-range scout contribution without changing escort sight.
+                    building_observers.append(unit.position)
+                    building_radii.append(LYRA_SIGHT_RADIUS)
         if outcome == Outcome.ACTIVE and not units.is_empty():
-            building_observers = construction.local_observers()
-            building_radii = construction.observer_radii()
+            building_observers.append_array(construction.local_observers())
+            building_radii.append_array(construction.observer_radii())
         if force:
             while visibility.scanning:
                 visibility.advance(navigation, 128)
@@ -443,6 +449,11 @@ func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool
     if not is_commander:
         unit.hull = 80
         unit.damage = 16
+    elif GameState.faction_index == 0 and GameState.officer_index == 3:
+        # Approved base sniper distance. Prepared Position extends this to 18
+        # only when that active skill is implemented; do not grant it passively.
+        unit.weapon_range = LYRA_BASE_RANGE
+        unit.set_meta("neko_class", "lyra_sniper")
     unit.name = unit_name
     unit.position = at
     add_child(unit)
@@ -564,6 +575,15 @@ func _has_motion_clip(player: AnimationPlayer, keyword: String) -> bool:
         if clip.to_lower().contains(keyword):
             return true
     return false
+
+func _is_lyra_unit(unit: Node3D) -> bool:
+    return unit == hero and GameState.faction_index == 0 and GameState.officer_index == 3
+
+
+func _auto_fire_allowed(unit: Node3D) -> bool:
+    # Existing units keep fire-on-the-move. Lyra plants before a sniper shot.
+    return not (_is_lyra_unit(unit) and unit_paths.has(unit))
+
 
 func _set_unit_animation(unit: Node3D, moving: bool) -> void:
     if not animation_players.has(unit):
