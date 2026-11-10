@@ -50,3 +50,35 @@ static func fit_to_height(model: Node3D, desired_height: float) -> Dictionary:
         "center": center,
         "bounds": model.transform * AABB(lower, upper - lower)
     }
+
+
+static func measure_bounds(model: Node3D) -> Dictionary:
+    # Re-measure current visuals without changing scale/position. Equipment
+    # attached after character fitting must still be inside the menu camera.
+    var meshes: Array[MeshInstance3D] = []
+    if model is MeshInstance3D:
+        meshes.append(model as MeshInstance3D)
+    for child in model.find_children("*", "MeshInstance3D", true, false):
+        meshes.append(child as MeshInstance3D)
+    var ready := false
+    var lower := Vector3.ZERO
+    var upper := Vector3.ZERO
+    for mesh_instance in meshes:
+        if mesh_instance.mesh == null:
+            continue
+        var bounds: AABB = mesh_instance.mesh.get_aabb()
+        for x in range(2):
+            for y in range(2):
+                for z in range(2):
+                    var vertex := bounds.position + Vector3(float(x) * bounds.size.x, float(y) * bounds.size.y, float(z) * bounds.size.z)
+                    var point: Vector3 = model.to_local(mesh_instance.to_global(vertex))
+                    if not ready:
+                        lower = point
+                        upper = point
+                        ready = true
+                    else:
+                        lower = lower.min(point)
+                        upper = upper.max(point)
+    if not ready:
+        return {"ok": false}
+    return {"ok": true, "bounds": model.transform * AABB(lower, upper - lower)}
