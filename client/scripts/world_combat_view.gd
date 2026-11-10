@@ -269,7 +269,7 @@ func before_movement(delta: float) -> void:
         chasing = true
 
 func tick(delta: float) -> void:
-    var hero_can_fire := model.profile_id != "lyra_voss" or zone.route.is_empty()
+    var hero_can_fire: bool = model.profile_id != "lyra_voss" or zone.route.is_empty()
     model.tick(delta, zone.hero.position, hero_can_fire)
     if chasing and not model.alive(model.attack_target):
         zone._clear_route()
