@@ -36,6 +36,31 @@ func _ready() -> void:
         model.tick(1.0 / 60, at + Vector3(frame * 0.002, 0, 0))
     _check(model.enemies[0]["hp"] < hp, "response fire stopped while the hero moved")
 
+    # Lyra is a planted sniper: movement blocks the shot entirely.
+    model = _fresh()
+    model.set_profile("lyra_voss")
+    model.enemies[1]["hp"] = 0
+    model.enemies[2]["hp"] = 0
+    model.select_target(0)
+    hp = model.enemies[0]["hp"]
+    model.tick(1.0 / 60, at, false)
+    _check(model.enemies[0]["hp"] == hp, "Lyra fired while movement gate was closed")
+    model.tick(1.0 / 60, at, true)
+    _check(model.enemies[0]["hp"] < hp, "Stationary Lyra failed to fire inside sniper range")
+    var shot_events := model.take_events().filter(func(e): return e["type"] == "hero_shot")
+    _check(shot_events.size() == 1 and float(shot_events[0]["distance"]) <= 16.0 and float(shot_events[0]["hp_after"]) < hp,
+        "Lyra shot event is not tied to a real in-range damage result")
+
+    model = _fresh()
+    model.set_profile("lyra_voss")
+    model.enemies[0]["at"] = Vector3(25, 0, -14)
+    model.select_target(0)
+    hp = model.enemies[0]["hp"]
+    model.tick(1.0 / 60, at, true)
+    var far_events := model.take_events()
+    _check(model.enemies[0]["hp"] == hp and not far_events.any(func(e): return e["type"] == "hero_shot"),
+        "Lyra emitted a shot outside 16-unit range")
+
     model = _fresh()
     model.navigation.set_blocked_box(Vector3(5, 0, -11.5), Vector3(4, 3, 1), 0.5)
     model.select_target(0)
@@ -128,5 +153,5 @@ func _ready() -> void:
     invalid["defeated"] = [0, 0]
     _check(not COMBAT.valid_profile(invalid), "duplicate defeated IDs were accepted")
     if failures == 0:
-        print("WORLD_COMBAT_TEST_PASS auto_reply=moving los=ok skills=5 passive=1 damage=PvE launcher=shared dash=blocked leash=safe death=ok fps=30,60,120")
+        print("WORLD_COMBAT_TEST_PASS auto_reply=moving lyra=planted,range16 los=ok skills=5 passive=1 damage=PvE launcher=shared dash=blocked leash=safe death=ok fps=30,60,120")
     get_tree().quit(0 if failures == 0 else 1)
