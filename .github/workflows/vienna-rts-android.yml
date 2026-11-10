@@ -234,6 +234,15 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-navigation-test.log; then
             exit 1
           fi
+      - name: Validate RTS order wire protocol
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 35s godot --headless --path client --script res://tests/test_rts_order_protocol.gd 2>&1 | tee build/rts-order-protocol-test.log
+          grep -q 'RTS_ORDER_PROTOCOL_TEST_PASS' build/rts-order-protocol-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-order-protocol-test.log; then
+            exit 1
+          fi
       - name: Test squad formation and allied clearance
         shell: bash
         run: |
