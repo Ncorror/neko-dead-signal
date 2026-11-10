@@ -34,20 +34,35 @@ class RepositoryContract(unittest.TestCase):
         diagnostics = (ROOT / 'client/scripts/rts_diagnostics.gd').read_text()
         workflow = (ROOT / '.github/workflows/vienna-rts-android.yml').read_text()
         self.assertIn('config/name="NEKO: DEAD SIGNAL"', project)
-        self.assertIn('config/version="0.0.28"', project)
+        self.assertIn('config/version="0.0.29"', project)
         self.assertIn('package/unique_name="com.ncorror.neko.deadsignal"', export)
         self.assertIn('package/name="NEKO DEAD SIGNAL"', export)
-        self.assertIn('version/code=28', export)
+        self.assertIn('version/code=29', export)
         self.assertIn('export_path="build/NEKO_DEAD_SIGNAL-debug.apk"', export)
         self.assertIn('_label("NEKO: DEAD SIGNAL",', menu)
         self.assertIn('"project": "NEKO: DEAD SIGNAL"', diagnostics)
         self.assertIn('NEKO DEAD SIGNAL DEBUG', diagnostics)
-        self.assertIn('NEKO_DEAD_SIGNAL-0.0.28-debug.apk', workflow)
+        self.assertIn('NEKO_DEAD_SIGNAL-0.0.29-debug.apk', workflow)
         self.assertIn('neko-dead-signal-debug-', workflow)
+
+    def test_runtime_brand_and_deployment_repo(self):
+        menu = (ROOT / 'client/scripts/main.gd').read_text()
+        operation = (ROOT / 'client/scripts/operation.gd').read_text()
+        dialogs = (ROOT / 'client/scripts/rts_diagnostics_ui.gd').read_text()
+        server = (ROOT / 'server/control_api.py').read_text()
+        deploy = (ROOT / 'ops/vienna/deploy-one-shot-termux.sh').read_text()
+        runner = (ROOT / 'ops/vienna/install-runner.sh').read_text()
+        for source in (menu, operation, dialogs):
+            self.assertIn('NEKO: DEAD SIGNAL', source)
+            self.assertNotIn('REINA: DEAD SIGNAL', source)
+        self.assertNotIn('REINA SYSTEMS', menu)
+        self.assertIn('"service": "neko-dead-signal"', server)
+        self.assertIn('REPO="Ncorror/neko-dead-signal"', deploy)
+        self.assertIn('https://github.com/Ncorror/neko-dead-signal', runner)
 
     def test_relative_markdown_links_exist(self):
         # Optional proof for a partial local checkout; normal CI checks real files.
-        manifest = os.environ.get('REINA_SOURCE_TREE_MANIFEST')
+        manifest = os.environ.get('NEKO_SOURCE_TREE_MANIFEST') or os.environ.get('REINA_SOURCE_TREE_MANIFEST')
         remote = set()
         if manifest:
             remote = {entry['path'] for entry in json.loads(Path(manifest).read_text())['tree'] if entry['type'] == 'blob'}

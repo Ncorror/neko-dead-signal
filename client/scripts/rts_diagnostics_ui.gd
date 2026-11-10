@@ -8,7 +8,7 @@ func install(owner_node: Node, button_bar: Container) -> void:
     if not RTSDiagnostics.enabled:
         return
     popup = AcceptDialog.new()
-    popup.title = "REINA RTS · Диагностика"
+    popup.title = "NEKO: DEAD SIGNAL · Диагностика"
     popup.dialog_text = "Запись активна только в debug APK.\nСоздай ZIP или скопируй краткий отчёт."
     popup.min_size = Vector2i(650, 260)
     popup.get_ok_button().text = "ЗАКРЫТЬ"

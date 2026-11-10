@@ -8,6 +8,7 @@ on:
       - feat/pure-rts-commanders
       - main
       - feature/female-base-v3-production
+      - chore/neko-paths-and-branding-audit-029
       - chore/neko-dead-signal-rebrand-v028
       - fix/manual-preview-smooth-paths-v007
       - feat/orders-and-recon-v008
@@ -481,7 +482,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/NEKO_DEAD_SIGNAL-debug.apk build/tester-bundle/NEKO_DEAD_SIGNAL-0.0.28-debug.apk
+          cp client/build/NEKO_DEAD_SIGNAL-debug.apk build/tester-bundle/NEKO_DEAD_SIGNAL-0.0.30-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:

@@ -3,8 +3,8 @@
 # No old game files are deleted. Old game UDP server remains running.
 set -Eeuo pipefail
 umask 077
-REPO="Ncorror/reina-dead-signal-rts"
-DEPLOY_REF="${REINA_RTS_DEPLOY_REF:-main}"
+REPO="Ncorror/neko-dead-signal"
+DEPLOY_REF="${NEKO_DEAD_SIGNAL_DEPLOY_REF:-${REINA_RTS_DEPLOY_REF:-main}}"
 HOST="reina"
 for command in gh ssh scp base64; do
   command -v "$command" >/dev/null || { echo "Missing $command"; exit 1; }
@@ -15,7 +15,7 @@ DEPLOY_SHA="$(gh api "repos/$REPO/commits/$DEPLOY_REF" --jq '.sha')"
 [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid deployment commit; nothing uploaded"; exit 1; }
 echo "DEPLOY_COMMIT=$DEPLOY_SHA"
 LOCAL="$(mktemp -d)"
-SESSION="reina-rts-switch-$(date +%s)-$$-$RANDOM"
+SESSION="neko-dead-signal-switch-$(date +%s)-$-$RANDOM"
 STAGE="$LOCAL/$SESSION"
 mkdir -p "$STAGE/ops/vienna" "$STAGE/server"
 finish() { rm -rf "$LOCAL"; }

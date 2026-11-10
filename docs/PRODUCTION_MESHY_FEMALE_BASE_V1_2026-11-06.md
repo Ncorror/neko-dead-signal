@@ -1,4 +1,4 @@
-# REINA: DEAD SIGNAL — PRODUCTION: женская модульная аниме-база v1 (Meshy → Godot)
+# NEKO: DEAD SIGNAL — PRODUCTION: женская модульная аниме-база v1 (Meshy → Godot)
 
 > **Актуальный эталон: v3.** v1 и v2 — только архивы. [Последние утверждённые четыре PNG, инструкции, Drive, SHA-256](PRODUCTION_FEMALE_BASE_V3_APPROVED_2026-11-06.md).
 
@@ -59,7 +59,7 @@ VIEW: LEFT PROFILE / RIGHT PROFILE / BACK. Exactly the SAME original adult anime
 **ПРОМПТ ДЛЯ 3D/МАТЕРИАЛА (если в выбранном интерфейсе есть поле):**
 
 ```text
-One original adult female stylized anime sci-fi game-ready humanoid, neutral A-pose for rigging. Single complete full-body mesh with correctly separated arms, legs, fingers and clean joints, symmetrical anatomy, no merged geometry. Calm anime face, realistic joint placement, 7.5-8 head proportions, short simple ash-gray hair. Tight opaque matte charcoal sports training top and separate opaque short athletic swim briefs; no external costume or accessories. Dark neon sci-fi anime art direction compatible with REINA: DEAD SIGNAL. Clean solid PBR base colors, restrained surface detail, no exaggerated anatomy, no background props, no weapons, no logos, no cape, no floating objects. Suitable for later humanoid skeleton, skin weights and modular equipment in Godot. Do not add arbitrary separate objects.
+One original adult female stylized anime sci-fi game-ready humanoid, neutral A-pose for rigging. Single complete full-body mesh with correctly separated arms, legs, fingers and clean joints, symmetrical anatomy, no merged geometry. Calm anime face, realistic joint placement, 7.5-8 head proportions, short simple ash-gray hair. Tight opaque matte charcoal sports training top and separate opaque short athletic swim briefs; no external costume or accessories. Dark neon sci-fi anime art direction compatible with NEKO: DEAD SIGNAL. Clean solid PBR base colors, restrained surface detail, no exaggerated anatomy, no background props, no weapons, no logos, no cape, no floating objects. Suitable for later humanoid skeleton, skin weights and modular equipment in Godot. Do not add arbitrary separate objects.
 ```
 
 Важно: текст `game-ready` в промпте **не гарантирует** риг, модульность, хорошие UV, low-poly, shape keys или готовую коммерческую модель.
@@ -103,7 +103,7 @@ One original adult female stylized anime sci-fi game-ready humanoid, neutral A-p
 
 ## 8. Копируемое задание для участника команды
 
-> Сгенерировать ОДНУ оригинальную взрослую женскую аниме-модель для REINA: DEAD SIGNAL, A-pose, полный рост, чёткий front reference; нейтральные непрозрачные тёмные спортивный топ и плавки-шорты, без брони/оружия/аксессуаров; целевое назначение — модульный редактор персонажа в Godot, а не самостоятельный канонический NPC. Прислать reference PNG + исходный GLB + rigged GLB (если есть), запись об используемой модели Meshy и праве эксплуатации, 4 скриншота ракурсов, короткий `idle` и `walk` тест. Никаких изменений в сохранении и сценах RTS без отдельного этапа проверки.
+> Сгенерировать ОДНУ оригинальную взрослую женскую аниме-модель для NEKO: DEAD SIGNAL, A-pose, полный рост, чёткий front reference; нейтральные непрозрачные тёмные спортивный топ и плавки-шорты, без брони/оружия/аксессуаров; целевое назначение — модульный редактор персонажа в Godot, а не самостоятельный канонический NPC. Прислать reference PNG + исходный GLB + rigged GLB (если есть), запись об используемой модели Meshy и праве эксплуатации, 4 скриншота ракурсов, короткий `idle` и `walk` тест. Никаких изменений в сохранении и сценах RTS без отдельного этапа проверки.
 
 **Источник технических требований**: Meshy Multi-View https://help.meshy.ai/en/articles/16102789-meshy-multi-view-best-practices-angles-and-images ; Pose https://help.meshy.ai/en/articles/10255659-how-to-generate-3d-models-with-a-pose-t-pose-or-custom-poses ; Auto Rigging https://help.meshy.ai/en/articles/16231707-how-to-create-3d-animation-with-auto-rigging ; Godot glTF https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/importing_3d_scenes/available_formats.html ; Godot retarget https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/retargeting_3d_skeletons.html .
 

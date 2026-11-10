@@ -1,6 +1,6 @@
 > Исторический срез указанного этапа. Описания старых ограничений и чисел тестов относятся к нему. Текущее состояние и тестбук — [индекс документации](README.md), исправления аудита — [0.0.15](AUDIT_2026-11-04.md).
 
-# REINA RTS · Тестовая диагностика v0.0.5
+# NEKO: DEAD SIGNAL · Историческая диагностика v0.0.5
 
 **Актуальная ветка:** `feat/tester-diagnostics-3d-roster`. Только DEBUG-сборка APK. Онлайн-телеметрия отсутствует.
 
@@ -30,20 +30,22 @@
 
 ## Как получить ZIP из телефона с root/Termux
 
+Команды ниже обновлены под **NEKO: DEAD SIGNAL 0.0.29**. Чтобы извлечь отчёт старого приложения 0.0.27, указывай прежний package ID `com.ncorror.reinadeadsignal.rts` вместо текущего. Команды не удаляют чужие данные.
+
 После нажатия **СОЗДАТЬ ZIP** в игре запусти Termux:
 
 ```bash
-APP='com.ncorror.reinadeadsignal.rts'
+APP='com.ncorror.neko.deadsignal'
 su -c "find /data/user/0/$APP -type f -name 'report-0.zip' 2>/dev/null"
 ```
 
 Если нашёлся файл, скопируй его (используя путь из вывода):
 
 ```bash
-APP='com.ncorror.reinadeadsignal.rts'
+APP='com.ncorror.neko.deadsignal'
 SRC=$(su -c "find /data/user/0/$APP -type f -name 'report-0.zip' 2>/dev/null" | head -n 1)
 [ -n "$SRC" ] || { echo 'ZIP not found; press CREATE ZIP in game'; exit 1; }
-DEST="/sdcard/Download/REINA_RTS_$(date +%Y%m%d_%H%M%S).zip"
+DEST="/sdcard/Download/NEKO_DEAD_SIGNAL_$(date +%Y%m%d_%H%M%S).zip"
 su -c "cp '$SRC' '$DEST' && chmod 0644 '$DEST'"
 echo "$DEST"
 ```
@@ -51,11 +53,11 @@ echo "$DEST"
 Если игра сейчас запущена, отдельный узкий срез Android logcat **только этого процесса**:
 
 ```bash
-APP='com.ncorror.reinadeadsignal.rts'
+APP='com.ncorror.neko.deadsignal'
 PID=$(su -c "pidof $APP" | awk '{print $1}')
 if [ -n "$PID" ]; then
   su -c "logcat -d --pid=$PID -t 4000 -v threadtime" \
-    > "$HOME/storage/downloads/REINA_RTS_app_logcat.txt"
+    > "$HOME/storage/downloads/NEKO_DEAD_SIGNAL_app_logcat.txt"
 fi
 ```
 

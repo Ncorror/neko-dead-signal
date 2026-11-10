@@ -14,7 +14,7 @@ The connected GitHub write integration accepts UTF-8 text, not PNG/JPEG bytes. T
 
 **UPLOAD COMPLETED — 2026-11-02:** All four original commander PNG dossiers and all four optimized `.jpg.b64` portraits have been pushed to `main` by Termux in commit `871601bc2a0e7c886e7a3719f1792c7770dc3c28`. The upload script printed `PORTRAITS_PUBLISHED_TO_MAIN`. GitHub file existence was separately verified.
 
-**Vienna rebuild:** [Android Debug #28](https://github.com/Ncorror/reina-dead-signal-rts/actions/runs/41522996901) — **CI SUCCESS**, artifact `reina-rts-debug-28`, signed ARM64 APK. This run includes the art push and passed menu, landing and export checks. Real Android visual QA remains outstanding.
+**Vienna rebuild:** [Android Debug #28](https://github.com/Ncorror/neko-dead-signal/actions/runs/41522996901) — **CI SUCCESS**, artifact `reina-rts-debug-28`, signed ARM64 APK. This run includes the art push and passed menu, landing and export checks. Real Android visual QA remains outstanding.
 
 ## Android manual retest
 - In the orbital UI, select **Амина → Рэйна → Мира → Лира**, check each active highlight and portrait changes after assets are present.

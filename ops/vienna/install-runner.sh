@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 umask 077
 [[ $(id -u) -eq 0 ]] || { echo "Run using sudo bash install-runner.sh"; exit 1; }
-REPO_URL="https://github.com/Ncorror/reina-dead-signal-rts"
+REPO_URL="https://github.com/Ncorror/neko-dead-signal"
 DIR="/opt/reina-rts/runner"
 USER="reina-rts-ci"
 NAME="reina-rts-vienna-01"
