@@ -36,7 +36,17 @@ static func bone_index(skeleton: Skeleton3D, suffix: String) -> int:
     if skeleton == null:
         return -1
     var i: int = skeleton.find_bone("mixamorig:" + suffix)
-    return i if i >= 0 else skeleton.find_bone(suffix)
+    if i >= 0:
+        return i
+    i = skeleton.find_bone(suffix)
+    if i >= 0:
+        return i
+    # Godot's glTF importer sanitizes ':' in joint names (often as '_').
+    # Match the verified Mixamo suffix against the ACTUAL imported skeleton.
+    for index in range(skeleton.get_bone_count()):
+        if str(skeleton.get_bone_name(index)).to_lower().ends_with(suffix.to_lower()):
+            return index
+    return -1
 
 static func mount(parent: Node3D, height: float) -> Dictionary:
     if not ResourceLoader.exists(MODEL_PATH):

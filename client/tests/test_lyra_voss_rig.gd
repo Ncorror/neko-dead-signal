@@ -38,6 +38,11 @@ func _run() -> void:
         if skeleton != null:
             var left_foot: int = LYRA.bone_index(skeleton, "LeftFoot")
             var right_foot: int = LYRA.bone_index(skeleton, "RightFoot")
+            if left_foot < 0 or right_foot < 0:
+                var names: Array[String] = []
+                for bi in range(skeleton.get_bone_count()):
+                    names.append(str(skeleton.get_bone_name(bi)))
+                print("LYRA_IMPORTED_BONE_NAMES ", names)
             _check(left_foot >= 0 and right_foot >= 0, "Missing rig foot bones")
             if left_foot >= 0 and right_foot >= 0:
                 var lf: Vector3 = skeleton.get_bone_global_pose(left_foot).origin
