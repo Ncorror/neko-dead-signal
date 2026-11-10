@@ -41,6 +41,7 @@ on:
       - fix/selection-camera-and-portraits-v004
     paths:
       - 'client/**'
+      - 'scripts/**'
       - 'tools/build_environment_kit.py'
       - '.github/workflows/vienna-rts-android.yml'
   workflow_dispatch:
