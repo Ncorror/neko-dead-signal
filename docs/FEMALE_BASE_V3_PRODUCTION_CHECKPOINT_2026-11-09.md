@@ -222,3 +222,34 @@ User device screenshots of 0.0.30 exposed four visual/gameplay regressions that 
 **Verification:** Android workflow run [42808634722](https://github.com/Ncorror/neko-dead-signal/actions/runs/42808634722) passed **52/52** at `91969dbd`; PR #39 remains clean/mergeable and draft. Tester APK `NEKO_DEAD_SIGNAL-0.0.31-Lyra-Fixes.apk` is **74,776,271 bytes**, SHA-256 `f4e7637255e3b2469d61b0611d887345d833977e830546cdfbeb6bf26370efa3`, ZIP integrity PASS. Drive: https://drive.google.com/file/d/1wha0a9GgRwmZqu-Yplb_vGzFMmPmabsy/view
 
 **Still open for device acceptance:** exact visual quality of the sampled standing pose, rifle clipping from front/back/side, projectile readability at RTS zoom, and hips/shorts deformation while walking/running. Do not merge PR #39 until these are visually accepted on Android.
+
+
+## 2026-11-10 — device combat QA 0.0.31 → 0.0.32
+
+**0.0.31 Android evidence:** Rust Road and Lyra profile load correctly, but device QA exposed combat presentation defects: rifle stays on/away from the back during attacks instead of being held; sniper may visually fire while moving/at a distant target; Lyra death has no visible death phase before the respawn prompt; no explicit walk/run selector. User also reported the rifle sitting too far from the body.
+
+**Log analysis**
+- Recorded `hero_shot` events are paired with `enemy_damaged`; the model did not emit an out-of-range ghost hit in the supplied log. The misleading presentation came from Lyra being allowed to response-fire while moving and from visual/animation state being disconnected from the damage event.
+- Device death sequence records `hero_defeated` at HP 0 and then a direct respawn flow; this matches the reported missing visible death presentation.
+
+**Root causes and 0.0.32 fixes**
+- `rts_character_fit.measure_bounds()` double-applied the root transform after already converting mesh corners into model-local coordinates. Rifle source centring was therefore wrong. Bounds now remain local.
+- Stowed rifle carrier now sits closer to the body and follows `Spine2`. On a real `hero_shot`, the same carrier moves to `RightHand`, `Archery_Shot_2` plays, then the carrier returns to `Spine2` and the neutral stance is restored.
+- Lyra world fire is now **planted only**: a non-empty navigation route blocks sniper fire. The existing Amina mobile response-fire contract is unchanged.
+- `hero_shot` diagnostics now record actual distance and target HP after the hit; the event is emitted only after a successful in-range damage application.
+- Lyra death now plays the imported `Dead` clip (fallback `Fall_Dead_from_Abdominal_Injury`) before respawn UI becomes available. Dead-save reentry restores the death presentation instead of immediately showing the prompt.
+- World Zone, Rust Road, and 128×128 surface now expose a `ХОДЬБА / БЕГ` mode: 4.2 walk and 5.8 run, selecting the existing Walking/Running clips without changing old saves.
+- Tester build bumped to **0.0.32 / versionCode 32**.
+
+**Regression coverage**
+- `test_world_combat.gd`: Lyra cannot damage or emit `hero_shot` while movement fire gate is closed; stationary shot inside 16 units must damage; >16 units must neither damage nor emit a shot.
+- `test_lyra_voss_rig.gd`: rifle starts on `Spine2`, moves to `RightHand` during attack, returns to back, imported death clip starts, world/surface walk-run toggles work, and Rust Road respawn prompt is delayed until the death presentation finishes.
+- `test_world_battle.gd`: legacy world death/save/respawn path updated to require a death phase before the native respawn prompt, including dead-save reentry.
+
+**Verified build**
+- Functional/test head: `314699112813ce9e27ddf9324d56ae413e83163d`.
+- Android run **166 / 42817553825**: **PASS 52/52**, including Rust Road, world combat, old world battle/save flow, Lyra rig/weapon/death/movement regressions, signed ARM64 export.
+- APK: `NEKO_DEAD_SIGNAL-0.0.32-Lyra-Combat-Fix.apk`, **74,784,463 bytes**.
+- SHA-256: `b0ae308a1849f83a39a77a68db44b495f2abd92faeca64599739b0475cb03d55`.
+
+**Device acceptance still required before merging PR #39:** confirm rifle grip/orientation in the firing animation from front/side/back; confirm it hugs the back in idle/walk/run; confirm death is visible before respawn dialog; confirm walk/run button behaviour and that no sniper shot appears while Lyra is moving.
