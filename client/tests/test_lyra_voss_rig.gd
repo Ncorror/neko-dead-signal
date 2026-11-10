@@ -22,6 +22,7 @@ func _run() -> void:
         await tree.process_frame
     var menu = tree.current_scene
     _check(menu.officer_index == 3 and menu.lyra_lab_button.visible, "wrong officer or lab missing")
+    _check(not menu.pve_button.disabled, "Lyra Rust Road PvE entry is unavailable")
     var model: Node3D = menu.hero_preview_3d.active_model
     _check(model != null, "Lyra menu model not imported")
     if model == null:
@@ -32,9 +33,25 @@ func _run() -> void:
     if p != null:
         _check(LYRA.loaded_count(p) == 20, "Expected exactly 20 original clips")
         _check(LYRA.resolve_clip(p, "Idle").is_empty(), "Idle was not exported")
-        _check(LYRA.hold_ready_pose(p), "Cannot hold ready stance")
-        _check(LYRA.has_weapon(model), "Lyra menu is missing sniper rifle")
         var skeleton: Skeleton3D = LYRA.find_skeleton(p)
+        _check(skeleton != null, "Missing Lyra Skeleton3D")
+        if skeleton != null:
+            var hips := LYRA.bone_index(skeleton, "Hips")
+            var left_hand := LYRA.bone_index(skeleton, "LeftHand")
+            var right_hand := LYRA.bone_index(skeleton, "RightHand")
+            skeleton.reset_bone_poses()
+            skeleton.force_update_all_bone_transforms()
+            var rest_spread := 0.0
+            if hips >= 0 and left_hand >= 0 and right_hand >= 0:
+                var hx: float = skeleton.get_bone_global_pose(hips).origin.x
+                rest_spread = absf(skeleton.get_bone_global_pose(left_hand).origin.x - hx) + absf(skeleton.get_bone_global_pose(right_hand).origin.x - hx)
+            _check(LYRA.hold_ready_pose(p), "Cannot hold relaxed ready stance")
+            if rest_spread > 0.01:
+                var hx2: float = skeleton.get_bone_global_pose(hips).origin.x
+                var relaxed_spread := absf(skeleton.get_bone_global_pose(left_hand).origin.x - hx2) + absf(skeleton.get_bone_global_pose(right_hand).origin.x - hx2)
+                _check(relaxed_spread < rest_spread * 0.88, "Relaxed pose still looks like imported A-pose")
+        _check(LYRA.has_weapon(model), "Lyra menu is missing sniper rifle")
+        skeleton = LYRA.find_skeleton(p)
         _check(skeleton != null, "Missing Lyra Skeleton3D")
         if skeleton != null:
             var left_foot: int = LYRA.bone_index(skeleton, "LeftFoot")
@@ -144,6 +161,17 @@ func _run() -> void:
         _check(str(sector.hero_motion.get_meta("neko_lyra_motion", "")) == "walk", "Surface128 failed to animate movement")
         sector._stop()
         _check(str(sector.hero_motion.get_meta("neko_lyra_motion", "")) == "idle", "Surface128 failed to stop walking")
+    tree.change_scene_to_file("res://scenes/world_sector.tscn")
+    await tree.scene_changed
+    for i in range(5):
+        await tree.process_frame
+    var hunt = tree.current_scene
+    _check(hunt.combat_view.model.enabled, "Lyra Rust Road combat stayed disabled")
+    _check(hunt.combat_view.model.profile_id == "lyra_voss", "Rust Road did not select Lyra combat profile")
+    _check(absf(hunt.combat_view.model.weapon_range - 16.0) < 0.001, "Lyra Rust Road range must be 16")
+    _check(hunt.combat_view.actors.size() == 9 and hunt.combat_view.actors[8].visible, "Lyra Rust Road mobs or boss missing")
+    for skill_button in hunt.combat_view.skill_buttons:
+        _check(not skill_button.visible, "Amina skill leaked into Lyra PvE UI")
     GameState.world_progress_path = original_world
     GameState.surface_progress_path = original_surface
     if failures == 0:
