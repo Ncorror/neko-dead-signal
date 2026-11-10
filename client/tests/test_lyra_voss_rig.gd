@@ -198,6 +198,16 @@ func _run() -> void:
     _check(hunt.combat_view.actors.size() == 9 and hunt.combat_view.actors[8].visible, "Lyra Rust Road mobs or boss missing")
     for skill_button in hunt.combat_view.skill_buttons:
         _check(not skill_button.visible, "Amina skill leaked into Lyra PvE UI")
+    hunt.combat_view.model.hp = 0
+    var death_delay: float = hunt.combat_view._begin_death()
+    _check(death_delay >= 0.8 and not hunt.combat_view.death_dialog.visible and not hunt.combat_view.death_ready,
+        "Respawn dialog appeared before Lyra death animation")
+    await get_tree().create_timer(death_delay + 0.08).timeout
+    _check(hunt.combat_view.death_dialog.visible and hunt.combat_view.death_ready,
+        "Respawn dialog did not appear after Lyra death animation")
+    hunt.combat_view._respawn()
+    _check(hunt.combat_view.model.hp == 100 and not hunt.combat_view.death_dialog.visible,
+        "Lyra respawn did not restore the combat state cleanly")
     GameState.world_progress_path = original_world
     GameState.surface_progress_path = original_surface
     if failures == 0:
