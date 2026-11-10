@@ -196,13 +196,19 @@ func _run() -> void:
     await _load()
     _advance(0.1)
     await _settle()
-    _check(zone.combat_view.model.hp == 0 and zone.combat_view.death_dialog.visible
-        and not zone._move_to(Vector3.ZERO), "incoming damage did not stop and visibly defeat the hero")
+    _check(zone.combat_view.model.hp == 0 and zone.combat_view.death_pending and not zone.combat_view.death_dialog.visible
+        and not zone._move_to(Vector3.ZERO), "incoming damage did not enter the death-animation phase")
+    await get_tree().create_timer(0.95).timeout
+    _check(zone.combat_view.death_dialog.visible and zone.combat_view.death_ready,
+        "respawn prompt did not wait for the death presentation")
     zone.combat_view.death_dialog.hide()
     zone._checkpoint()
     await _load()
-    _check(zone.combat_view.model.hp == 0 and zone.combat_view.death_dialog.visible,
-        "reopening a dead save silently healed the hero")
+    _check(zone.combat_view.model.hp == 0 and zone.combat_view.death_pending and not zone.combat_view.death_dialog.visible,
+        "reopening a dead save did not restore the death presentation")
+    await get_tree().create_timer(0.95).timeout
+    _check(zone.combat_view.death_dialog.visible and zone.combat_view.death_ready,
+        "reopened dead save never offered respawn after the death delay")
     var remaining: float = zone.combat_view.model.cooldowns[0]
     _press(zone.combat_view.death_dialog.get_ok_button())
     await _settle()
