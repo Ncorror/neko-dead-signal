@@ -90,11 +90,11 @@ static func attach_weapon(rig: Node3D) -> bool:
     var visual: Node3D = weapon as Node3D
     visual.name = "LyraSniperRifle"
     mount_node.add_child(visual)
-    # Meshy source spans 1.90m on X. Calibrate to ~1.03m and angle the
-    # rifle over the right shoulder. No mesh/skin modification.
-    visual.scale = Vector3.ONE * 0.54
-    visual.rotation_degrees = Vector3(0.0, 0.0, 68.0)
-    visual.position = Vector3(0.21, 0.03, -0.20)
+    # Keep the rifle close to the back instead of floating above one
+    # shoulder. Source spans 1.90m on X; ~0.95m is appropriate here.
+    visual.scale = Vector3.ONE * 0.50
+    visual.rotation_degrees = Vector3(0.0, 0.0, 58.0)
+    visual.position = Vector3(0.02, -0.28, -0.14)
     return true
 
 
@@ -163,10 +163,25 @@ static func root_motion_offset(player: AnimationPlayer) -> Vector3:
     return skeleton.get_bone_global_pose(hips).origin - skeleton.get_bone_global_rest(hips).origin
 
 
+static func _relax_arm(skeleton: Skeleton3D, arm_suffix: String, forearm_suffix: String, desired: Vector3) -> bool:
+    var arm := bone_index(skeleton, arm_suffix)
+    var forearm := bone_index(skeleton, forearm_suffix)
+    if arm < 0 or forearm < 0:
+        return false
+    var arm_rest: Transform3D = skeleton.get_bone_global_rest(arm)
+    var forearm_rest: Transform3D = skeleton.get_bone_global_rest(forearm)
+    var current := (forearm_rest.origin - arm_rest.origin).normalized()
+    if current.length_squared() < 0.5:
+        return false
+    var delta := Quaternion(current, desired.normalized())
+    var pose_basis := arm_rest.basis.inverse() * Basis(delta) * arm_rest.basis
+    skeleton.set_bone_pose_rotation(arm, pose_basis.get_rotation_quaternion())
+    return true
+
+
 static func hold_ready_pose(player: AnimationPlayer) -> bool:
-    # Verified by source GLB joint transforms: the bind/rest pose has
-    # feet nearly equal in Y and Z. Prior Walking t=0.25 froze one leg
-    # forward by ~0.66m and must NEVER be used for idle/standing.
+    # The imported rest pose is an A-pose. Keep its stable feet/hips, but
+    # lower both upper arms into a relaxed standing silhouette.
     var skeleton: Skeleton3D = find_skeleton(player)
     if skeleton == null:
         return false
@@ -174,6 +189,10 @@ static func hold_ready_pose(player: AnimationPlayer) -> bool:
         return false
     player.stop()
     skeleton.reset_bone_poses()
+    var left_ok := _relax_arm(skeleton, "LeftArm", "LeftForeArm", Vector3(-0.16, -0.98, 0.08))
+    var right_ok := _relax_arm(skeleton, "RightArm", "RightForeArm", Vector3(0.16, -0.98, 0.08))
+    if not left_ok or not right_ok:
+        return false
     skeleton.force_update_all_bone_transforms()
     player.set_meta("neko_lyra_motion", "idle")
     return true
