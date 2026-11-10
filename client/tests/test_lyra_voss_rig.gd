@@ -62,7 +62,16 @@ func _run() -> void:
     if lab.player != null:
         lab._play("Standing_Reload")
         _check(lab.status.text.contains("Standing_Reload"), "Play clip failed")
+        lab._play("Roll_Dodge_1")
+        lab.player.seek(0.5, true)
+        var root_offset: Vector3 = LYRA.root_motion_offset(lab.player)
+        lab._process(0.0)
+        if Vector2(root_offset.x, root_offset.z).length() > 0.05:
+            _check(lab.model_view.active_model.position.distance_to(lab.preview_origin) > 0.001,
+                "Animation lab did not cancel horizontal root travel")
         lab._hold()
+        _check(lab.model_view.active_model.position.distance_to(lab.preview_origin) < 0.001,
+            "Animation lab failed to recenter neutral stance")
     lab._back()
     await tree.scene_changed
     var again = tree.current_scene
