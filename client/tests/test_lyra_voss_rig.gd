@@ -33,6 +33,17 @@ func _run() -> void:
         _check(LYRA.loaded_count(p) == 20, "Expected exactly 20 original clips")
         _check(LYRA.resolve_clip(p, "Idle").is_empty(), "Idle was not exported")
         _check(LYRA.hold_ready_pose(p), "Cannot hold ready stance")
+        var skeleton: Skeleton3D = LYRA.find_skeleton(p)
+        _check(skeleton != null, "Missing Lyra Skeleton3D")
+        if skeleton != null:
+            var left_foot: int = LYRA.bone_index(skeleton, "LeftFoot")
+            var right_foot: int = LYRA.bone_index(skeleton, "RightFoot")
+            _check(left_foot >= 0 and right_foot >= 0, "Missing rig foot bones")
+            if left_foot >= 0 and right_foot >= 0:
+                var lf: Vector3 = skeleton.get_bone_global_pose(left_foot).origin
+                var rf: Vector3 = skeleton.get_bone_global_pose(right_foot).origin
+                _check(absf(lf.z - rf.z) < 0.45, "Neutral stance frozen in a walking stride")
+                _check(absf(lf.y - rf.y) < 0.12, "Neutral stance leaves one foot raised")
         _check(LYRA.play_movement(p, true, 4.0) == "walk", "Walk failed")
         _check(LYRA.play_movement(p, true, 5.8) == "run", "Run failed")
         _check(LYRA.play_movement(p, false, 0.0) == "idle", "Stop failed")
@@ -62,6 +73,54 @@ func _run() -> void:
         battle._set_unit_animation(battle.hero, false)
         _check(str(player.get_meta("neko_lyra_motion", "")) == "idle", "RTS idle missing")
     _check(battle.hero.hull == 100 and battle.escort.hull == 80, "Combat stats changed")
+    _check(battle.escort.get_node_or_null("EscortLabel") != null, "Separate escort must be identifiable")
+    var rts_capsule := false
+    for child in battle.hero.get_children():
+        if child is MeshInstance3D and child.mesh is CapsuleMesh and child.visible:
+            rts_capsule = true
+    _check(not rts_capsule, "RTS hero capsule visible together with LyraRig")
+    # Regression for both planet scenes. Their Amina-only loaders used to
+    # leave Lyra as a featureless capsule despite a valid 3D rig.
+    var original_world: String = GameState.world_progress_path
+    var original_surface: String = GameState.surface_progress_path
+    GameState.world_progress_path = "user://lyra-visual-regression/world.json"
+    GameState.surface_progress_path = "user://lyra-visual-regression/surface.json"
+    tree.change_scene_to_file("res://scenes/world_zone.tscn")
+    await tree.scene_changed
+    for i in range(4):
+        await tree.process_frame
+    var zone = tree.current_scene
+    _check(zone.hero.get_node_or_null("LyraRig") != null, "WorldZone is missing 3D Lyra")
+    _check(not zone.hero.get_node("Placeholder").visible, "WorldZone Lyra capsule remained visible")
+    _check(not zone.hero.get_node("PlaceholderFacingBar").visible, "WorldZone Lyra facing bar remained visible")
+    _check(zone.hero_motion != null, "WorldZone animation player missing")
+    if zone.hero_motion != null:
+        zone.route.append(zone.hero.position + Vector3(1, 0, 0))
+        zone._physics_process(0.01)
+        _check(str(zone.hero_motion.get_meta("neko_lyra_motion", "")) == "walk", "WorldZone failed to animate movement")
+        zone.route.clear()
+        zone._physics_process(0.01)
+        _check(str(zone.hero_motion.get_meta("neko_lyra_motion", "")) == "idle", "WorldZone stop did not reset stance")
+    tree.change_scene_to_file("res://scenes/surface_sector_01_prototype.tscn")
+    await tree.scene_changed
+    for i in range(4):
+        await tree.process_frame
+    var sector = tree.current_scene
+    _check(sector.hero.get_node_or_null("LyraRig") != null, "Surface128 is missing 3D Lyra")
+    _check(sector.hero_motion != null, "Surface128 animation player missing")
+    var surface_capsule := false
+    for child in sector.hero.get_children():
+        if child is MeshInstance3D and child.mesh is CapsuleMesh and child.visible:
+            surface_capsule = true
+    _check(not surface_capsule, "Surface128 still displays the capsule")
+    if sector.hero_motion != null:
+        sector.route.append(sector.hero.position + Vector3(1, 0, 0))
+        sector._physics_process(0.01)
+        _check(str(sector.hero_motion.get_meta("neko_lyra_motion", "")) == "walk", "Surface128 failed to animate movement")
+        sector._stop()
+        _check(str(sector.hero_motion.get_meta("neko_lyra_motion", "")) == "idle", "Surface128 failed to stop walking")
+    GameState.world_progress_path = original_world
+    GameState.surface_progress_path = original_surface
     if failures == 0:
-        print("LYRA_RIG_TEST_PASS clips=20 menu=ok lab=ok battlefield=ok")
+        print("LYRA_RIG_TEST_PASS clips=20 stable_stance=ok menu=ok lab=ok battlefield=ok surface128=ok world=ok")
     tree.quit(0 if failures == 0 else 1)
