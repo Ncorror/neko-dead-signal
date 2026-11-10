@@ -78,7 +78,7 @@ func install(world, bottom: VBoxContainer) -> void:
     add_child(death_dialog)
     refresh()
     if model.enabled and model.hp <= 0:
-        call_deferred("_show_death")
+        call_deferred("_begin_death")
 
 func _ring(radius: float, color: Color) -> MeshInstance3D:
     var ring := MeshInstance3D.new()
