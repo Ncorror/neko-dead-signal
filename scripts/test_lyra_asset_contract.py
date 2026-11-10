@@ -33,4 +33,8 @@ class LyraAssetTests(unittest.TestCase):
         controller = (ROOT / "client/scripts/lyra_voss_animations.gd").read_text()
         self.assertIn("BoneAttachment3D.new()", controller)
         self.assertIn("LyraRifleBackMount", controller)
-        self.assertIn("reset_bone_poses()", controller)
+        self.assertTrue(
+            "reset_bone_pose(index)" in controller or "reset_bone_poses()" in controller,
+            "Lyra standing pose must explicitly reset lower-body bone poses",
+        )
+        self.assertIn('player.seek(0.017, true)', controller)
