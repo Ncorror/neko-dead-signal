@@ -87,14 +87,24 @@ static func attach_weapon(rig: Node3D) -> bool:
     mount_node.name = "LyraRifleBackMount"
     skeleton.add_child(mount_node)
     mount_node.bone_name = skeleton.get_bone_name(spine_index)
+    # Meshy GLB roots are not guaranteed to use the mesh centre as pivot.
+    # Mount a centred carrier so the rifle cannot float just because its
+    # source pivot is offset.
+    var carrier := Node3D.new()
+    carrier.name = "LyraSniperRifle"
+    mount_node.add_child(carrier)
     var visual: Node3D = weapon as Node3D
-    visual.name = "LyraSniperRifle"
-    mount_node.add_child(visual)
-    # Keep the rifle close to the back instead of floating above one
-    # shoulder. Source spans 1.90m on X; ~0.95m is appropriate here.
-    visual.scale = Vector3.ONE * 0.50
-    visual.rotation_degrees = Vector3(0.0, 0.0, 58.0)
-    visual.position = Vector3(0.02, -0.28, -0.14)
+    visual.name = "RifleGeometry"
+    carrier.add_child(visual)
+    var measured: Dictionary = FIT.measure_bounds(visual)
+    if not bool(measured.get("ok", false)):
+        carrier.queue_free()
+        return false
+    var source_bounds: AABB = measured["bounds"]
+    visual.position -= source_bounds.get_center()
+    carrier.scale = Vector3.ONE * 0.50
+    carrier.rotation_degrees = Vector3(0.0, 0.0, 58.0)
+    carrier.position = Vector3(0.0, -0.22, -0.12)
     return true
 
 
