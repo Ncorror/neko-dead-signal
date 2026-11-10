@@ -8,6 +8,7 @@ const PATH_GRID := preload("res://scripts/rts_navigation.gd")
 const FORMATION := preload("res://scripts/rts_formation.gd")
 const DIAGNOSTICS_UI := preload("res://scripts/rts_diagnostics_ui.gd")
 const RIGGED_AMINA := "res://assets/characters/amina/amina_rigged.glb"
+const LYRA_MOTION := preload("res://scripts/lyra_voss_animations.gd")
 const STATIC_AMINA_PREVIEW := "res://assets/characters/amina/preview.glb"
 const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
 const VISIBILITY := preload("res://scripts/rts_visibility.gd")
@@ -455,6 +456,7 @@ func _make_unit(unit_name: String, at: Vector3, color: Color, is_commander: bool
     unit.add_child(visual)
     if is_commander:
         _attach_optional_rigged_amina(unit, visual)
+        _attach_optional_rigged_lyra(unit, visual)
         # A static Meshy mesh can be inspected on the battlefield, but it
         # never impersonates a rigged, animated character.
         if visual.visible:
@@ -497,6 +499,44 @@ func _attach_optional_rigged_amina(unit: Node3D, placeholder: MeshInstance3D) ->
     animation_players[unit] = player
     _set_unit_animation(unit, false)
     print("RTS_AMINA_RIG_READY: ", player.get_animation_list())
+
+
+func _attach_optional_rigged_lyra(unit: Node3D, placeholder: MeshInstance3D) -> void:
+    # Only Lyra (human index 3); Amina and all other officers stay unchanged.
+    if GameState.faction_index != 0 or GameState.officer_index != 3:
+        return
+    if not ResourceLoader.exists(LYRA_MOTION.MODEL_PATH):
+        push_warning("RTS_LYRA_RIG_MISSING")
+        return
+    var resource: Resource = load(LYRA_MOTION.MODEL_PATH)
+    if not (resource is PackedScene):
+        push_warning("RTS_LYRA_RIG_NOT_SCENE")
+        return
+    var instance: Node = (resource as PackedScene).instantiate()
+    if not (instance is Node3D):
+        instance.queue_free()
+        return
+    var rig: Node3D = instance as Node3D
+    rig.name = "LyraRig"
+    unit.add_child(rig)
+    var player: AnimationPlayer = LYRA_MOTION.find_player(rig)
+    if player == null or LYRA_MOTION.loaded_count(player) != 20:
+        push_warning("RTS_LYRA_RIG_MISSING_CLIPS")
+        rig.queue_free()
+        return
+    var fitted: Dictionary = MODEL_FIT.fit_to_height(rig, 1.9)
+    if not bool(fitted.get("ok", false)):
+        push_warning("RTS_LYRA_RIG_INVALID_BOUNDS")
+        rig.queue_free()
+        return
+    placeholder.hide()
+    animation_players[unit] = player
+    LYRA_MOTION.hold_ready_pose(player)
+    if RTSDiagnostics.enabled:
+        RTSDiagnostics.event("visual", "lyra_rig_ready", {
+            "officer": GameState.officer_index, "clips": LYRA_MOTION.loaded_count(player),
+            "scale": fitted["scale"]
+        })
 
 func _attach_optional_static_amina(unit: Node3D, placeholder: MeshInstance3D) -> void:
     # Experimental visual-only landing test. Combat, AI, HP, navigation and
@@ -545,6 +585,10 @@ func _set_unit_animation(unit: Node3D, moving: bool) -> void:
         return
     var player: AnimationPlayer = animation_players[unit]
     if not is_instance_valid(player):
+        return
+    if unit == hero and GameState.faction_index == 0 and GameState.officer_index == 3:
+        animation_state[unit] = LYRA_MOTION.play_movement(player, moving,
+            float(unit_move_speeds.get(unit, OFFICER_SPEED)))
         return
     var state := "walk" if moving else "idle"
     if animation_state.get(unit, "") == state:

@@ -2,13 +2,14 @@ extends SubViewportContainer
 ## Lightweight 3D commander menu preview; hidden until an original GLB is installed.
 ## Static GLB can be previewed without a rig. Animation is optional.
 const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
+const LYRA_MOTION := preload("res://scripts/lyra_voss_animations.gd")
 const MENU_PREVIEW_HEIGHT := 2.75
 const MENU_FRONT_YAW_DEGREES := 0.0
 const MODELS := [
     ["res://assets/characters/amina/preview.glb",
      "res://assets/characters/reina/preview.glb",
      "res://assets/characters/mira_kade/preview.glb",
-     "res://assets/characters/lyra_voss/preview.glb"],
+     "res://assets/characters/lyra_voss/rigged.glb"],
     ["", ""]
 ]
 var preview: SubViewport
@@ -91,6 +92,10 @@ func set_commander(faction: int, officer: int) -> bool:
             if clip.to_lower().contains("idle"):
                 animation_player.play(clip)
                 break
+    if faction == 0 and officer == 3:
+        var player: AnimationPlayer = LYRA_MOTION.find_player(active_model)
+        if player != null:
+            LYRA_MOTION.hold_ready_pose(player)
     visible = true
     if RTSDiagnostics.enabled:
         RTSDiagnostics.event("visual", "3d_preview_loaded", {"faction": faction, "officer": officer})

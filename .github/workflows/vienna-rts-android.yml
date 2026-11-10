@@ -7,6 +7,7 @@ on:
       - feat/orbital-command-ui
       - feat/pure-rts-commanders
       - main
+      - feature/female-base-v3-production
       - chore/neko-dead-signal-rebrand-v028
       - fix/manual-preview-smooth-paths-v007
       - feat/orders-and-recon-v008
@@ -105,6 +106,14 @@ jobs:
             echo "XDG_CACHE_HOME=$CACHE_DIR"
           } >> "$GITHUB_ENV"
           test -w "$DATA_DIR/godot"
+      - name: Install exact Lyra Voss 20-clip model
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m venv "$RUNNER_TEMP/lyra-venv"
+          "$RUNNER_TEMP/lyra-venv/bin/pip" -q install "gdown==5.2.0"
+          "$RUNNER_TEMP/lyra-venv/bin/python" scripts/install_lyra_voss.py
+          python3 tools/avatar/validate_game_glb.py client/assets/characters/lyra_voss/rigged.glb --min-clips 20
       - name: Import and validate RTS project
         shell: bash
         run: |
@@ -422,6 +431,15 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-large-map-test.log; then
             exit 1
           fi
+      - name: Test Lyra Voss rig, menu, lab and RTS motions
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          timeout 120s godot --headless --path client res://tests/test_lyra_voss_rig.tscn 2>&1 | tee build/lyra-rig-test.log
+          grep -q 'LYRA_RIG_TEST_PASS' build/lyra-rig-test.log
+          if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/lyra-rig-test.log; then
+            exit 1
+          fi
       - name: Smoke-test orbital screen and landing scene
         shell: bash
         run: |
@@ -480,5 +498,6 @@ jobs:
             build/godot-*.log
             build/*-smoke.log
             build/rts-*-test.log
+            build/lyra-rig-test.log
           retention-days: 14
           if-no-files-found: warn

@@ -103,6 +103,7 @@ var cta: Button
 var world_button: Button
 var pve_button: Button
 var surface_button: Button
+var lyra_lab_button: Button
 var close_button: Button
 var exit_dialog: ConfirmationDialog
 
@@ -343,6 +344,11 @@ func _build_content(parent: VBoxContainer) -> void:
     pve_button.pressed.connect(_enter_sector)
     pve_button.tooltip_text = "Ржавый тракт · боевой набор Амины · вход без поручения"
     travel.add_child(pve_button)
+    lyra_lab_button = _button("ЛИРА\nАНИМАЦИИ", true, 52)
+    lyra_lab_button.add_theme_font_size_override("font_size", 13)
+    lyra_lab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    lyra_lab_button.pressed.connect(_open_lyra_lab)
+    travel.add_child(lyra_lab_button)
     cta = _button("RTS · ВЫСАДКА    ›", false, 48)
     cta.pressed.connect(_deploy)
     right.add_child(cta)
@@ -475,6 +481,7 @@ func _refresh_selection() -> void:
     var faction: Dictionary = FACTIONS[faction_index]
     var officer: Dictionary = OFFICERS[faction_index][officer_index]
     pve_button.disabled = faction_index != 0 or officer_index != 0
+    lyra_lab_button.visible = faction_index == 0 and officer_index == 3
     pve_button.text = "PvE\nМОБЫ · БОСС" if not pve_button.disabled else "PvE\nЗА АМИНУ"
     for i in range(faction_buttons.size()):
         var active: bool = i == faction_index
@@ -565,3 +572,8 @@ func _enter_sector() -> void:
         return
     _store_selected_commander()
     get_tree().change_scene_to_file("res://scenes/world_sector.tscn")
+
+func _open_lyra_lab() -> void:
+    if faction_index == 0 and officer_index == 3:
+        _store_selected_commander()
+        get_tree().change_scene_to_file("res://scenes/lyra_animation_lab.tscn")

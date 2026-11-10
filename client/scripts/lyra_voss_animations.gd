@@ -2,7 +2,7 @@ extends RefCounted
 ## Lyra Voss uses the 20 verified imported Meshy/Mixamo clips.
 ## Export contains no regular Idle: sample Walking at a stationary frame.
 const MODEL_PATH := "res://assets/characters/lyra_voss/rigged.glb"
-const CLIP_NAMES := PackedStringArray([
+const CLIP_NAMES = [
     "Running", "Walking", "Archery_Aim_with_Lateral_Scan",
     "Archery_Shot_2", "Bar_Hang_Idle", "Charged_Spell_Cast_1",
     "Dead", "Fall_Dead_from_Abdominal_Injury",
@@ -11,7 +11,7 @@ const CLIP_NAMES := PackedStringArray([
     "Shot_and_Fall_Forward", "Slow_Walk_Reload",
     "Standing_Reload", "Sword_Parry_Backward_3",
     "air_squat", "falling_down", "walking_2"
-])
+]
 
 static func find_player(root: Node) -> AnimationPlayer:
     if root is AnimationPlayer:
