@@ -148,3 +148,33 @@
 **Separate long-term project milestone, not a regression of Lyra rig:** the client still reports a *local session* and Android manifest export disables Internet; actual MMO match server and online authoritative gameplay remain unimplemented. This does not block present local visual QA but must not be misrepresented as a functioning MMO.
 
 **Next practical implementation order:** (a) true neutral/sniper Idle + stable lab preview, (b) weapon fit/hand grip and synchronized rifle actions, (c) Lyra sniper RTS class profile and rules (no shooting on move), (d) multi-scene screenshots + device FPS/perf, (e) PvE class entry, build version and merge-conflict reconciliation. Do not regenerate the avatar or spend Meshy credits without a demonstrated asset defect.
+
+
+## 2026-11-10 — Lyra sniper correction pass 0.0.30
+
+**Functional head:** `dcd4564cd182550e39185342401461b4359d1abf` after a real merge with current `main` (`f08dd0f8`). Branch comparison is now **ahead, behind=0**. GitHub PR #39 raw status after the reconciliation: **mergeable=true, mergeable_state=clean**, still intentionally **draft** and not merged.
+
+**Implemented corrections**
+- Animation Lab now cancels horizontal Mixamo hips/root travel while previewing translated clips and recenters the model when returning to neutral. Imported source animation data is not rewritten.
+- Orbital commander preview recomputes bounds after attaching Lyra's rifle so the camera accounts for the equipment.
+- Lyra RTS base sniper range is now **16.0**. Approved Prepared Position extension to **18** remains a future active skill; it is not granted for free.
+- Lyra contributes a **16.0** long-range scout sight source while ordinary escort/unit sight behavior remains unchanged.
+- Lyra automatic fire is suppressed while a movement route is active; ordinary units retain their existing fire-on-the-move behavior. Once stationary, Lyra auto-fire works normally.
+- Repository test contract no longer hard-codes patch 0.0.29; it verifies consistent `0.0.N` project/export/workflow metadata and build code.
+- Android workflow now watches `scripts/**`, because those tests are executed by that workflow.
+- Synced the feature branch with current 0.0.29 `main` and bumped this tester build to **0.0.30 / code 30** to make it distinguishable from earlier 0.0.28/0.0.29 APKs.
+
+**Verification**
+- First enhanced run exposed and rejected a real Godot parser bug in `lyra_voss_animation_lab.gd`; fixed at `a89d487a` rather than weakening the regression.
+- Pre-merge full run [42803599548](https://github.com/Ncorror/neko-dead-signal/actions/runs/42803599548): **PASS 52/52**.
+- Final post-merge/version full run [42804486477](https://github.com/Ncorror/neko-dead-signal/actions/runs/42804486477) at `dcd4564cd`: **PASS 52/52**, including the strengthened Lyra rig/lab/multi-scene test and the sniper-specific auto-fire test.
+- Repository structure CI for the same head: **PASS**.
+- Tester APK extracted from artifact `neko-dead-signal-debug-133`: `NEKO_DEAD_SIGNAL-0.0.30-Lyra-Sniper-Fix.apk`, **74,776,271 bytes**, SHA-256 `5dac4bf1e466d9fe8d679c0cd8b03e16f2772a638f8b9bdbe075b0ca88f6fdbe`; APK ZIP integrity **PASS**. Package contents include imported `rigged.glb`, `sniper_rifle.glb`, their textures, Lyra scripts and Animation Lab scene.
+- Drive delivery verified: [NEKO_DEAD_SIGNAL-0.0.30-Lyra-Sniper-Fix.apk](https://drive.google.com/file/d/1bguNOmr1d2_Jfo-GELSLV5mA-W8XwvND/view), Google file ID `1bguNOmr1d2_Jfo-GELSLV5mA-W8XwvND`, expected size **74,776,271 bytes**.
+
+**Still intentionally open — requires visual/gameplay work, not a green-check claim**
+- Current neutral state is a symmetric skeleton **rest pose**, not an authored breathing/combat Idle. It fixes the previous mid-stride freeze but still needs user visual acceptance before we author further bone posture.
+- Rifle is stowed on the back only. No approved two-hand rifle grip, sniper aim, recoil, muzzle anchor or rifle-specific reload/fire animation exists yet. Do not substitute bow clips.
+- Prepared Position (16→18), aimed shot and the rest of Lyra's approved 5+1 class skills are not implemented in this correction pass.
+- Existing mob/boss PvE slice remains Amina-specific; Lyra-specific PvE requires her own skill profile rather than simply unlocking Amina's UI.
+- Real Android screenshots/FPS remain required for hips/shorts skinning, rifle clipping/orientation, animation appearance and mobile texture budget. Do not merge PR #39 until this device acceptance.
