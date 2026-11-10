@@ -287,7 +287,7 @@ func _create_ui() -> void:
     logs_button = diagnostics_panel.open_button
     bar.add_child(return_button)
     sector_button = _button("МОБЫ И БОСС ›", _travel_sector)
-    sector_button.visible = progress.character_id == "amina"
+    sector_button.visible = progress.character_id in ["amina", "lyra_voss"]
     bar.add_child(sector_button)
     bottom_panel = PanelContainer.new()
     bottom_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -338,7 +338,7 @@ func _refresh() -> void:
     var saved: Dictionary = progress.state()
     status.text = "%s · Опыт %d · Кредиты %d · Локальная зона" % [GameState.officer_name.split(" — ")[0], progress.experience(), progress.credits()]
     if saved["claimed"]:
-        quest_label.text = "СИГНАЛ ВОССТАНОВЛЕН · Награда получена." + (" «МОБЫ И БОСС» — боевой сектор." if progress.character_id == "amina" else " Можно исследовать сектор.")
+        quest_label.text = "СИГНАЛ ВОССТАНОВЛЕН · Награда получена." + (" «МОБЫ И БОСС» — боевой сектор." if progress.character_id in ["amina", "lyra_voss"] else " Можно исследовать сектор.")
     elif not saved["accepted"]:
         quest_label.text = "Поговори со связистом Вегой возле посадочной площадки."
     elif saved["relays"].size() == 3:
@@ -728,7 +728,7 @@ func _return_to_ship() -> void:
     get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _travel_sector() -> void:
-    if progress.character_id != "amina":
+    if progress.character_id not in ["amina", "lyra_voss"]:
         return
     if not _checkpoint():
         _show_notice(progress.error_text)
