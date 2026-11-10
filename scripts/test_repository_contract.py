@@ -34,15 +34,20 @@ class RepositoryContract(unittest.TestCase):
         diagnostics = (ROOT / 'client/scripts/rts_diagnostics.gd').read_text()
         workflow = (ROOT / '.github/workflows/vienna-rts-android.yml').read_text()
         self.assertIn('config/name="NEKO: DEAD SIGNAL"', project)
-        self.assertIn('config/version="0.0.29"', project)
+        version = re.search(r'config/version="([^"]+)"', project)[1]
+        match = re.fullmatch(r'0\.0\.(\d+)', version)
+        self.assertIsNotNone(match, version)
+        build_code = int(match[1])
+        self.assertGreaterEqual(build_code, 29)
         self.assertIn('package/unique_name="com.ncorror.neko.deadsignal"', export)
         self.assertIn('package/name="NEKO DEAD SIGNAL"', export)
-        self.assertIn('version/code=29', export)
+        self.assertIn('version/code=' + str(build_code), export)
+        self.assertIn('version/name="' + version + '"', export)
         self.assertIn('export_path="build/NEKO_DEAD_SIGNAL-debug.apk"', export)
         self.assertIn('_label("NEKO: DEAD SIGNAL",', menu)
         self.assertIn('"project": "NEKO: DEAD SIGNAL"', diagnostics)
         self.assertIn('NEKO DEAD SIGNAL DEBUG', diagnostics)
-        self.assertIn('NEKO_DEAD_SIGNAL-0.0.29-debug.apk', workflow)
+        self.assertIn('NEKO_DEAD_SIGNAL-' + version + '-debug.apk', workflow)
         self.assertIn('neko-dead-signal-debug-', workflow)
 
     def test_runtime_brand_and_deployment_repo(self):
