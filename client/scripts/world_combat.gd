@@ -15,6 +15,8 @@ const HOMES := [Vector3(5, 0, -14), Vector3(9, 0, -15), Vector3(7, 0, -18)]
 const ENEMY_NAMES := ["МАРОДЁР 1", "МАРОДЁР 2", "БОЕВОЙ АВТОМАТ"]
 
 var navigation
+var profile_id := "amina"
+var weapon_range := RANGE
 var enabled := false
 var hp := MAX_HP
 var cooldowns: Array = [0.0, 0.0, 0.0, 0.0, 0.0]
@@ -30,6 +32,11 @@ var events: Array[Dictionary] = []
 static func fresh_profile() -> Dictionary:
     return {"accepted": false, "claimed": false, "defeated": [], "hp": MAX_HP,
         "cooldowns": [0.0, 0.0, 0.0, 0.0, 0.0], "launcher": 0.0, "protocol": 0.0, "weapon": 0.0}
+
+func set_profile(character_id: String) -> void:
+    profile_id = character_id
+    weapon_range = 16.0 if profile_id == "lyra_voss" else RANGE
+
 
 static func valid_profile(value: Variant) -> bool:
     if not value is Dictionary or not value.get("accepted") is bool or not value.get("claimed") is bool:
@@ -196,7 +203,7 @@ func tick(seconds: float, hero_at: Vector3) -> void:
     var target := attack_target if alive(attack_target) else last_attacker
     if alive(target) and not in_safe(hero_at) and not enemies[target]["returning"] and weapon <= 0:
         var enemy: Dictionary = enemies[target]
-        if _can_shoot(hero_at, enemy["at"], RANGE):
+        if _can_shoot(hero_at, enemy["at"], weapon_range):
             _hit(enemy, DAMAGE * (1.12 if protocol > 0 else 1.0), "weapon")
             weapon = SHOT_INTERVAL
             quiet = 0
