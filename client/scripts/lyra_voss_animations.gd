@@ -58,10 +58,63 @@ static func has_weapon(rig: Node3D) -> bool:
     return false
 
 
+static func _rifle_mount(source: Node) -> BoneAttachment3D:
+    if source == null:
+        return null
+    var root: Node = source
+    for attempt in range(5):
+        if root == null:
+            break
+        var direct := root.get_node_or_null("LyraRifleBackMount")
+        if direct is BoneAttachment3D:
+            return direct as BoneAttachment3D
+        for candidate in root.find_children("LyraRifleBackMount", "BoneAttachment3D", true, false):
+            if candidate is BoneAttachment3D:
+                return candidate as BoneAttachment3D
+        root = root.get_parent()
+    return null
+
+
+static func _rifle_carrier(source: Node) -> Node3D:
+    var mount := _rifle_mount(source)
+    if mount == null:
+        return null
+    return mount.get_node_or_null("LyraSniperRifle") as Node3D
+
+
+static func stow_weapon(source: Node) -> bool:
+    var skeleton := find_skeleton(source)
+    var mount := _rifle_mount(source)
+    var carrier := _rifle_carrier(source)
+    if skeleton == null or mount == null or carrier == null:
+        return false
+    var spine_index := bone_index(skeleton, "Spine2")
+    if spine_index < 0:
+        return false
+    mount.bone_name = skeleton.get_bone_name(spine_index)
+    var desired_basis := Basis.from_euler(Vector3(0.0, 0.0, deg_to_rad(62.0)))
+    var desired := Transform3D(desired_basis, Vector3(0.04, 1.00, -0.11))
+    carrier.transform = skeleton.get_bone_global_rest(spine_index).affine_inverse() * desired
+    carrier.scale = Vector3.ONE * 0.50
+    return true
+
+
+static func ready_weapon(source: Node) -> bool:
+    var skeleton := find_skeleton(source)
+    var mount := _rifle_mount(source)
+    var carrier := _rifle_carrier(source)
+    if skeleton == null or mount == null or carrier == null:
+        return false
+    var hand_index := bone_index(skeleton, "RightHand")
+    if hand_index < 0:
+        return false
+    mount.bone_name = skeleton.get_bone_name(hand_index)
+    carrier.transform = Transform3D(Basis.IDENTITY, Vector3(0.34, -0.015, 0.015))
+    carrier.scale = Vector3.ONE * 0.50
+    return true
+
+
 static func attach_weapon(rig: Node3D) -> bool:
-    # Stowed weapon follows Spine2, but its desired transform is authored in
-    # skeleton/model coordinates. Converting through the bone rest transform
-    # prevents the rifle from floating because of Mixamo's rotated local axes.
     if rig == null or not ResourceLoader.exists(WEAPON_PATH):
         return false
     var skeleton: Skeleton3D = find_skeleton(rig)
@@ -71,7 +124,7 @@ static func attach_weapon(rig: Node3D) -> bool:
     if spine_index < 0:
         return false
     if skeleton.get_node_or_null("LyraRifleBackMount") != null:
-        return true
+        return stow_weapon(rig)
     var source: Resource = load(WEAPON_PATH)
     if not (source is PackedScene):
         return false
@@ -83,27 +136,21 @@ static func attach_weapon(rig: Node3D) -> bool:
     mount_node.name = "LyraRifleBackMount"
     skeleton.add_child(mount_node)
     mount_node.bone_name = skeleton.get_bone_name(spine_index)
-    # Use a carrier whose origin is the actual geometric centre. This keeps
-    # Meshy's arbitrary source pivot from shifting the visible rifle.
+
     var carrier := Node3D.new()
     carrier.name = "LyraSniperRifle"
     mount_node.add_child(carrier)
     var visual: Node3D = weapon as Node3D
     visual.name = "RifleGeometry"
     carrier.add_child(visual)
+
     var measured: Dictionary = FIT.measure_bounds(visual)
     if not bool(measured.get("ok", false)):
         carrier.queue_free()
         return false
     var source_bounds: AABB = measured["bounds"]
     visual.position -= source_bounds.get_center()
-    # Author the carrier in skeleton/model coordinates, then convert into the
-    # rotated Spine2 attachment space. Visible rifle length is ~0.95 m.
-    var desired_basis := Basis.from_euler(Vector3(0.0, 0.0, deg_to_rad(62.0)))
-    var desired := Transform3D(desired_basis, Vector3(0.06, 0.96, -0.22))
-    carrier.transform = skeleton.get_bone_global_rest(spine_index).affine_inverse() * desired
-    carrier.scale *= 0.50
-    return true
+    return stow_weapon(rig)
 
 
 static func mount(parent: Node3D, height: float) -> Dictionary:
@@ -197,25 +244,71 @@ static func hold_ready_pose(player: AnimationPlayer) -> bool:
     return true
 
 
+static func restore_ready(player: AnimationPlayer) -> bool:
+    if player == null:
+        return false
+    if not hold_ready_pose(player):
+        return false
+    return stow_weapon(player)
+
+
+static func play_attack(player: AnimationPlayer) -> float:
+    if player == null or not ready_weapon(player):
+        return 0.0
+    var name := resolve_clip(player, "Archery_Shot_2")
+    if name.is_empty():
+        return 0.0
+    var animation: Animation = player.get_animation(name)
+    if animation == null:
+        return 0.0
+    animation.loop_mode = Animation.LOOP_NONE
+    player.set_meta("neko_lyra_motion", "attack")
+    player.play(name, 0.06, 1.35)
+    return clampf(animation.length / 1.35, 0.35, 0.82)
+
+
+static func play_death(player: AnimationPlayer) -> float:
+    if player == null:
+        return 0.0
+    stow_weapon(player)
+    var name := resolve_clip(player, "Dead")
+    if name.is_empty():
+        name = resolve_clip(player, "Fall_Dead_from_Abdominal_Injury")
+    if name.is_empty():
+        return 0.0
+    var animation: Animation = player.get_animation(name)
+    if animation == null:
+        return 0.0
+    animation.loop_mode = Animation.LOOP_NONE
+    player.set_meta("neko_lyra_motion", "death")
+    player.play(name, 0.08)
+    return clampf(animation.length, 0.8, 1.6)
+
+
 static func play_movement(player: AnimationPlayer, moving: bool, speed: float) -> String:
     if player == null:
         return "missing"
+    var current := str(player.get_meta("neko_lyra_motion", ""))
+    if current in ["attack", "death"]:
+        return current
     var state := "idle"
     if moving:
         state = "run" if speed > 5.2 else "walk"
-    if str(player.get_meta("neko_lyra_motion", "")) == state:
+    if current == state:
         return state
     if state == "idle":
-        return "idle" if hold_ready_pose(player) else "missing"
+        return "idle" if restore_ready(player) else "missing"
     var name := resolve_clip(player, "Running" if state == "run" else "Walking")
     if name.is_empty():
         return "missing"
     var animation: Animation = player.get_animation(name)
     if animation != null:
         animation.loop_mode = Animation.LOOP_LINEAR
+    stow_weapon(player)
     player.play(name, 0.15)
     player.set_meta("neko_lyra_motion", state)
     return state
+
 
 static func play_preview(player: AnimationPlayer, clip: String) -> bool:
     var name := resolve_clip(player, clip)
