@@ -83,6 +83,33 @@ class RepositoryContract(unittest.TestCase):
                               and str(resolved.relative_to(ROOT)) in remote)
                 self.assertTrue(resolved.exists() or remote_art, str(source.relative_to(ROOT)) + ': ' + target)
 
+    def test_earth_story_replaces_legacy_cosmic_design(self):
+        menu = (ROOT / 'client/scripts/main.gd').read_text()
+        visuals = (ROOT / 'client/scripts/command_visuals.gd').read_text()
+        gdd = ROOT / 'docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md'
+        self.assertTrue(gdd.is_file())
+        self.assertIn('Ночь Тишины', gdd.read_text())
+        self.assertIn('"name": "NEKO"', menu)
+        self.assertIn('"name": "КОНТУР"', menu)
+        self.assertIn('«НОЧНАЯ ЛИНИЯ»', menu)
+        self.assertIn('ЗЕМЛЯ · СЕВЕРНЫЙ ПОЯС', menu)
+        self.assertIn('func _draw_earth()', visuals)
+        for obsolete in ('НЕИЗВЕСТНАЯ ПЛАНЕТА', 'НЕИЗВЕДАННАЯ ПЛАНЕТА',
+                         'ЭКСПЕДИЦИОННЫЙ ФЛОТ', 'ЗВЁЗДНЫЙ КОНКЛАВ',
+                         '"name": "СААРИ"'):
+            self.assertNotIn(obsolete, menu)
+        for path in (
+            'docs/ONLINE_WORLD_GDD_v0.1.md',
+            'docs/ONLINE_WORLD_GDD_v0.2.md',
+            'docs/DEAD_SIGNAL_MMORTS_GDD_v0.3.md',
+            'docs/FIFTH_CHARACTER_EX_PIRATE_TANK_CONCEPT_2026-11-06.md',
+        ):
+            self.assertFalse((ROOT / path).exists(), path)
+        game_state = (ROOT / 'client/scripts/game_state.gd').read_text()
+        self.assertIn('faction_index: int = 0', game_state)
+        self.assertIn('world/progress-v1.json', game_state)
+        self.assertIn('surface/sector01-v1.json', game_state)
+
     def test_all_bash_scripts_parse_without_execution(self):
         for script in sorted(ROOT.glob('ops/**/*.sh')) + sorted(ROOT.glob('scripts/*.sh')):
             result = subprocess.run(['bash', '-n', str(script)], capture_output=True, text=True)
