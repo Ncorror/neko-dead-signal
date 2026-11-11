@@ -14,7 +14,7 @@ class PureRTSContract(unittest.TestCase):
         cls.menu = (CLIENT / "scripts/main.gd").read_text()
         cls.project = (CLIENT / "project.godot").read_text()
         cls.decisions = (ROOT / "docs/DECISIONS.md").read_text()
-        cls.gdd = (ROOT / "docs/ONLINE_WORLD_GDD_v0.2.md").read_text()
+        cls.gdd = (ROOT / "docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md").read_text()
 
     def test_only_rts_commands(self):
         self.assertIn("func _select_unit(", self.operation)
@@ -55,11 +55,18 @@ class PureRTSContract(unittest.TestCase):
         self.assertIn("InputEventScreenDrag", self.operation)
         self.assertIn("InputEventMouseButton", self.operation)
 
-    def test_design_docs_match_game(self):
-        self.assertIn("Только RTS", self.decisions)
-        self.assertIn("ЧИСТАЯ RTS", self.gdd)
-        self.assertNotIn("переключается на прямое управление", self.gdd)
-        self.assertNotIn("Управление героем и камерой RTS", self.menu)
+    def test_earth_design_docs_match_game(self):
+        self.assertIn("Земля", self.decisions)
+        self.assertIn("Ночи Тишины", self.gdd)
+        self.assertIn("«Ночная линия»", self.gdd)
+        self.assertNotIn("НЕИЗВЕДАННАЯ ПЛАНЕТА", self.menu)
+        self.assertIn('"name": "NEKO"', self.menu)
+        self.assertIn('"name": "КОНТУР"', self.menu)
+        self.assertNotIn('"name": "СААРИ"', self.menu)
+        game_state = (CLIENT / "scripts/game_state.gd").read_text()
+        self.assertIn('faction_index: int = 0', game_state)
+        self.assertIn('world/progress-v1.json', game_state)
+        self.assertIn('surface/sector01-v1.json', game_state)
 
 
 if __name__ == "__main__":

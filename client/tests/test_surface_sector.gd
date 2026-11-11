@@ -100,7 +100,7 @@ func _run() -> void:
         var menu = get_tree().current_scene
         _press(menu.surface_button)
         await _adopt()
-        _check(zone.world.terrain.mesh.get_aabb().size.x == 128 and zone.visited.has(0), "ship did not enter the 128x128 first sector")
+        _check(zone.world.terrain.mesh.get_aabb().size.x == 128 and zone.visited.has(0), "base did not enter the 128x128 first sector")
         var viewport := get_viewport().get_visible_rect()
         var clear_height: float = zone.bottom_panel.get_global_rect().position.y - zone.top_panel.get_global_rect().end.y
         _check(clear_height >= viewport.size.y * 0.73,
@@ -179,8 +179,8 @@ func _run() -> void:
     await get_tree().scene_changed
     zone = null
     await _settle()
-    var ship = get_tree().current_scene
-    _press(ship.surface_button)
+    var base = get_tree().current_scene
+    _press(base.surface_button)
     await _adopt()
     _check(zone.hero.position.distance_to(at) < 0.001 and zone.visited.size() == 5 and zone.zoom == scale,
         "surface reentry lost position, exploration or zoom")

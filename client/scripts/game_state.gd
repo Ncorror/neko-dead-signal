@@ -1,10 +1,10 @@
 extends Node
-## Selected commander is live state across scene changes and persisted across app restarts.
+## Ground-faction selection remains stable across scene changes and app restarts. Do not renumber persisted faction IDs.
 const SELECTION_FILE := "user://commander_selection.cfg"
 
 var faction_index: int = 0
 var officer_index: int = 0
-var faction_name: String = "Люди — флот «Рэйна»"
+var faction_name: String = "NEKO — свободные бригады"
 var officer_name: String = "Амина — штурмовой ДД"
 var last_report := ""
 var officers_by_faction: Array[int] = [0, 0]

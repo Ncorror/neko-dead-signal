@@ -3,46 +3,30 @@ name: Neko Dead Signal Android Debug
 on:
   push:
     branches:
-      - infra/vienna-runner-server
-      - feat/orbital-command-ui
-      - feat/pure-rts-commanders
       - main
-      - feature/female-base-v3-production
-      - chore/neko-paths-and-branding-audit-029
-      - chore/neko-dead-signal-rebrand-v028
-      - fix/manual-preview-smooth-paths-v007
-      - feat/orders-and-recon-v008
-      - fix/defeat-sight-report-v009
-      - fix/embedded-result-layout-v009
-      - fix/headquarters-sight-v019
-      - fix/victory-building-labels-v020
-      - feat/world-zone-v021
-      - fix/world-camera-logs-v022
-      - feat/world-assault-combat-v023
-      - feat/world-pve-sector-v024
-      - feat/surface-128-v025
-      - feat/surface-art-v026
-      - fix/surface-presentation-v027
-      - fix/base-sight-radius-v018
-      - fix/building-sight-touch-v017
-      - feat/economy-power-objectives-v016
-      - fix/project-audit-v015
-      - feat/base-construction-v014
-      - fix/return-fire-v013
-      - feat/mobile-guardian-v012
-      - fix/smooth-minimap-v011
-      - feat/production-large-map-v010
-      - feat/rts-formation-clearance-v006
-      - feat/amina-static-landing-preview-v006
-      - feat/tester-diagnostics-3d-roster
-      - feat/rts-squads-grid-pathfinding
-      - feat/rts-landing-skirmish
-      - fix/orbital-menu-touch-exit
-      - fix/selection-camera-and-portraits-v004
+      - agent/neko32-gpt
     paths:
       - 'client/**'
       - 'scripts/**'
       - 'tools/build_environment_kit.py'
+      - 'docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md'
+      - 'docs/DECISIONS.md'
+      - 'docs/ROADMAP.md'
+      - 'docs/README.md'
+      - 'AGENTS.md'
+      - '.github/workflows/vienna-rts-android.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'client/**'
+      - 'scripts/**'
+      - 'tools/build_environment_kit.py'
+      - 'docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md'
+      - 'docs/DECISIONS.md'
+      - 'docs/ROADMAP.md'
+      - 'docs/README.md'
+      - 'AGENTS.md'
       - '.github/workflows/vienna-rts-android.yml'
   workflow_dispatch:
 
@@ -407,7 +391,7 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-extended-play-test.log; then
             exit 1
           fi
-      - name: Test Android Back layers, cancellation and ship confirmation
+      - name: Test Android Back layers, cancellation and base return confirmation
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -452,7 +436,7 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/lyra-rig-test.log; then
             exit 1
           fi
-      - name: Smoke-test orbital screen and landing scene
+      - name: Smoke-test NEKO ground base and operation
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -492,8 +476,10 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/NEKO_DEAD_SIGNAL-debug.apk build/tester-bundle/NEKO_DEAD_SIGNAL-0.0.32-debug.apk
+          cp client/build/NEKO_DEAD_SIGNAL-debug.apk build/tester-bundle/NEKO_DEAD_SIGNAL-0.0.33-debug.apk
       - name: Publish tester APK
+        # Artifact storage is delivery-only; an exhausted quota must not turn a verified build red.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: neko-dead-signal-debug-${{ github.run_number }}
@@ -502,6 +488,8 @@ jobs:
           if-no-files-found: error
       - name: Preserve CI diagnostics
         if: always()
+        # Keep diagnostics when storage is available, but do not mask the real test/export result on quota exhaustion.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: neko-dead-signal-ci-logs-${{ github.run_number }}

@@ -1,5 +1,5 @@
 extends Control
-## Mobile-first orbital command deck. Functional selection and local 3D deployment.
+## Ground command aboard the NEKO mobile base. Functional selection and local 3D deployment.
 ## Textures/models are deliberately placeholders pending our original Meshy assets.
 
 const HOLOGRAM := preload("res://scripts/command_visuals.gd")
@@ -14,17 +14,17 @@ const WHITE := Color("#eaf7fc")
 
 const FACTIONS := [
     {
-        "name": "ЛЮДИ",
-        "full": "Люди — флот «Рэйна»",
-        "fleet": "ЭКСПЕДИЦИОННЫЙ ФЛОТ",
-        "hint": "Технологии, экспедиция и штурмовые платформы.",
+        "name": "NEKO",
+        "full": "NEKO — свободные бригады",
+        "fleet": "МОБИЛЬНАЯ БАЗА «НОЧНАЯ ЛИНИЯ»",
+        "hint": "Поиск пропавших, спасение, техника и восстановление связи.",
         "color": Color("#5cdee8")
     },
     {
-        "name": "СААРИ",
-        "full": "Саари — Звёздный Конклав",
-        "fleet": "ЗВЁЗДНЫЙ КОНКЛАВ",
-        "hint": "Разведка, энергетические системы и манёвренность.",
+        "name": "КОНТУР",
+        "full": "КОНТУР — Дирекция карантина",
+        "fleet": "СЕВЕРНЫЙ КАРАНТИННЫЙ КОРПУС",
+        "hint": "Укреплённые города, тяжёлая техника и закрытые архивы.",
         "color": Color("#c4a1ff")
     }
 ]
@@ -34,33 +34,33 @@ const OFFICERS := [
             "name": "АМИНА",
             "full": "Амина — штурмовой ДД",
             "role": "ДД / ГРАНАТОМЁТ",
-            "bio": "Лёгкая экспедиционная экипировка, автомат с подствольным гранатомётом. Взрывные навыки и разведка — в разработке.",
+            "bio": "Штурмовик NEKO из ремонтных бригад Южной магистрали. Автомат и подствольный гранатомёт; спасение людей важнее приказов.",
             "perk": "ВЗРЫВНОЙ СПЕЦИАЛИСТ",
-            "call": "E-03"
+            "call": "N-03"
         },
         {
             "name": "РЭЙНА",
-            "full": "Рэйна — командование",
-            "role": "КОМАНДОВАНИЕ / КООРДИНАЦИЯ",
-            "bio": "Командир десантной группы. Координирует строй, тактическую связь и поддержку отрядов.",
-            "perk": "ТАКТИЧЕСКИЙ ПРИКАЗ",
-            "call": "E-04"
+            "full": "Рэйна — саппорт",
+            "role": "ПОДДЕРЖКА / ЩИТЫ",
+            "bio": "Координатор NEKO. Ищет источник Ночи Тишины, восстанавливает связь и держит защиту команды.",
+            "perk": "КОМАНДНАЯ ВЫДЕРЖКА",
+            "call": "N-04"
         },
         {
             "name": "МИРА КЕЙД",
             "full": "Мира Кейд — техномедик",
             "role": "МЕДИК / ЛЕЧЕНИЕ",
-            "bio": "Медик экспедиции с импульсным пистолетом. Лечение, воскрешение и личный дрон — в разработке.",
-            "perk": "НАНОПОЛЕ",
-            "call": "E-01"
+            "bio": "Техномедик NEKO, бывшая сотрудница закрытой клиники Контура. Лечение, реанимация и уникальный боевой дрон.",
+            "perk": "ЗАЩИТНЫЙ КОНТУР",
+            "call": "N-01"
         },
         {
             "name": "ЛИРА ВОСС",
             "full": "Лира Восс — снайпер-разведчик",
             "role": "СНАЙПЕР / РАЗВЕДКА",
-            "bio": "Снайпер-разведчик экспедиции. Дальняя поддержка из подготовленной позиции — её будущая специализация.",
-            "perk": "ПОДГОТОВЛЕННАЯ ПОЗИЦИЯ",
-            "call": "E-02"
+            "bio": "Снайпер NEKO. Ищет сестру, чей голос слышен в Мёртвом сигнале. Разведка и дальняя огневая поддержка.",
+            "perk": "ХЛАДНОКРОВИЕ",
+            "call": "N-02"
         }
     ],
     [
@@ -68,17 +68,17 @@ const OFFICERS := [
             "name": "СЭЙРА НЭЛ",
             "full": "Сэйра Нэл — следопыт",
             "role": "РАЗВЕДКА / МОБИЛЬНОСТЬ",
-            "bio": "Командир передовых групп Саари. Проводит отряды через опасные участки.",
+            "bio": "Следопыт земных карантинных рубежей. Проводит патрули Контура по забытым наземным маршрутам.",
             "perk": "СКРЫТЫЙ МАРШРУТ",
-            "call": "S-01"
+            "call": "K-01"
         },
         {
             "name": "ОРАЛИН",
             "full": "Оралин — тактик",
             "role": "ТАКТИКА / КООРДИНАЦИЯ",
-            "bio": "Офицер Конклава. Управляет разведывательными звеньями и распределяет силы.",
+            "bio": "Тактик Дирекции карантина. Управляет звеньями разведки и защищает закрытые архивы.",
             "perk": "ТАКТИЧЕСКАЯ СВЯЗЬ",
-            "call": "S-02"
+            "call": "K-02"
         }
     ]
 ]
@@ -113,7 +113,7 @@ func _ready() -> void:
     _build_screen()
     _refresh_selection()
     if RTSDiagnostics.enabled:
-        RTSDiagnostics.event("ui", "orbital_open", {"faction": faction_index, "officer": officer_index})
+        RTSDiagnostics.event("ui", "base_open", {"faction": faction_index, "officer": officer_index})
     call_deferred("_reveal_selected_officer")
 
 func _build_screen() -> void:
@@ -187,7 +187,7 @@ func _build_header(parent: VBoxContainer) -> void:
     brand.add_theme_constant_override("separation", 0)
     header.add_child(brand)
     brand.add_child(_label("NEKO: DEAD SIGNAL", 29, WHITE, true))
-    brand.add_child(_label("ORBITAL COMMAND  /  ПРЕДВАРИТЕЛЬНЫЙ ПРОТОТИП", 12, CYAN))
+    brand.add_child(_label("GROUND CONTROL  /  ЗЕМЛЯ ПОСЛЕ НОЧИ ТИШИНЫ", 12, CYAN))
 
     var status := VBoxContainer.new()
     status.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -213,7 +213,7 @@ func _build_content(parent: VBoxContainer) -> void:
 
     var left := _panel(row, 304)
     left.add_child(_label("01   /   СТОРОНА КОНФЛИКТА", 13, CYAN))
-    left.add_child(_label("ВЫБЕРИ РАСУ", 22, WHITE, true))
+    left.add_child(_label("ВЫБЕРИ СТОРОНУ", 22, WHITE, true))
     for i in range(FACTIONS.size()):
         var b := _button("", false, 72)
         b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -225,7 +225,7 @@ func _build_content(parent: VBoxContainer) -> void:
     faction_details.custom_minimum_size.y = 42
     left.add_child(faction_details)
     left.add_child(_rule())
-    left.add_child(_label("02   /   КОМАНДИР ДЕСАНТА", 13, CYAN))
+    left.add_child(_label("02   /   КОМАНДИР ГРУППЫ", 13, CYAN))
     var roster_controls := HBoxContainer.new()
     roster_controls.add_theme_constant_override("separation", 8)
     left.add_child(roster_controls)
@@ -257,7 +257,7 @@ func _build_content(parent: VBoxContainer) -> void:
         b.pressed.connect(_select_officer.bind(i))
         officer_buttons.append(b)
         officer_list.add_child(b)
-    left.add_child(_label("Командир высаживается вместе с первым десантом.", 12, MUTED, false, true))
+    left.add_child(_label("Выбранный командир ведёт наземную группу.", 12, MUTED, false, true))
 
     var center := VBoxContainer.new()
     center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -302,11 +302,11 @@ func _build_content(parent: VBoxContainer) -> void:
     center.add_child(hero_call)
 
     var right := _panel(row, 338)
-    right.add_child(_label("03   /   ПАРАМЕТРЫ ВЫСАДКИ", 13, CYAN))
-    right.add_child(_label("ОПЕРАЦИЯ 001", 24, WHITE, true))
-    right.add_child(_label("НЕИЗВЕДАННАЯ ПЛАНЕТА", 13, Color("#95c7d5")))
+    right.add_child(_label("03   /   НАЗЕМНАЯ ОПЕРАЦИЯ", 13, CYAN))
+    right.add_child(_label("ПОДСТАНЦИЯ 17", 24, WHITE, true))
+    right.add_child(_label("ЗЕМЛЯ · СЕВЕРНЫЙ ПОЯС", 13, Color("#95c7d5")))
     right.add_child(_rule())
-    right.add_child(_label("ФЛОТИЛИЯ", 12, MUTED))
+    right.add_child(_label("ПОДРАЗДЕЛЕНИЕ", 12, MUTED))
     selected_fleet = _label("", 16, WHITE)
     right.add_child(selected_fleet)
     right.add_child(_label("ПРОФИЛЬ КОМАНДИРА", 12, MUTED))
@@ -320,15 +320,15 @@ func _build_content(parent: VBoxContainer) -> void:
     right.add_child(_stretch())
     right.add_child(_rule())
     if GameState.last_report.is_empty():
-        right.add_child(_label("ЗАДАЧА ДЕСАНТА", 12, CYAN))
-        right.add_child(_label("Собери три припаса, захвати два узла и разверни добычу с энергетикой. Уничтожь охрану.", 13, WHITE, false, true))
+        right.add_child(_label("ЗАДАЧА ОТРЯДА", 12, CYAN))
+        right.add_child(_label("Подними питание Подстанции 17: три контейнера, два узла, генераторы и защита от машин Нулевых.", 13, WHITE, false, true))
     else:
-        right.add_child(_label("ИТОГ ПОСЛЕДНЕЙ ВЫСАДКИ", 12, CYAN))
+        right.add_child(_label("ИТОГ ПОСЛЕДНЕЙ ОПЕРАЦИИ", 12, CYAN))
         right.add_child(_label(GameState.last_report, 13, WHITE, false, true))
     var travel := HBoxContainer.new()
     travel.add_theme_constant_override("separation", 8)
     right.add_child(travel)
-    surface_button = _button("ПЛАНЕТА\n128 × 128", true, 52)
+    surface_button = _button("СЕКТОР 01\n128 × 128", true, 52)
     surface_button.add_theme_font_size_override("font_size", 13)
     surface_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     surface_button.pressed.connect(_enter_surface)
@@ -349,7 +349,7 @@ func _build_content(parent: VBoxContainer) -> void:
     lyra_lab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     lyra_lab_button.pressed.connect(_open_lyra_lab)
     travel.add_child(lyra_lab_button)
-    cta = _button("RTS · ВЫСАДКА    ›", false, 48)
+    cta = _button("RTS · ОПЕРАЦИЯ    ›", false, 48)
     cta.pressed.connect(_deploy)
     right.add_child(cta)
 
@@ -359,7 +359,7 @@ func _build_footer(parent: VBoxContainer) -> void:
     var footer := HBoxContainer.new()
     footer.add_theme_constant_override("separation", 12)
     parent.add_child(footer)
-    footer.add_child(_label("NEKO SYSTEMS  /  ОБЩИЙ ЭКСПЕДИЦИОННЫЙ ФЛОТ", 11, MUTED))
+    footer.add_child(_label("NEKO SYSTEMS  /  МОБИЛЬНЫЙ ШТАБ «НОЧНАЯ ЛИНИЯ»", 11, MUTED))
     footer.add_child(_stretch_horizontal())
     footer.add_child(_label("ANDROID  •  PRE-ALPHA %s  •  WORLD ASSAULT PVE" % ProjectSettings.get_setting("application/config/version", "dev"), 11, Color("#87b2bf")))
 
@@ -527,7 +527,7 @@ func _update_portrait() -> void:
     if faction_index == 0:
         var portraits := ["amina", "reina", "mira_kade", "lyra_voss"]
         portrait_id = portraits[officer_index]
-    # The Saari portraits have not been approved or generated yet.
+    # Kontur commander portraits remain provisional and not yet authored.
     if portrait_id.is_empty():
         hero_portrait.visible = false
         return

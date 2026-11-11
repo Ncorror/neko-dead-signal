@@ -1,5 +1,5 @@
 extends Node3D
-## First authored 128x128 environment. Independent entry and progress; original modes stay intact.
+## Earth North Belt 128x128 ground sector. Independent entry and progress; original modes stay intact.
 
 const ENVIRONMENT := preload("res://scripts/surface_environment.gd")
 const TERRAIN := preload("res://scripts/surface_terrain.gd")
@@ -13,7 +13,7 @@ const LYRA := preload("res://scripts/lyra_voss_animations.gd")
 const CHARACTER_IDS := [["amina", "reina", "mira_kade", "lyra_voss"], ["saira_nel", "oralin"]]
 const SPEED := 4.2
 const RUN_SPEED := 5.8
-const DESCRIPTIONS := ["Форпост экспедиции. Вега просит обследовать четыре ориентира за воротами.",
+const DESCRIPTIONS := ["Форпост NEKO на Северном поясе. Вега просит обследовать четыре ориентира за воротами.",
     "Разбитый транспорт. Сохранились фюзеляж, двигатель и обломки крыла.",
     "Площадка утилизации. Контейнеры и кран стоят у восточного маршрута.",
     "Древний радиоузел на возвышенности. Кольцо стел окружает терминал.",
@@ -191,7 +191,7 @@ func _create_ui() -> void:
     minus_button = _button("−", _change_zoom.bind(1.2))
     plus_button = _button("+", _change_zoom.bind(1 / 1.2))
     help_button = _button("?", _show_help)
-    return_button = _button("НА КОРАБЛЬ", _request_return)
+    return_button = _button("НА БАЗУ", _request_return)
     pve_button = _button("МОБЫ И БОСС", _enter_pve)
     pve_button.tooltip_text = "Ржавый тракт · отдельная PvE-зона"
     pve_button.visible = GameState.faction_index == 0 and GameState.officer_index in [0, 3]
@@ -246,9 +246,9 @@ func _create_ui() -> void:
     notice.title = "Первый сектор"
     add_child(notice)
     return_dialog = ConfirmationDialog.new()
-    return_dialog.title = "Вернуться на корабль?"
+    return_dialog.title = "Вернуться в командный центр?"
     return_dialog.dialog_text = "Положение, масштаб и обследованные места сохранятся."
-    return_dialog.ok_button_text = "НА КОРАБЛЬ"
+    return_dialog.ok_button_text = "НА БАЗУ"
     return_dialog.cancel_button_text = "ОСТАТЬСЯ"
     return_dialog.confirmed.connect(_return_to_ship)
     add_child(return_dialog)

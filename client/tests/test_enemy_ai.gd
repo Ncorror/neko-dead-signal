@@ -12,7 +12,7 @@ func _check(ok: bool, message: String) -> void:
         push_error("RTS_ENEMY_TEST_FAIL " + message)
 
 func _land(faction: int = 1):
-    GameState.set_selection(faction, 0, "Люди" if faction == 0 else "Саари", "Амина" if faction == 0 else "Сэйра Нэл")
+    GameState.set_selection(faction, 0, "NEKO" if faction == 0 else "КОНТУР", "Амина" if faction == 0 else "Сэйра Нэл")
     get_tree().change_scene_to_file("res://scenes/operation.tscn")
     await get_tree().scene_changed
     var op = get_tree().current_scene

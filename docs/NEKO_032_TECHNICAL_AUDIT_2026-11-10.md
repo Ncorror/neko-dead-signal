@@ -1,4 +1,6 @@
 # NEKO: DEAD SIGNAL — Полный технический аудит 0.0.32
+
+> **Исторический отчёт о проверенной сборке.** Упоминания старых рас/орбитальной географии относятся к состоянию 2026-11-10 и не определяют мир после земного GDD v0.4. Реальные тестовые результаты сохраняются.
 **Дата:** 2026-11-10  
 **Ветка:** `agent/neko32-claude`  
 **Коммит:** `3e9e3c5` docs(lyra): record 0.0.31 combat QA and verified 0.0.32 fixes  
@@ -337,7 +339,7 @@ be83efb test(lyra): verify hand-held attack, death clip and walk-run toggles
 - `README.md`: статус 0.0.29, текущее состояние, инструкции
 - `docs/ROADMAP.md`: MMO trajectory, история этапов
 - `docs/ARCHITECTURE.md`: client/server separation
-- `docs/DEAD_SIGNAL_MMORTS_GDD_v0.3.md`: актуальный дизайн
+- `docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md`: актуальный дизайн
 - `docs/LYRA_VOSS_SNIPER_COMBAT_DESIGN_v1.md`: снайперский профиль
 - `docs/FEMALE_BASE_V3_PRODUCTION_CHECKPOINT_2026-11-09.md`: Meshy checkpoint
 

@@ -37,23 +37,23 @@ func _run() -> void:
         await tree.process_frame
     var menu = tree.current_scene
     _touch(menu.faction_buttons[1].get_global_rect().get_center())
-    _check(menu.faction_index == 1, "touch must select the Saari fleet")
+    _check(menu.faction_index == 1, "touch must select the Kontur fleet")
     _touch(menu.officer_buttons[1].get_global_rect().get_center())
-    _check(menu.officer_index == 1, "touch must select the second Saari officer")
+    _check(menu.officer_index == 1, "touch must select the second Kontur officer")
     _touch(menu.cta.get_global_rect().get_center())
     await tree.process_frame
     await tree.process_frame
     var op = tree.current_scene
     if op == null or not op.has_method("_issue_attack"):
-        _check(false, "touch on deploy must enter the operation")
+        _check(false, "touch on ground dispatch must enter the operation")
         tree.quit(1)
         return
     op.set_physics_process(false)
     op.economy.income_enabled = false # Isolate the existing fixed-budget scenario.
-    op.objectives.expanded = false # Retain original landing goals in this regression.
+    op.objectives.expanded = false # Retain original ground-operation goals in this regression.
     op._set_auto_fire(false) # Keep this existing scenario in explicit-order mode.
     _check(GameState.officer_name.begins_with("Оралин"), "deploy must carry chosen officer")
-    _check(op.sentry.hull == 100 and op.unit_paths.is_empty(), "fresh landing")
+    _check(op.sentry.hull == 100 and op.unit_paths.is_empty(), "fresh ground operation")
     _touch(op.escort_button.get_global_rect().get_center())
     _check(op.selected_unit == op.escort and op.unit_paths.is_empty(), "HUD tap selected escort without moving")
     # Deliver viewport-local events through GUI hit testing and unhandled input.
@@ -126,7 +126,7 @@ func _run() -> void:
     await tree.scene_changed
     menu = tree.current_scene
     _check(menu.faction_index == 1 and menu.officer_index == 1, "roster selection survives return")
-    _check(GameState.officers_by_faction[1] == 1, "Saari commander remembered")
+    _check(GameState.officers_by_faction[1] == 1, "Kontur commander remembered")
     menu._select_faction(0)
     menu._select_officer(3)
     _check(GameState.faction_index == 0 and GameState.officer_index == 3,
@@ -136,13 +136,13 @@ func _run() -> void:
     menu._select_faction(0)
     _check(menu.officer_index == 3, "human commander restored after race switch")
     menu._select_faction(1)
-    _check(GameState.last_report.contains("ПОБЕДА") and GameState.last_report.contains("300"), "ship shows debrief")
+    _check(GameState.last_report.contains("ПОБЕДА") and GameState.last_report.contains("300"), "base shows debrief")
     menu._deploy()
     await tree.scene_changed
     op = tree.current_scene
     op.set_physics_process(false)
     op.economy.income_enabled = false # Isolate the existing fixed-budget scenario.
-    op.objectives.expanded = false # Retain original landing goals in this regression.
+    op.objectives.expanded = false # Retain original ground-operation goals in this regression.
     op._set_auto_fire(false) # Keep this existing scenario in explicit-order mode.
     _check(op.resources_collected == 0 and op.crates.size() == 3 and op.sentry.hull == 100, "replay resets mission")
     op.hero.position = Vector3(6, 0, -4)
