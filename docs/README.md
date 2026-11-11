@@ -11,6 +11,8 @@
 - [Классы и утверждённые навыки](MMORTS_HERO_SKILL_BALANCE_V03_2026-11-06.md)
 - [Героини, независимость и анимации](COMMANDER_INDEPENDENCE_AND_MESHY_PLAN_2026-11-04.md)
 - [Лира: снайперский бой](LYRA_VOSS_SNIPER_COMBAT_DESIGN_v1.md)
+- [Лира — Gold Standard и Blender-инструменты (пока визуально не приняты)](LYRA_GOLD_STANDARD.md)
+- [Лира — редактируемая Blender-сцена, рендеры и ограничения](LYRA_BLENDER_AUTHORING.md)
 - [Meshy/Blender пайплайн](MESHY_PIPELINE.md)
 - [Утверждённый женский базовый арт v3](PRODUCTION_FEMALE_BASE_V3_APPROVED_2026-11-06.md)
 - [Исходники 19 открытых стратегий, лицензии и инженерные находки](OPEN_SOURCE_STRATEGY_REFERENCES_2026-11-10.md)
