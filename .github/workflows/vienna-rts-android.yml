@@ -3,43 +3,17 @@ name: Neko Dead Signal Android Debug
 on:
   push:
     branches:
-      - infra/vienna-runner-server
-      - feat/orbital-command-ui
-      - feat/pure-rts-commanders
       - main
+      - agent/neko32-gpt
       - feat/earth-dead-signal-canon
-      - feature/female-base-v3-production
-      - chore/neko-paths-and-branding-audit-029
-      - chore/neko-dead-signal-rebrand-v028
-      - fix/manual-preview-smooth-paths-v007
-      - feat/orders-and-recon-v008
-      - fix/defeat-sight-report-v009
-      - fix/embedded-result-layout-v009
-      - fix/headquarters-sight-v019
-      - fix/victory-building-labels-v020
-      - feat/world-zone-v021
-      - fix/world-camera-logs-v022
-      - feat/world-assault-combat-v023
-      - feat/world-pve-sector-v024
-      - feat/surface-128-v025
-      - feat/surface-art-v026
-      - fix/surface-presentation-v027
-      - fix/base-sight-radius-v018
-      - fix/building-sight-touch-v017
-      - feat/economy-power-objectives-v016
-      - fix/project-audit-v015
-      - feat/base-construction-v014
-      - fix/return-fire-v013
-      - feat/mobile-guardian-v012
-      - fix/smooth-minimap-v011
-      - feat/production-large-map-v010
-      - feat/rts-formation-clearance-v006
-      - feat/amina-static-landing-preview-v006
-      - feat/tester-diagnostics-3d-roster
-      - feat/rts-squads-grid-pathfinding
-      - feat/rts-landing-skirmish
-      - fix/orbital-menu-touch-exit
-      - fix/selection-camera-and-portraits-v004
+    paths:
+      - 'client/**'
+      - 'scripts/**'
+      - 'tools/build_environment_kit.py'
+      - '.github/workflows/vienna-rts-android.yml'
+  pull_request:
+    branches:
+      - main
     paths:
       - 'client/**'
       - 'scripts/**'
