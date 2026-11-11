@@ -326,7 +326,7 @@ func _create_ui() -> void:
             notice.hide()
             _offer_combat())
     return_dialog = ConfirmationDialog.new()
-    return_dialog.title = "Вернуться на базу NEKO?"
+    return_dialog.title = "Вернуться в командный центр?"
     return_dialog.dialog_text = "Положение и задание сохранятся. Продолжишь с этого места."
     return_dialog.ok_button_text = "НА БАЗУ"
     return_dialog.cancel_button_text = "ОСТАТЬСЯ"
