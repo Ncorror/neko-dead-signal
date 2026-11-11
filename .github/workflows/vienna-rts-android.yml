@@ -5,11 +5,15 @@ on:
     branches:
       - main
       - agent/neko32-gpt
-      - feat/earth-dead-signal-canon
     paths:
       - 'client/**'
       - 'scripts/**'
       - 'tools/build_environment_kit.py'
+      - 'docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md'
+      - 'docs/DECISIONS.md'
+      - 'docs/ROADMAP.md'
+      - 'docs/README.md'
+      - 'AGENTS.md'
       - '.github/workflows/vienna-rts-android.yml'
   pull_request:
     branches:
@@ -18,6 +22,11 @@ on:
       - 'client/**'
       - 'scripts/**'
       - 'tools/build_environment_kit.py'
+      - 'docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md'
+      - 'docs/DECISIONS.md'
+      - 'docs/ROADMAP.md'
+      - 'docs/README.md'
+      - 'AGENTS.md'
       - '.github/workflows/vienna-rts-android.yml'
   workflow_dispatch:
 
