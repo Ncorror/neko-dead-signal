@@ -180,7 +180,7 @@ func _run() -> void:
     zone = null
     await _settle()
     var base = get_tree().current_scene
-    _press(ship.surface_button)
+    _press(base.surface_button)
     await _adopt()
     _check(zone.hero.position.distance_to(at) < 0.001 and zone.visited.size() == 5 and zone.zoom == scale,
         "surface reentry lost position, exploration or zoom")
