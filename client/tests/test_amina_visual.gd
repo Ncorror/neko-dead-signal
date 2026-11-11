@@ -75,16 +75,16 @@ func _run() -> void:
     await tree.scene_changed
     var op = tree.current_scene
     if op == null or not op.has_method("_issue_move"):
-        _check(false, "landing scene was not opened")
+        _check(false, "ground operation scene was not opened")
         tree.quit(1)
         return
     op.set_physics_process(false)
     op.economy.income_enabled = false # Isolate the existing fixed-budget scenario.
-    op.objectives.expanded = false # Retain original landing goals in this regression.
+    op.objectives.expanded = false # Retain the original ground-operation goals in this regression.
     _check(op.hero.hull == 100 and op.escort.hull == 80,
         "existing RTS combatant statistics changed")
     var mount: Node3D = op.hero.get_node_or_null("StaticCommanderPreview")
-    _check(mount != null, "static Meshy Amina missing from actual landing unit")
+    _check(mount != null, "static Meshy Amina missing from actual ground unit")
     var capsule: MeshInstance3D = null
     for child in op.hero.get_children():
         if child is MeshInstance3D:
