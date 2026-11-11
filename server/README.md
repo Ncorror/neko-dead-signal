@@ -4,4 +4,4 @@
 
 **Не реализовано:** авторитетные матчи, команды `move/attack/ability/interact/stop`, серверный тик, экономика, туман войны, matchmaking, постоянный мир, аутентификация. Не открывать этот API в Интернет и не объявлять его готовой онлайн-игрой.
 
-Целевая архитектура и инварианты: `docs/ARCHITECTURE.md`, `docs/ONLINE_WORLD_GDD_v0.2.md`.
+Целевая архитектура и инварианты: `docs/ARCHITECTURE.md`, `docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md`.
