@@ -1,0 +1,55 @@
+name: Lyra Blender authoring package
+
+on:
+  push:
+    branches: [agent/neko32-gpt]
+    paths:
+      - tools/avatar/prepare_lyra_blender.py
+      - tools/avatar/author_lyra_rifle.py
+      - .github/workflows/lyra-blender-authoring.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  authoring:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned source assets
+        run: |
+          python -m pip install gdown==5.2.0
+          python scripts/install_lyra_voss.py
+          python scripts/install_lyra_voss_weapon.py
+      - name: Install verified Blender 4.5 LTS
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libxrender1 libxi6 libxfixes3 libsm6 libice6 libgl1 libxkbcommon0
+          curl -fL --retry 3 https://download.blender.org/release/Blender4.5/blender-4.5.15-linux-x64.tar.xz -o "$RUNNER_TEMP/blender.tar.xz"
+          echo "0d2b8bb2efe97e6c8eb57de6b7322f8800e1984e3125b60decca5f6771e4773e  $RUNNER_TEMP/blender.tar.xz" | sha256sum -c -
+          tar -xf "$RUNNER_TEMP/blender.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/blender-4.5.15-linux-x64" >> "$GITHUB_PATH"
+      - name: Build self-contained authoring scene and review renders
+        run: |
+          blender --background --threads 2 --python-exit-code 1 --python tools/avatar/prepare_lyra_blender.py -- --output build/lyra-authoring --render
+          cp docs/LYRA_BLENDER_AUTHORING.md build/lyra-authoring/README.md
+          git rev-parse HEAD > build/lyra-authoring/COMMIT.txt
+          sha256sum build/lyra-authoring/lyra_authoring.blend > build/lyra-authoring/SHA256SUMS
+      - name: Reopen packed Blender scene
+        run: |
+          blender --background build/lyra-authoring/lyra_authoring.blend --python-exit-code 1 --python-expr "import bpy; r=next(o for o in bpy.data.objects if o.type=='ARMATURE'); assert len(r.data.bones)==66; assert len(bpy.data.actions)==20; assert all(a.use_fake_user for a in bpy.data.actions); assert all(i.packed_file for i in bpy.data.images if i.source=='FILE'); assert all(c.influence==0 for p in r.pose.bones for c in p.constraints); print('LYRA_BLEND_REOPEN_PASS')"
+      - name: Author editable Rifle Ready, Aim and Fire candidates
+        run: |
+          blender --background build/lyra-authoring/lyra_authoring.blend --threads 2 --python-exit-code 1 --python tools/avatar/author_lyra_rifle.py -- --output build/lyra-authoring/rifle-draft --render
+          blender --background build/lyra-authoring/rifle-draft/lyra_rifle_draft.blend --python-exit-code 1 --python-expr "import bpy; a=set(bpy.data.actions.keys()); assert len(a)==24; assert {'Rifle_Ready','Rifle_Aim','Rifle_Fire','Rifle_Recoil_Visual'}.issubset(a); assert len(next(o for o in bpy.data.objects if o.type=='ARMATURE').data.bones)==66; print('LYRA_RIFLE_DRAFT_REOPEN_PASS')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lyra-blender-authoring-${{ github.run_number }}
+          path: build/lyra-authoring/
+          if-no-files-found: error
+          retention-days: 30
