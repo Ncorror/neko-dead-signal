@@ -15,7 +15,7 @@ func _land(faction: int = 1, officer: int = 0):
     var officer_name := "Сэйра Нэл"
     if faction == 0:
         officer_name = "Лира Восс — снайпер-разведчик" if officer == 3 else "Амина"
-    GameState.set_selection(faction, officer, "Люди" if faction == 0 else "Саари", officer_name)
+    GameState.set_selection(faction, officer, "NEKO" if faction == 0 else "КОНТУР", officer_name)
     get_tree().change_scene_to_file("res://scenes/operation.tscn")
     await get_tree().scene_changed
     var op = get_tree().current_scene

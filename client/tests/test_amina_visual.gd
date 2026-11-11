@@ -33,7 +33,7 @@ func _preview_touch(preview_node, pressed: bool, at: Vector2) -> void:
 func _run() -> void:
     var tree := get_tree()
     tree.current_scene = null
-    GameState.set_selection(0, 0, "Люди — флот «Рэйна»", "Амина — разведка и дроны")
+    GameState.set_selection(0, 0, "NEKO — свободные бригады", "Амина — штурмовой ДД")
     tree.root.size = Vector2i(1280, 720)
     tree.change_scene_to_file("res://scenes/main.tscn")
     await tree.scene_changed

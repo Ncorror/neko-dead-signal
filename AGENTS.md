@@ -9,3 +9,7 @@
 5. **RTS networking**: preserve the existing order DTO and local command executor. Future server validates ownership, visibility and sequencing. Do not import lockstep as an MMO server substitute.
 6. **Tests and documentation:** update all required scripts, tests and user-facing labels when changing names. Do not restore removed space-era GDDs based on historical git references, README snapshots or obsolete CI test assertions. Source history remains accessible through Git; it is not current design authority.
 7. **Branch hygiene:** never merge diverged animation branch blindly; compare conflicts, run Godot/Python/Android CI and retain source assets. Remove old branches only after their changes are merged or independently preserved.
+
+## Non-canonical material
+
+The old cosmic GDDs, retired pre-0.0.33 skill drafts, previous Art Base v1/v2, and pre-Earth test instructions were removed from the working tree. They remain available only in historical Git commits. Do not restore them, quote them as requirements, or regenerate deprecated files to satisfy old tooling. The active skills contract is `docs/MMORTS_HERO_SKILL_BALANCE_V03_2026-11-06.md`; approved female reference is v3. No released online MMO is claimed.

@@ -15,7 +15,7 @@ func _run() -> void:
     var tree := get_tree()
     tree.current_scene = null
     tree.root.size = Vector2i(1280, 720)
-    GameState.set_selection(0, 3, "Люди — флот «Рэйна»", "Лира Восс — снайпер")
+    GameState.set_selection(0, 3, "NEKO — свободные бригады", "Лира Восс — снайпер")
     tree.change_scene_to_file("res://scenes/main.tscn")
     await tree.scene_changed
     for i in range(8):

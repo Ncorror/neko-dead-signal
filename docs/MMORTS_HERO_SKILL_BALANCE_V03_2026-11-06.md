@@ -95,6 +95,6 @@
 - Guild Wars 2, revealed/stealth: https://wiki.guildwars2.com/wiki/Revealed
 - Final Fantasy XIV Sage, несовместимые щиты: https://eu.finalfantasyxiv.com/jobguide/sage/
 - WoW, PvP crowd-control diminishing returns: https://worldofwarcraft.blizzard.com/en-us/news/24244455
-- Наши прежние исследования Chanter Aion: [REINA_CHANTER_AION_COMPARISON_2026-11-06.md](REINA_CHANTER_AION_COMPARISON_2026-11-06.md).
+- Наши прежние исследования Chanter Aion: [DEAD_SIGNAL_EARTH_GDD_v0.4.md](DEAD_SIGNAL_EARTH_GDD_v0.4.md).
 
 **Эта v0.3 — приоритетная спецификация навыков. Ранее согласованные образы, оружие и сюжет не меняются. Старые тексты навыков v0.1/v0.2 сохранять как историю, не реализовывать противоречащие механики.**

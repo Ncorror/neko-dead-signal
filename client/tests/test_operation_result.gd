@@ -70,7 +70,7 @@ func _run() -> void:
     var tree := get_tree()
     tree.root.gui_embed_subwindows = true
     tree.current_scene = null
-    GameState.set_selection(1, 0, "Саари", "Сэйра Нэл")
+    GameState.set_selection(1, 0, "КОНТУР", "Сэйра Нэл")
     for pending in [false, true]:
         tree.root.size = Vector2i(1280, 720)
         var op = await _land()

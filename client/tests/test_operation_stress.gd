@@ -20,7 +20,7 @@ func _point(op, rng: RandomNumberGenerator) -> Vector3:
 
 func _run() -> void:
     get_tree().current_scene = null
-    GameState.set_selection(1, 0, "Саари", "Сэйра Нэл")
+    GameState.set_selection(1, 0, "КОНТУР", "Сэйра Нэл")
     get_tree().change_scene_to_file("res://scenes/operation.tscn")
     await get_tree().scene_changed
     var op = get_tree().current_scene

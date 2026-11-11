@@ -31,7 +31,7 @@ func _settle(op) -> void:
         op._process(0)
 
 func _check_base(faction: int, extra_generator: bool) -> void:
-    GameState.set_selection(faction, 0, "Люди" if faction == 0 else "Саари", "Амина" if faction == 0 else "Сэйра")
+    GameState.set_selection(faction, 0, "NEKO" if faction == 0 else "КОНТУР", "Амина" if faction == 0 else "Сэйра")
     get_tree().change_scene_to_file("res://scenes/operation.tscn")
     await get_tree().scene_changed
     var op = get_tree().current_scene

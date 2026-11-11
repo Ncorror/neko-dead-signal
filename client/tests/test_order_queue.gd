@@ -45,7 +45,7 @@ func _toggle(op) -> void:
 func _run() -> void:
     get_tree().current_scene = null
     get_tree().root.size = Vector2i(1280, 720)
-    GameState.set_selection(1, 0, "Саари", "Сэйра Нэл")
+    GameState.set_selection(1, 0, "КОНТУР", "Сэйра Нэл")
     var op = await _land()
     _check(not op.append_orders and not op.queue_button.button_pressed, "queue must be opt-in")
     op.hero.position = Vector3(-8, 0, -15)
@@ -136,7 +136,7 @@ func _run() -> void:
 
     for resolution in [Vector2i(1280, 720), Vector2i(2048, 945), Vector2i(1024, 600)]:
         get_tree().root.size = resolution
-        GameState.set_selection(0, 0, "Люди", "Амина")
+        GameState.set_selection(0, 0, "NEKO", "Амина")
         op = await _land()
         _toggle(op)
         for frame in range(10):

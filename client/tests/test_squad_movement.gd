@@ -34,7 +34,7 @@ func _advance(op, frames: int) -> void:
 func _run() -> void:
     get_tree().current_scene = null
     get_tree().root.size = Vector2i(1280, 720)
-    GameState.set_selection(1, 0, "Саари", "Сэйра Нэл")
+    GameState.set_selection(1, 0, "КОНТУР", "Сэйра Нэл")
     var op = await _land()
     op.hero.position = Vector3(-3, 0, 0)
     op.escort.position = Vector3(3, 0, 0)

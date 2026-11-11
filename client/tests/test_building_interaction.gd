@@ -16,7 +16,7 @@ func _settle() -> void:
         await get_tree().process_frame
 
 func _land(faction: int = 0):
-    GameState.set_selection(faction, 0, "Люди" if faction == 0 else "Саари", "Амина" if faction == 0 else "Сэйра")
+    GameState.set_selection(faction, 0, "NEKO" if faction == 0 else "КОНТУР", "Амина" if faction == 0 else "Сэйра")
     get_tree().change_scene_to_file("res://scenes/operation.tscn")
     await get_tree().scene_changed
     var op = get_tree().current_scene

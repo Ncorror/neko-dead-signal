@@ -121,7 +121,7 @@ func _run() -> void:
     var tree := get_tree()
     tree.current_scene = null
     tree.root.size = Vector2i(1280, 720)
-    GameState.set_selection(1, 0, "Саари", "Сэйра Нэл")
+    GameState.set_selection(1, 0, "КОНТУР", "Сэйра Нэл")
     tree.change_scene_to_file("res://scenes/operation.tscn")
     await tree.scene_changed
     var op = tree.current_scene

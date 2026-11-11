@@ -110,6 +110,42 @@ class RepositoryContract(unittest.TestCase):
         self.assertIn('world/progress-v1.json', game_state)
         self.assertIn('surface/sector01-v1.json', game_state)
 
+    def test_no_reactivated_space_lore(self):
+        obsolete = (
+            "docs/AUDIT_PURE_RTS_2026-11-02.md",
+            "docs/AUDIT_SUMMARY_0.0.32.md",
+            "docs/NEKO_032_ACTION_ITEMS.md",
+            "docs/PRODUCTION_MESHY_FEMALE_BASE_V1_2026-11-06.md",
+            "docs/PRODUCTION_MESHY_FEMALE_BASE_V2_2026-11-06.md",
+            "docs/MMORTS_HERO_ACTIVE_SKILLS_V02_2026-11-06.md",
+            "docs/MMORTS_FIVE_CLASSES_AND_HEROINES_v0.1.md",
+            "docs/REINA_TACTICAL_BARRIER_DUAL_MODE_DESIGN_v0.1.md",
+            "docs/REINA_TARGETED_SHIELD_DESIGN_v0.1.md",
+            "docs/MIRA_KADE_HEALER_MASS_HEAL_DESIGN_v0.1.md",
+            "docs/AMINA_ASSAULT_DPS_GRENADE_DESIGN_v0.1.md",
+            "docs/RTS_SQUAD_ANDROID_TESTBOOK_v0.1.md",
+            "docs/PRODUCTION_AND_MAP_010.md",
+            "docs/ANDROID_004_CAMERA_SELECTION_PORTRAITS.md",
+            "docs/ANDROID_PREVIEW_AND_MOVEMENT_007.md",
+            "docs/AMINA_STATIC_LANDING_005.md",
+            "docs/ENGINE_AND_MESHY_RESEARCH_2026-11-01.md",
+            "docs/AI_3D_MESHY_VS_TRIPO_DECISION_2026-11-06.md",
+            "docs/REINA_CHANTER_AION_COMPARISON_2026-11-06.md",
+            "docs/RTS_DEBUG_DIAGNOSTICS_AND_3D_MENU.md",
+            "docs/SURFACE_SECTOR_01_ISOMETRIC_ENVIRONMENT_PLAN_2026-11-06.md",
+        )
+        for name in obsolete:
+            self.assertFalse((ROOT / name).exists(), "obsolete guide resurrected: " + name)
+        forbidden_in_game = ("Саари", "НЕИЗВЕДАННАЯ ПЛАНЕТА", "ORBITAL COMMAND", "НА КОРАБЛЬ")
+        for path in (ROOT / "client/scripts").glob("*.gd"):
+            script = path.read_text()
+            for name in forbidden_in_game:
+                self.assertNotIn(name, script, str(path))
+        for path in (ROOT / "client/tests").glob("*.gd"):
+            fixture = path.read_text()
+            self.assertNotIn('"Саари"', fixture, str(path))
+            self.assertNotIn('Люди — флот «Рэйна»', fixture, str(path))
+
     def test_all_bash_scripts_parse_without_execution(self):
         for script in sorted(ROOT.glob('ops/**/*.sh')) + sorted(ROOT.glob('scripts/*.sh')):
             result = subprocess.run(['bash', '-n', str(script)], capture_output=True, text=True)
