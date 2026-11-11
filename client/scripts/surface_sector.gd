@@ -246,7 +246,7 @@ func _create_ui() -> void:
     notice.title = "Первый сектор"
     add_child(notice)
     return_dialog = ConfirmationDialog.new()
-    return_dialog.title = "Вернуться на базу NEKO?"
+    return_dialog.title = "Вернуться в командный центр?"
     return_dialog.dialog_text = "Положение, масштаб и обследованные места сохранятся."
     return_dialog.ok_button_text = "НА БАЗУ"
     return_dialog.cancel_button_text = "ОСТАТЬСЯ"
