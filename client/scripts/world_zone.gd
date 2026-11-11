@@ -677,6 +677,7 @@ func _physics_process(delta: float) -> void:
         travel -= step
         if distance <= step + 0.0001:
             route_index += 1
+    combat_view.update_hero_facing()
     hero.rotation.y = lerp_angle(hero.rotation.y, heading, 1.0 - exp(-maxf(delta, 0) * 12))
     if not route.is_empty() and route_index >= route.size():
         var target := interaction
