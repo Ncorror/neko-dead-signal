@@ -70,4 +70,4 @@
 - **Предложено, не подтверждено:** сквозная союзная стрельба через стену, двусторонняя блокировка купола, численные значения 10/7 секунд, 100/70% прочности, 50 секунд общего cooldown, один одновременно активный барьер, UX-последовательность.
 - **Не реализовано / не протестировано:** состояние навыка в Godot, сервер, VFX, Android UI, баланс PvE/PvP.
 
-См. [общие классы](MMORTS_FIVE_CLASSES_AND_HEROINES_v0.1.md), [решения](DECISIONS.md), [MMORTS GDD v0.3](DEAD_SIGNAL_MMORTS_GDD_v0.3.md).
+См. [общие классы](MMORTS_FIVE_CLASSES_AND_HEROINES_v0.1.md), [решения](DECISIONS.md), [MMORTS GDD v0.3](DEAD_SIGNAL_EARTH_GDD_v0.4.md).
