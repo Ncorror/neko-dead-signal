@@ -2,7 +2,7 @@ extends Control
 ## Vector-only UI artwork. Placeholder until our original Meshy GLB models arrive.
 ## No external assets, fonts or licenses.
 
-var mode: int = 0 # 0 = planetary backdrop, 1 = officer hologram
+var mode: int = 0 # 0 = post-Silence Earth backdrop, 1 = officer hologram
 var faction_index: int = 0
 var officer_index: int = 0
 
@@ -17,50 +17,55 @@ func _draw() -> void:
         _draw_officer()
 
 func _draw_orbit() -> void:
+    # Kept as a private method name for compatibility; visuals are now Earth's
+    # storm-lit industrial corridor and the NEKO base signal tower.
     var w: float = size.x
     var h: float = size.y
-    draw_rect(Rect2(Vector2.ZERO, size), Color("#030c14"))
-    for stripe in range(30):
-        var t: float = float(stripe) / 30.0
-        draw_rect(Rect2(0, h * t, w, h / 28.0 + 1.0), Color(0.01 + t * 0.022, 0.045 + t * 0.025, 0.08 + t * 0.031))
+    draw_rect(Rect2(Vector2.ZERO, size), Color("#030e16"))
+    for stripe in range(36):
+        var t: float = float(stripe) / 36.0
+        draw_rect(Rect2(0, h * t, w, h / 34.0 + 1.0),
+            Color(0.015 + t * 0.035, 0.055 + t * 0.045, 0.085 + t * 0.038))
     var rng := RandomNumberGenerator.new()
-    rng.seed = 1901124
-    for i in range(155):
-        var p := Vector2(rng.randf_range(0.0, w), rng.randf_range(0.0, h))
-        var a: float = rng.randf_range(0.12, 0.64)
-        draw_circle(p, rng.randf_range(0.55, 1.4), Color(0.62, 0.83, 1.0, a))
-
-    var planet := Vector2(w * 0.51, h * 0.75)
-    var radius: float = minf(w * 0.25, h * 0.43)
-    for j in range(28, 0, -1):
-        var distance: float = radius + float(j) * 4.7
-        draw_circle(planet, distance, Color(0.09, 0.65, 0.77, (29.0 - float(j)) * 0.0005))
-    draw_circle(planet, radius, Color("#0d2633"))
-    draw_circle(planet + Vector2(radius * 0.3, -radius * 0.26), radius * 0.91, Color("#06141c"))
-    draw_arc(planet, radius + 1.5, PI * 0.92, PI * 1.96, 110, Color(0.25, 0.88, 0.92, 0.6), 2.1, true)
-    for n in range(11):
-        var v := float(n) / 11.0
-        var y := planet.y + radius * (v * 1.6 - 0.7)
-        var half: float = sqrt(maxf(0.0, radius * radius - pow(y - planet.y, 2.0)))
-        draw_line(Vector2(planet.x - half * 0.6, y), Vector2(planet.x + half * 0.63, y), Color(0.11, 0.56, 0.62, 0.04 + v * 0.04), 1.0)
-    for angle in [0.08, 0.24, 0.43, 0.62]:
-        var a: float = -PI * angle
-        var p1 := planet + Vector2(cos(a), sin(a)) * (radius + 68.0)
-        var p2 := planet + Vector2(cos(a + 0.48), sin(a + 0.48)) * (radius + 68.0)
-        draw_line(p1, p2, Color(0.15, 0.75, 0.88, 0.11), 1.2)
-    # Sparse ship silhouettes in orbit: graphics, not playable ships.
-    var ship := Vector2(w * 0.74, h * 0.35)
-    var shp := PackedVector2Array([ship + Vector2(-75, -3), ship + Vector2(-22, -9),
-        ship + Vector2(16, -27), ship + Vector2(35, -9),
-        ship + Vector2(83, -2), ship + Vector2(35, 4),
-        ship + Vector2(13, 17), ship + Vector2(-21, 5)])
-    draw_colored_polygon(shp, Color("#132b39"))
-    draw_polyline(shp, Color(0.23, 0.74, 0.82, 0.32), 1.2, true)
-    draw_line(ship + Vector2(-32, 0), ship + Vector2(43, 0), Color("#48c5cf"), 1.5, true)
-    draw_circle(ship + Vector2(-65, 0), 4.0, Color(0.21, 0.8, 0.96, 0.58))
-    for i in range(22):
-        var x: float = float(i) * 72.0
-        draw_line(Vector2(x, 0), Vector2(x - 150, h), Color(0.08, 0.42, 0.5, 0.045), 1.0)
+    rng.seed = 20892317
+    # Distant lights behind a ruined city skyline, not orbiting spacecraft.
+    for i in range(85):
+        var x: float = rng.randf_range(0.0, w)
+        var y: float = rng.randf_range(h * 0.16, h * 0.78)
+        draw_circle(Vector2(x, y), rng.randf_range(0.5, 1.5),
+            Color(0.42, 0.82, 0.86, rng.randf_range(0.04, 0.21)))
+    for building in range(26):
+        var bw: float = w / 22.0
+        var x: float = float(building) * bw - bw
+        var top: float = h * rng.randf_range(0.40, 0.76)
+        draw_rect(Rect2(x, top, bw * 0.86, h - top), Color("#081c26"))
+        for light in range(3):
+            var ly: float = top + 13.0 + float(light) * 16.0
+            if ly < h - 8.0 and rng.randf() > 0.42:
+                draw_rect(Rect2(x + bw * 0.27, ly, 3.0, 4.0), Color("#397f88"))
+    # The signal mast stands above the mobile ground headquarters.
+    var tx: float = w * 0.70
+    var by: float = h * 0.84
+    var peak: Vector2 = Vector2(tx, h * 0.19)
+    draw_line(Vector2(tx - w * 0.095, by), peak, Color("#183f4b"), 4.0, true)
+    draw_line(Vector2(tx + w * 0.095, by), peak, Color("#183f4b"), 4.0, true)
+    draw_line(Vector2(tx - w * 0.095, by), Vector2(tx + w * 0.095, by), Color("#247987"), 3.0, true)
+    for height in [0.40, 0.54, 0.67, 0.78]:
+        var yy: float = h * height
+        var half_width: float = w * 0.095 * (yy - peak.y) / (by - peak.y)
+        draw_line(Vector2(tx - half_width, yy), Vector2(tx + half_width, yy),
+            Color("#276776"), 2.0, true)
+    draw_circle(peak, 5.5, Color("#ff5d63"))
+    draw_arc(peak, minf(w, h) * 0.09, PI * 1.1, PI * 1.9, 54,
+        Color(0.93, 0.25, 0.28, 0.20), 1.8, true)
+    draw_arc(peak, minf(w, h) * 0.16, PI * 1.1, PI * 1.9, 54,
+        Color(0.93, 0.25, 0.28, 0.10), 1.2, true)
+    # Heavy rain and abandoned rail lines lead to the NEKO night base.
+    for drop in range(55):
+        var p: Vector2 = Vector2(rng.randf_range(0.0, w), rng.randf_range(0.0, h))
+        draw_line(p, p + Vector2(-6, 19), Color(0.48, 0.75, 0.84, 0.10), 1.0)
+    draw_line(Vector2(0, h * 0.98), Vector2(w * 0.45, h * 0.73), Color("#23515c"), 3.0, true)
+    draw_line(Vector2(w, h * 0.98), Vector2(w * 0.55, h * 0.73), Color("#23515c"), 3.0, true)
 
 func _draw_officer() -> void:
     var w: float = size.x
