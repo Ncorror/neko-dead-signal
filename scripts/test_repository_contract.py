@@ -112,6 +112,38 @@ class RepositoryContract(unittest.TestCase):
 
     def test_no_reactivated_space_lore(self):
         obsolete = (
+            "docs/AUDIT_2026-11-04.md",
+            "docs/BASE_CONSTRUCTION_014.md",
+            "docs/BASE_RECONNAISSANCE_018.md",
+            "docs/BUILDING_SIGHT_AND_TOUCH_017.md",
+            "docs/COMMANDER_ROSTER_AND_ANIMATIONS_v1.md",
+            "docs/DEFEAT_AND_REPORT_009.md",
+            "docs/DEVICE_SURFACE_025_2026-11-06.md",
+            "docs/DEVICE_SURFACE_026_2026-11-06.md",
+            "docs/DEVICE_SURFACE_027_2026-11-06.md",
+            "docs/DEVICE_VICTORY_019_2026-11-05.md",
+            "docs/DRIVE_CHARACTER_ARCHIVE_2026-11-04.md",
+            "docs/ECONOMY_AND_OBJECTIVES_016.md",
+            "docs/FEMALE_BASE_V3_PRODUCTION_CHECKPOINT_2026-11-09.md",
+            "docs/HEADQUARTERS_SIGHT_019.md",
+            "docs/LYRA_GOLD_STANDARD_BUILD_2026-11-10.md",
+            "docs/LYRA_VOSS_MESHY_SNIPER_ANIMATIONS_v1.md",
+            "docs/MINIMAP_CAMERA_011.md",
+            "docs/MOBILE_GUARDIAN_012.md",
+            "docs/NEKO_032_TECHNICAL_AUDIT_2026-11-10.md",
+            "docs/NEKO_BRANDING_PATH_AUDIT_029_2026-11-09.md",
+            "docs/NEKO_REBRAND_028_2026-11-09.md",
+            "docs/OPERATION_LABELS_020.md",
+            "docs/ORDERS_AND_RECON_008.md",
+            "docs/RETURN_FIRE_013.md",
+            "docs/RTS_SQUAD_MOVEMENT_006.md",
+            "docs/SURFACE_128_025.md",
+            "docs/SURFACE_ART_026.md",
+            "docs/SURFACE_PRESENTATION_027.md",
+            "docs/WORLD_ASSAULT_COMBAT_023.md",
+            "docs/WORLD_CAMERA_AND_LOGS_022.md",
+            "docs/WORLD_PVE_SECTOR_024.md",
+            "docs/WORLD_SECTOR_021.md",
             "docs/AUDIT_PURE_RTS_2026-11-02.md",
             "docs/AUDIT_SUMMARY_0.0.32.md",
             "docs/NEKO_032_ACTION_ITEMS.md",
@@ -137,6 +169,11 @@ class RepositoryContract(unittest.TestCase):
         for name in obsolete:
             self.assertFalse((ROOT / name).exists(), "obsolete guide resurrected: " + name)
         forbidden_in_game = ("Саари", "НЕИЗВЕДАННАЯ ПЛАНЕТА", "ORBITAL COMMAND", "НА КОРАБЛЬ")
+        android_workflow = (ROOT / ".github/workflows/vienna-rts-android.yml").read_text()
+        lyra_workflow = (ROOT / ".github/workflows/lyra-blender-authoring.yml").read_text()
+        self.assertNotIn("agent/neko32-gpt", android_workflow)
+        self.assertNotIn("agent/neko32-gpt", lyra_workflow)
+        self.assertNotIn("orbital menu", android_workflow.lower())
         for path in (ROOT / "client/scripts").glob("*.gd"):
             script = path.read_text()
             for name in forbidden_in_game:
