@@ -282,7 +282,7 @@ func _create_ui() -> void:
     speed_button = _button("ХОДЬБА", _toggle_move_mode)
     minus_button = _button("−", _change_zoom.bind(1.2))
     plus_button = _button("+", _change_zoom.bind(1.0 / 1.2))
-    return_button = _button("НА КОРАБЛЬ", _request_return)
+    return_button = _button("НА БАЗУ", _request_return)
     for button in [journal_button, goal_button, follow_button, stop_button, speed_button, minus_button, plus_button]:
         bar.add_child(button)
     diagnostics_panel = DIAGNOSTICS.new()
@@ -326,9 +326,9 @@ func _create_ui() -> void:
             notice.hide()
             _offer_combat())
     return_dialog = ConfirmationDialog.new()
-    return_dialog.title = "Вернуться на корабль?"
+    return_dialog.title = "Вернуться на базу NEKO?"
     return_dialog.dialog_text = "Положение и задание сохранятся. Продолжишь с этого места."
-    return_dialog.ok_button_text = "НА КОРАБЛЬ"
+    return_dialog.ok_button_text = "НА БАЗУ"
     return_dialog.cancel_button_text = "ОСТАТЬСЯ"
     return_dialog.confirmed.connect(_return_to_ship)
     add_child(return_dialog)
