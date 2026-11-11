@@ -36,7 +36,7 @@ func open_profile(path: String, faction: int, officer: int) -> bool:
         recovered = loaded != null
         if loaded == null:
             writable = false
-            error_text = "Не удалось прочитать прогресс. Файлы сохранены; вернись на корабль."
+            error_text = "Не удалось прочитать прогресс. Файлы сохранены; вернись на базу."
     data = loaded if loaded != null else {"version": SCHEMA, "characters": {}}
     _committed = data.duplicate(true)
     return writable
