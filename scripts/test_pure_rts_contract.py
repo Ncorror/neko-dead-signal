@@ -57,7 +57,7 @@ class PureRTSContract(unittest.TestCase):
 
     def test_earth_design_docs_match_game(self):
         self.assertIn("Земля", self.decisions)
-        self.assertIn("Ночь Тишины", self.gdd)
+        self.assertIn("Ночи Тишины", self.gdd)
         self.assertIn("«Ночная линия»", self.gdd)
         self.assertNotIn("НЕИЗВЕДАННАЯ ПЛАНЕТА", self.menu)
         self.assertIn('"name": "NEKO"', self.menu)
