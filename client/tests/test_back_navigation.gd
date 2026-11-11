@@ -30,7 +30,7 @@ func _run() -> void:
         var op = get_tree().current_scene
         op.set_physics_process(false)
         op.economy.income_enabled = false # Isolate the existing fixed-budget scenario.
-        op.objectives.expanded = false # Retain original landing goals in this regression.
+        op.objectives.expanded = false # Retain the original ground-operation goals in this regression.
         op.production.credit(300)
         op._issue_move(Vector3(-20, 0, -20))
         op._open_factory()
@@ -74,7 +74,7 @@ func _run() -> void:
         await get_tree().process_frame
         _tap(op.return_dialog.get_ok_button())
         await get_tree().scene_changed
-        _check(get_tree().current_scene.get_script() == load("res://scripts/main.gd"), "confirmed Back failed to return to ship")
+        _check(get_tree().current_scene.get_script() == load("res://scripts/main.gd"), "confirmed Back failed to return to ground command")
     if failures == 0:
         print("RTS_BACK_TEST_PASS viewports=3 modal=ok preview=ok cancel=ok confirm=ok")
     get_tree().quit(0 if failures == 0 else 1)
