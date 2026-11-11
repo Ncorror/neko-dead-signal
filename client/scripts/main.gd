@@ -40,10 +40,10 @@ const OFFICERS := [
         },
         {
             "name": "РЭЙНА",
-            "full": "Рэйна — командование",
-            "role": "КОМАНДОВАНИЕ / КООРДИНАЦИЯ",
+            "full": "Рэйна — саппорт",
+            "role": "ПОДДЕРЖКА / ЩИТЫ",
             "bio": "Координатор NEKO. Ищет источник Ночи Тишины, восстанавливает связь и держит защиту команды.",
-            "perk": "ТАКТИЧЕСКИЙ ПРИКАЗ",
+            "perk": "КОМАНДНАЯ ВЫДЕРЖКА",
             "call": "N-04"
         },
         {
@@ -51,7 +51,7 @@ const OFFICERS := [
             "full": "Мира Кейд — техномедик",
             "role": "МЕДИК / ЛЕЧЕНИЕ",
             "bio": "Техномедик NEKO, бывшая сотрудница закрытой клиники Контура. Лечение, реанимация и уникальный боевой дрон.",
-            "perk": "НАНОПОЛЕ",
+            "perk": "ЗАЩИТНЫЙ КОНТУР",
             "call": "N-01"
         },
         {
@@ -59,7 +59,7 @@ const OFFICERS := [
             "full": "Лира Восс — снайпер-разведчик",
             "role": "СНАЙПЕР / РАЗВЕДКА",
             "bio": "Снайпер NEKO. Ищет сестру, чей голос слышен в Мёртвом сигнале. Разведка и дальняя огневая поддержка.",
-            "perk": "ПОДГОТОВЛЕННАЯ ПОЗИЦИЯ",
+            "perk": "ХЛАДНОКРОВИЕ",
             "call": "N-02"
         }
     ],
@@ -527,7 +527,7 @@ func _update_portrait() -> void:
     if faction_index == 0:
         var portraits := ["amina", "reina", "mira_kade", "lyra_voss"]
         portrait_id = portraits[officer_index]
-    # The Saari portraits have not been approved or generated yet.
+    # Kontur commander portraits remain provisional and not yet authored.
     if portrait_id.is_empty():
         hero_portrait.visible = false
         return
