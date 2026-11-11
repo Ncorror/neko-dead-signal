@@ -408,7 +408,7 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-extended-play-test.log; then
             exit 1
           fi
-      - name: Test Android Back layers, cancellation and ship confirmation
+      - name: Test Android Back layers, cancellation and base return confirmation
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -453,7 +453,7 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/lyra-rig-test.log; then
             exit 1
           fi
-      - name: Smoke-test orbital screen and landing scene
+      - name: Smoke-test NEKO ground base and operation
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -493,7 +493,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build/tester-bundle
-          cp client/build/NEKO_DEAD_SIGNAL-debug.apk build/tester-bundle/NEKO_DEAD_SIGNAL-0.0.32-debug.apk
+          cp client/build/NEKO_DEAD_SIGNAL-debug.apk build/tester-bundle/NEKO_DEAD_SIGNAL-0.0.33-debug.apk
       - name: Publish tester APK
         uses: actions/upload-artifact@v4
         with:
