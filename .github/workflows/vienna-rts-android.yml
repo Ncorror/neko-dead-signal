@@ -7,6 +7,7 @@ on:
       - feat/orbital-command-ui
       - feat/pure-rts-commanders
       - main
+      - feat/earth-dead-signal-canon
       - feature/female-base-v3-production
       - chore/neko-paths-and-branding-audit-029
       - chore/neko-dead-signal-rebrand-v028
