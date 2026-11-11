@@ -9,7 +9,7 @@
 5. **Heroines:** Amina, Reina, Mira Kade and Lyra Voss remain authored leads. Saira Nel and Oralin remain Kontur leads. Approved class contracts and art are preserved.
 6. **Lyra:** runtime regressions for lab frame stepping, isolated animation resources, death playback, planted facing and target revalidation are part of the active code. Blender rifle drafts are still unapproved visual candidates.
 7. **RTS networking:** preserve the order DTO and local executor. Future server work validates ownership, visibility and sequencing; do not import lockstep as a substitute.
-8. **Branch hygiene:** the former `agent/neko32-gpt` work was audited and its unique runtime/test fixes were transferred into the active Earth branch. Do not merge or resurrect that diverged branch. Old feature branches may be deleted after the active PR is green.
+8. **Branch hygiene:** the former diverged animation branch was audited and its unique runtime/test fixes were transferred into the active Earth branch. Do not merge or resurrect retired branches. Old feature branches may be deleted after the active PR is green.
 9. **Documentation:** only files listed by [docs/README.md](docs/README.md) are active design documents. Removed reports remain available through Git history and must not be regenerated to satisfy obsolete tooling.
 
 ## Current source of truth

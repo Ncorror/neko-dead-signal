@@ -17,7 +17,7 @@ See **[MODELING_SOURCES_v2.md](MODELING_SOURCES_v2.md)** for the six newly colle
 
 ## Modeling pipeline
 
-The [2026-11-04 external archive catalog](../../../docs/DRIVE_CHARACTER_ARCHIVE_2026-11-04.md) includes a standalone frontal A-pose and turnaround for Lyra. That catalog does not mean those PNGs have been imported into this repository or converted into a rigged model. Review each reference and generated rig individually before production; this audit did not re-review all external images visually.
+Production references are tracked through [MODELING_SOURCES_v2.md](MODELING_SOURCES_v2.md) and the active Lyra acceptance rules in `docs/LYRA_GOLD_STANDARD.md`. Historical external-archive catalogs were removed from the working tree; use Git history only when provenance review is explicitly needed.
 
 For Meshy single-image conversion, submit **one isolated character**, not a four-panel sheet. Use multiple orthographic views only through an explicitly supported multi-image workflow. Save the untouched original and a versioned 3D export, verify the skeleton/animation count before using a GLB in battle.
 

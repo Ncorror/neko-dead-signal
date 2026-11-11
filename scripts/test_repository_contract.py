@@ -164,8 +164,8 @@ class RepositoryContract(unittest.TestCase):
         forbidden_in_game = ("Саари", "НЕИЗВЕДАННАЯ ПЛАНЕТА", "ORBITAL COMMAND", "НА КОРАБЛЬ")
         android_workflow = (ROOT / ".github/workflows/vienna-rts-android.yml").read_text()
         lyra_workflow = (ROOT / ".github/workflows/lyra-blender-authoring.yml").read_text()
-        self.assertNotIn("agent/neko32-gpt", android_workflow)
-        self.assertNotIn("agent/neko32-gpt", lyra_workflow)
+        self.assertNotIn("agent/", android_workflow)
+        self.assertNotIn("agent/", lyra_workflow)
         self.assertNotIn("orbital menu", android_workflow.lower())
         for path in (ROOT / "client/scripts").glob("*.gd"):
             script = path.read_text()
