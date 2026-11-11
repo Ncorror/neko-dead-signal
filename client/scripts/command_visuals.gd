@@ -12,13 +12,12 @@ func _ready() -> void:
 
 func _draw() -> void:
     if mode == 0:
-        _draw_orbit()
+        _draw_earth()
     else:
         _draw_officer()
 
-func _draw_orbit() -> void:
-    # Kept as a private method name for compatibility; visuals are now Earth's
-    # storm-lit industrial corridor and the NEKO base signal tower.
+func _draw_earth() -> void:
+    # Earth's storm-lit industrial corridor and the NEKO base signal tower.
     var w: float = size.x
     var h: float = size.y
     draw_rect(Rect2(Vector2.ZERO, size), Color("#030e16"))
