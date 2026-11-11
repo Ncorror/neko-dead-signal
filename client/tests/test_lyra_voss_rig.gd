@@ -132,7 +132,7 @@ func _run() -> void:
         if child is MeshInstance3D and child.mesh is CapsuleMesh and child.visible:
             rts_capsule = true
     _check(not rts_capsule, "RTS hero capsule visible together with LyraRig")
-    # Regression for both planet scenes. Their Amina-only loaders used to
+    # Regression for both Earth sector scenes. Their Amina-only loaders used to
     # leave Lyra as a featureless capsule despite a valid 3D rig.
     var original_world: String = GameState.world_progress_path
     var original_surface: String = GameState.surface_progress_path
