@@ -1,5 +1,5 @@
 extends Node3D
-## Local landing encounter. The server does not simulate these orders.
+## Local ground operation at Substation 17. The server does not simulate these orders.
 
 const Combatant := preload("res://scripts/combatant.gd")
 enum Outcome { ACTIVE, VICTORY, DEFEAT }
@@ -690,7 +690,7 @@ func _create_ui() -> void:
         diagnostics_panel.install(self, controls)
     result_button = _add_button(controls, "ИТОГ", _show_result)
     result_button.hide()
-    _add_button(controls, "НА КОРАБЛЬ", _back_to_ship)
+    _add_button(controls, "НА БАЗУ", _back_to_ship)
 
     var bottom := VBoxContainer.new()
     bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -746,9 +746,9 @@ func _create_ui() -> void:
     objectives_dialog.get_ok_button().text = "ЗАКРЫТЬ"
     add_child(objectives_dialog)
     return_dialog = ConfirmationDialog.new()
-    return_dialog.title = "Вернуться на корабль?"
-    return_dialog.dialog_text = "Текущая операция завершится. Вернуться на корабль?"
-    return_dialog.ok_button_text = "На корабль"
+    return_dialog.title = "Вернуться на базу NEKO?"
+    return_dialog.dialog_text = "Текущая операция завершится. Вернуться на базу NEKO?"
+    return_dialog.ok_button_text = "На базу"
     return_dialog.cancel_button_text = "Остаться"
     return_dialog.confirmed.connect(_back_to_ship)
     add_child(return_dialog)
@@ -762,7 +762,7 @@ func _create_result_dialog() -> void:
     result_dialog = ConfirmationDialog.new()
     result_dialog.title = "NEKO RTS · Итог операции"
     result_dialog.min_size = Vector2i(640, 300)
-    result_dialog.get_ok_button().text = "НА КОРАБЛЬ"
+    result_dialog.get_ok_button().text = "НА БАЗУ"
     result_dialog.get_cancel_button().text = "КАРТА"
     for button in [result_dialog.get_ok_button(), result_dialog.get_cancel_button()]:
         button.custom_minimum_size = Vector2(150, 48)
@@ -798,7 +798,7 @@ func _show_result() -> void:
     result_heading.text = _result_text()
     result_heading.add_theme_color_override("font_color", Color("#ff9c96") if outcome == Outcome.DEFEAT else Color("#62ecf0"))
     var explanation := "Весь отряд потерян. Текущий обзор закрыт." if outcome == Outcome.DEFEAT else "Все задачи операции выполнены."
-    result_summary.text = "%s\nПрипасы %d/3  ·  Ресурсы %d  ·  Выпущено %d\nВернись на корабль или осмотри карту и сохрани логи." % [
+    result_summary.text = "%s\nПрипасы %d/3  ·  Ресурсы %d  ·  Выпущено %d\nВернись на базу или осмотри карту и сохрани логи." % [
         explanation, 3 - crates.size(), production.balance, _production_completed()]
     result_dialog.popup_centered(Vector2i(680, 330))
 
@@ -1718,13 +1718,13 @@ func _update_status() -> void:
     if production_panel != null:
         production_panel.refresh()
     if outcome != Outcome.ACTIVE:
-        objective_label.text = "%s  ·  НА КОРАБЛЬ для разбора операции" % _result_text()
+        objective_label.text = "%s  ·  НА БАЗУ для разбора операции" % _result_text()
     elif objectives.expanded:
         objective_label.text = objectives.summary(self)
     elif sentry.hull > 0 and visibility.is_visible(sentry.position):
         objective_label.text = "Цель: уничтожь оранжевого стража (%d ОЗ) и собери три золотых контейнера." % sentry.hull
     elif sentry.hull > 0:
-        objective_label.text = "Разведай планету. Найди стража и три контейнера. Обзор отряда общий."
+        objective_label.text = "Исследуй земной сектор. Найди стража и три контейнера. Обзор отряда общий."
     else:
         objective_label.text = "Страж уничтожен. Доставь отряд к оставшимся контейнерам."
     if selected_units.size() > 1:
