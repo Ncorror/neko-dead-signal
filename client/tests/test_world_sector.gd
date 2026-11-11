@@ -136,7 +136,7 @@ func _run() -> void:
         _check(zone.combat_view.model.enabled and zone.combat_view.actors.size() == 9
             and zone.combat_view.actors[HUNT.BOSS].visible and not zone.progress.state()["accepted"],
             "free entry hid enemies behind story acceptance")
-        _check(zone.zone_title.text.contains("РЖАВЫЙ ТРАКТ"), "ship button entered the old empty scene")
+        _check(zone.zone_title.text.contains("РЖАВЫЙ ТРАКТ"), "base button entered the old empty scene")
         for enemy in zone.combat_view.model.enemies:
             _check(zone.navigation.is_walkable(zone.navigation.world_to_cell(enemy["home"]))
                 and not zone.navigation.get_path(zone.hero.position, enemy["home"]).is_empty(), "enemy camp has no walkable approach")
@@ -201,5 +201,5 @@ func _run() -> void:
 func _finish() -> void:
     _clean()
     if failures == 0:
-        print("WORLD_SECTOR_TEST_PASS sizes=3 ship,outpost=native camps=8 boss=solo,warning_dodges vitals=shared reward=once logs=ok")
+        print("WORLD_SECTOR_TEST_PASS sizes=3 base,outpost=native camps=8 boss=solo,warning_dodges vitals=shared reward=once logs=ok")
     get_tree().quit(0 if failures == 0 else 1)
