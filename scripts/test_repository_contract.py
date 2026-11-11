@@ -88,7 +88,7 @@ class RepositoryContract(unittest.TestCase):
         visuals = (ROOT / 'client/scripts/command_visuals.gd').read_text()
         gdd = ROOT / 'docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md'
         self.assertTrue(gdd.is_file())
-        self.assertIn('Ночь Тишины', gdd.read_text())
+        self.assertIn('Ночи Тишины', gdd.read_text())
         self.assertIn('"name": "NEKO"', menu)
         self.assertIn('"name": "КОНТУР"', menu)
         self.assertIn('«НОЧНАЯ ЛИНИЯ»', menu)
