@@ -268,9 +268,37 @@ func before_movement(delta: float) -> void:
         zone.interaction = -2
         chasing = true
 
+func update_hero_facing() -> void:
+    # Navigation owns heading while moving. Once planted, face the same
+    # explicit/retaliation target that the simulation uses, even on cooldown.
+    if model.profile_id != "lyra_voss" or not model.enabled or model.hp <= 0 or not zone.route.is_empty():
+        return
+    var target: int = model.weapon_target()
+    if not model.alive(target) or model.enemies[target]["returning"] or model.in_safe(zone.hero.position):
+        return
+    var at: Vector3 = model.enemies[target]["at"]
+    if not model._can_shoot(zone.hero.position, at, model.weapon_range):
+        return
+    var direction: Vector3 = at - zone.hero.position
+    direction.y = 0.0
+    if direction.length_squared() > 0.0001:
+        zone.heading = atan2(direction.x, direction.z)
+
 func tick(delta: float) -> void:
     var hero_can_fire: bool = model.profile_id != "lyra_voss" or zone.route.is_empty()
-    model.tick(delta, zone.hero.position, hero_can_fire)
+    var aimed_target := -2
+    if model.profile_id == "lyra_voss" and hero_can_fire:
+        var target: int = model.weapon_target()
+        aimed_target = target
+        hero_can_fire = false
+        if model.alive(target):
+            var direction: Vector3 = model.enemies[target]["at"] - zone.hero.position
+            var target_heading := atan2(direction.x, direction.z)
+            # Let the body settle onto the firing direction instead of sending
+            # a sniper shot sideways during a target switch. No delayed shot
+            # is queued: the simulation revalidates the target every tick.
+            hero_can_fire = absf(angle_difference(zone.hero.rotation.y, target_heading)) <= LYRA.FIRE_ANGLE_TOLERANCE
+    model.tick(delta, zone.hero.position, hero_can_fire, aimed_target)
     if chasing and not model.alive(model.attack_target):
         zone._clear_route()
         chasing = false
@@ -343,6 +371,8 @@ func _events() -> void:
 func _restore_lyra_after_attack(token: int, seconds: float) -> void:
     await get_tree().create_timer(maxf(seconds, 0.05)).timeout
     if token != attack_serial or model.hp <= 0 or zone.hero_motion == null:
+        return
+    if str(zone.hero_motion.get_meta("neko_lyra_motion", "")) != "attack":
         return
     LYRA.restore_ready(zone.hero_motion)
 
