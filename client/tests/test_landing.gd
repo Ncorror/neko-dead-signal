@@ -136,7 +136,7 @@ func _run() -> void:
     menu._select_faction(0)
     _check(menu.officer_index == 3, "human commander restored after race switch")
     menu._select_faction(1)
-    _check(GameState.last_report.contains("ПОБЕДА") and GameState.last_report.contains("300"), "ship shows debrief")
+    _check(GameState.last_report.contains("ПОБЕДА") and GameState.last_report.contains("300"), "base shows debrief")
     menu._deploy()
     await tree.scene_changed
     op = tree.current_scene
