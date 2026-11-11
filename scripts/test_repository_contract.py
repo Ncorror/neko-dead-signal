@@ -14,18 +14,10 @@ class RepositoryContract(unittest.TestCase):
         project = (ROOT / 'client/project.godot').read_text()
         version = re.search(r'config/version="([^"]+)"', project)[1]
         export = (ROOT / 'client/export_presets.cfg').read_text()
-        book = (ROOT / 'docs/DEVICE_TEST_RTS_008.html').read_text()
         workflow = (ROOT / '.github/workflows/vienna-rts-android.yml').read_text()
         self.assertIn('version/name="' + version + '"', export)
         self.assertIn('NEKO_DEAD_SIGNAL-' + version + '-debug.apk', workflow)
         self.assertNotIn('cp docs/DEVICE_TEST_RTS_008.html', workflow)
-        first = re.search(r'<select id="tested-version"><option value="([^"]+)"', book)[1]
-        self.assertIn('REINA_RTS-' + first + '-debug.apk', book)
-        versions = re.search(r'const versions=\[(.*?)\];', book)[1]
-        self.assertEqual(re.findall(r"'([^']+)'", versions)[-1], first)
-        cases = re.findall(r'<section class="case" data-id="([^"]+)"', book)
-        self.assertEqual(len(cases), len(set(cases)), 'duplicate testbook case IDs')
-        self.assertEqual(len(cases), 36)
 
     def test_neko_branding_identity(self):
         project = (ROOT / 'client/project.godot').read_text()
@@ -112,6 +104,7 @@ class RepositoryContract(unittest.TestCase):
 
     def test_no_reactivated_space_lore(self):
         obsolete = (
+            "docs/DEVICE_TEST_RTS_008.html",
             "docs/AUDIT_2026-11-04.md",
             "docs/BASE_CONSTRUCTION_014.md",
             "docs/BASE_RECONNAISSANCE_018.md",

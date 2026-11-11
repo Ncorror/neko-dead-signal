@@ -23,7 +23,7 @@ SUCCESS: получение проверенных GLB, создание сце�
 повторное открытие `.blend` с проверкой костей, Actions и упакованных текстур.
 Артефакт хранится 30 дней; скрипт остаётся в репозитории для повторной сборки.
 
-Запустить workflow **Lyra Blender authoring package** на `agent/neko32-gpt`.
+Запустить workflow **Lyra Blender authoring package** через PR в `main`, push в `main` или вручную через `workflow_dispatch`.
 Артефакт содержит `.blend`, три PNG, `setup_report.json`, SHA256 и commit.
 Текстуры упакованы: дополнительных внешних изображений для открытия не нужно.
 
