@@ -58,4 +58,4 @@
 - Раскладка кнопок, способ смены боеприпаса, прогрессия навыков, PvP-ограничения.
 - Конкретные цифры и фактическую реализацию **не считать принятыми без тестов**.
 
-См. [общий список классов](MMORTS_FIVE_CLASSES_AND_HEROINES_v0.1.md), [решения](DECISIONS.md), [MMORTS GDD](DEAD_SIGNAL_MMORTS_GDD_v0.3.md).
+См. [общий список классов](MMORTS_FIVE_CLASSES_AND_HEROINES_v0.1.md), [решения](DECISIONS.md), [MMORTS GDD](DEAD_SIGNAL_EARTH_GDD_v0.4.md).
