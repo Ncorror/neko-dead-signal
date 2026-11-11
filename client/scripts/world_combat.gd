@@ -110,6 +110,9 @@ func take_events() -> Array[Dictionary]:
 func alive(id: int) -> bool:
     return id >= 0 and id < enemies.size() and enemies[id]["hp"] > 0
 
+func weapon_target() -> int:
+    return attack_target if alive(attack_target) else last_attacker
+
 func in_safe(point: Vector3) -> bool:
     return point.distance_to(SAFE_AT) <= SAFE_RADIUS
 
@@ -156,7 +159,7 @@ func _retreat(enemy: Dictionary, delta: float) -> void:
         enemy["stun"] = 0.0
         enemy["slow"] = 0.0
 
-func tick(seconds: float, hero_at: Vector3, hero_can_fire: bool = true) -> void:
+func tick(seconds: float, hero_at: Vector3, hero_can_fire: bool = true, aimed_target: int = -2) -> void:
     if not enabled:
         return
     var delta := clampf(seconds, 0, 0.1)
@@ -200,8 +203,10 @@ func tick(seconds: float, hero_at: Vector3, hero_can_fire: bool = true) -> void:
         return
     if in_safe(hero_at) and quiet >= 5.0:
         hp = minf(MAX_HP, hp + delta * 8)
-    var target := attack_target if alive(attack_target) else last_attacker
-    if hero_can_fire and alive(target) and not in_safe(hero_at) and not enemies[target]["returning"] and weapon <= 0:
+    var target := weapon_target()
+    # Incoming hits can change last_attacker during this tick. A facing check
+    # for the previous target must not authorize a shot at the new aggressor.
+    if hero_can_fire and (aimed_target == -2 or target == aimed_target) and alive(target) and not in_safe(hero_at) and not enemies[target]["returning"] and weapon <= 0:
         var enemy: Dictionary = enemies[target]
         if _can_shoot(hero_at, enemy["at"], weapon_range):
             _hit(enemy, DAMAGE * (1.12 if protocol > 0 else 1.0), "weapon")
