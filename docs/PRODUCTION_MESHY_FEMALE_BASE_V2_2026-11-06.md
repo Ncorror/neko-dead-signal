@@ -57,7 +57,7 @@ ONE original ADULT young woman (18+) in a refined anime science-fiction style co
 - **Не сделано:** реальный GLB, генерация/списание кредитов Meshy, исправленный независимый левый профиль, риг, анимации и проверка Godot.
 - **Решение:** во всех активных планах v2 — единственная актуальная женская база; v1 — только архив и источник истории.
 
-См. [архитектуру персонажей](CHARACTER_CREATOR_ANIME_MMO_PLAN_2026-11-06.md), [устаревший план v1](PRODUCTION_MESHY_FEMALE_BASE_V1_2026-11-06.md), [канон MMORPG](DEAD_SIGNAL_MMORTS_GDD_v0.3.md).
+См. [архитектуру персонажей](CHARACTER_CREATOR_ANIME_MMO_PLAN_2026-11-06.md), [устаревший план v1](PRODUCTION_MESHY_FEMALE_BASE_V1_2026-11-06.md), [канон MMORPG](DEAD_SIGNAL_EARTH_GDD_v0.4.md).
 
 
 ## Первый результат Meshy 7.1 · скриншоты пользователя от 2026-11-06 (визуальная проверка)
