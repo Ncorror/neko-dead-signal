@@ -49,8 +49,8 @@ func _run() -> void:
                 _check(label.size.y < 60 and label.size.x > 320, "title wraps into a vertical column")
             if label.text.begins_with("NEKO SYSTEMS"):
                 found_footer = true
-        _check(found_title, "NEKO: DEAD SIGNAL title missing from orbital menu")
-        _check(found_footer, "NEKO SYSTEMS footer missing from orbital menu")
+        _check(found_title, "NEKO: DEAD SIGNAL title missing from ground menu")
+        _check(found_footer, "NEKO SYSTEMS footer missing from ground menu")
         for ratio in [0.25, 0.5, 0.7]:
             _touch(get_viewport(), Vector2(bounds.end.x - 60, bounds.size.y * ratio))
             await tree.process_frame
@@ -69,7 +69,7 @@ func _run() -> void:
         _tap(menu.faction_buttons[1])
         await _settle()
         _check(menu.faction_index == 1, "visible fleet button must work")
-        _check(bounds.encloses(menu.cta.get_global_rect()), "Saari deploy button off-screen")
+        _check(bounds.encloses(menu.cta.get_global_rect()), "Kontur deploy button off-screen")
         # The selected officer must stay reachable on mobile even if drag-scroll fails.
         menu._select_faction(0)
         menu._select_officer(3)
