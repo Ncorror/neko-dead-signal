@@ -50,7 +50,7 @@ func _run() -> void:
     GameState.world_progress_path = TEST_PATH
     for faction in [0, 1]:
         _clean()
-        GameState.set_selection(faction, 0, "Люди" if faction == 0 else "Саари", "Амина" if faction == 0 else "Сэйра")
+        GameState.set_selection(faction, 0, "NEKO" if faction == 0 else "КОНТУР", "Амина" if faction == 0 else "Сэйра")
         get_tree().change_scene_to_file("res://scenes/main.tscn")
         await get_tree().scene_changed
         await _settle()
@@ -107,7 +107,7 @@ func _run() -> void:
         zone = get_tree().current_scene
         zone.set_physics_process(false)
         await _settle()
-        _check(zone.progress.state()["claimed"] and zone.progress.credits() == 75, "ship/world return lost the completed quest")
+        _check(zone.progress.state()["claimed"] and zone.progress.credits() == 75, "base/world return lost the completed quest")
         # Existing RTS entry remains a separate working scene with two troops.
         zone._return_to_ship()
         await get_tree().scene_changed
