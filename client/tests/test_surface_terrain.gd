@@ -71,6 +71,12 @@ func _ready() -> void:
                 previous = point
     _check(world.obstacles.size() >= 90 and world.vegetation.multimesh.instance_count == 180,
         "landmarks/rocks/plant instancing were not created")
+    _check(world.vegetation.name == "EarthVegetation", "vegetation still exposes the old off-world identity")
+    _check(world.atmosphere_root != null and world.skyline != null and world.skyline.get_child_count() >= 11,
+        "earth skyline atmosphere was not created")
+    _check(world.anomaly_markers.size() == 3, "radio anomaly markers were not created")
+    _check(world.atmosphere_root.find_children("*", "StaticBody3D", true, false).is_empty(),
+        "visual atmosphere unexpectedly changed physics/navigation")
     _saves()
     _clean()
     if failures == 0:

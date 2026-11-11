@@ -8,6 +8,14 @@ var player: AnimationPlayer
 var status: Label
 var entries: VBoxContainer
 var preview_origin := Vector3.ZERO
+var timeline: HSlider
+var time_label: Label
+var pause_button: Button
+var weapon_button: Button
+var selected_clip := ""
+var paused := false
+var weapon_in_hand := false
+var playback_speed := 1.0
 
 func _ready() -> void:
     var background := ColorRect.new()
@@ -44,7 +52,7 @@ func _ready() -> void:
     model_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
     columns.add_child(model_frame)
     model_view = PREVIEW.new()
-    model_view.custom_minimum_size = Vector2(320, 330)
+    model_view.custom_minimum_size = Vector2(320, 220)
     model_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     model_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
     model_frame.add_child(model_view)
@@ -57,6 +65,32 @@ func _ready() -> void:
     scroll.add_child(entries)
     status = _label("Загрузка модели…", 14)
     root.add_child(status)
+    var transport := HBoxContainer.new()
+    root.add_child(transport)
+    pause_button = _button("ПАУЗА", 44)
+    pause_button.pressed.connect(_toggle_pause)
+    transport.add_child(pause_button)
+    for direction in [-1, 1]:
+        var step := _button("− КАДР" if direction < 0 else "+ КАДР", 44)
+        step.pressed.connect(_step.bind(direction))
+        transport.add_child(step)
+    var speed := OptionButton.new()
+    for caption in ["0,25×", "0,5×", "1×"]:
+        speed.add_item(caption)
+    speed.select(2)
+    speed.item_selected.connect(_set_speed)
+    transport.add_child(speed)
+    weapon_button = _button("ОРУЖИЕ: СПИНА", 44)
+    weapon_button.pressed.connect(_toggle_weapon)
+    transport.add_child(weapon_button)
+    time_label = _label("0,00 / 0,00 с", 14)
+    transport.add_child(time_label)
+    timeline = HSlider.new()
+    timeline.custom_minimum_size.y = 32
+    timeline.step = 0.001
+    timeline.editable = false
+    timeline.value_changed.connect(_scrub)
+    root.add_child(timeline)
     root.add_child(_label("Поверни модель пальцем. Часть боевых клипов содержит перемещение скелета.", 12))
     call_deferred("_load")
 
@@ -81,15 +115,31 @@ func _load() -> void:
 func _hold() -> void:
     if model_view != null and model_view.active_model != null:
         model_view.active_model.position = preview_origin
-    if player != null and LYRA.hold_ready_pose(player):
-        status.text = "Стойка: исходная нейтральная поза скелета; винтовка за спиной."
+    if player != null and LYRA.restore_ready(player):
+        selected_clip = ""
+        paused = true
+        weapon_in_hand = false
+        weapon_button.text = "ОРУЖИЕ: СПИНА"
+        timeline.editable = false
+        timeline.set_value_no_signal(0)
+        time_label.text = "—"
+        pause_button.text = "ПУСК"
+        status.text = "Временная стойка из Walking; ноги сброшены в rest. Не авторский idle."
 
 func _play(clip: String) -> void:
     if model_view != null and model_view.active_model != null:
         model_view.active_model.position = preview_origin
     if player != null:
         if LYRA.play_preview(player, clip):
+            selected_clip = clip
+            paused = false
+            player.speed_scale = playback_speed
+            player.seek(0.0, true)
+            timeline.max_value = player.current_animation_length
+            timeline.editable = true
+            pause_button.text = "ПАУЗА"
             status.text = "Проигрывается: " + clip
+            _update_pose_display()
         else:
             status.text = "Отсутствует: " + clip
 
@@ -98,6 +148,16 @@ func _process(_delta: float) -> void:
         return
     if str(player.get_meta("neko_lyra_motion", "")) != "preview":
         return
+    if not player.is_playing():
+        paused = true
+        pause_button.text = "ПУСК"
+    _update_pose_display()
+
+func _update_pose_display() -> void:
+    if player == null or selected_clip.is_empty():
+        return
+    timeline.set_value_no_signal(player.current_animation_position)
+    time_label.text = "%.2f / %.2f с" % [player.current_animation_position, player.current_animation_length]
     var offset: Vector3 = LYRA.root_motion_offset(player)
     var model: Node3D = model_view.active_model
     model.position = Vector3(
@@ -105,6 +165,47 @@ func _process(_delta: float) -> void:
         preview_origin.y,
         preview_origin.z - offset.z * model.scale.z
     )
+
+func _toggle_pause() -> void:
+    if player == null or selected_clip.is_empty():
+        return
+    if player.is_playing():
+        player.pause()
+        paused = true
+    else:
+        var at := player.current_animation_position
+        player.play()
+        if at >= player.current_animation_length:
+            player.seek(0.0, true)
+        paused = false
+    pause_button.text = "ПУСК" if paused else "ПАУЗА"
+
+func _scrub(seconds: float) -> void:
+    if player == null or selected_clip.is_empty():
+        return
+    player.pause()
+    player.seek(clampf(seconds, 0.0, player.current_animation_length), true)
+    paused = true
+    pause_button.text = "ПУСК"
+    _update_pose_display()
+
+func _step(direction: int) -> void:
+    if player != null and not selected_clip.is_empty():
+        _scrub(player.current_animation_position + float(direction) / 30.0)
+
+func _set_speed(index: int) -> void:
+    playback_speed = [0.25, 0.5, 1.0][index]
+    if player != null:
+        player.speed_scale = playback_speed
+
+func _toggle_weapon() -> void:
+    if player == null:
+        return
+    var ok := LYRA.stow_weapon(player) if weapon_in_hand else LYRA.ready_weapon(player)
+    if ok:
+        weapon_in_hand = not weapon_in_hand
+        weapon_button.text = "ОРУЖИЕ: КИСТЬ" if weapon_in_hand else "ОРУЖИЕ: СПИНА"
+        status.text = "Крепление к правой кисти — проверка клипа, не готовый двухручный хват." if weapon_in_hand else "Оружие за спиной."
 
 
 func _back() -> void:

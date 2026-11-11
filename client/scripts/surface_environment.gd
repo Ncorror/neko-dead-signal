@@ -1,5 +1,6 @@
 extends Node3D
-## Frontier v1 art modules over the physically verified 0.0.25 footprints.
+## Earth atmosphere layer over the physically verified 128x128 footprints.
+## Decorative skyline, road wear and radio effects never participate in physics/navigation.
 
 const TERRAIN := preload("res://scripts/surface_terrain.gd")
 const ASSETS := preload("res://scripts/surface_assets.gd")
@@ -12,6 +13,9 @@ var obstacles: Array[Dictionary] = []
 var site_markers: Array[Node3D] = []
 var npc: Node3D
 var vegetation: MultiMeshInstance3D
+var atmosphere_root: Node3D
+var skyline: Node3D
+var anomaly_markers: Array[Node3D] = []
 var backdrop
 var material_cache: Dictionary = {}
 
@@ -84,24 +88,29 @@ func build(nav) -> void:
     var environment := WorldEnvironment.new()
     var sky := Environment.new()
     sky.background_mode = Environment.BG_COLOR
-    sky.background_color = Color("#617b8a")
+    sky.background_color = Color("#46545d")
     sky.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    sky.ambient_light_color = Color("#d7e2e8")
-    sky.ambient_light_energy = 0.9
+    sky.ambient_light_color = Color("#b8c2c4")
+    sky.ambient_light_energy = 0.78
+    sky.fog_enabled = true
+    sky.fog_light_color = Color("#68747a")
+    sky.fog_light_energy = 0.72
+    sky.fog_density = 0.009
+    sky.fog_sky_affect = 0.68
     environment.environment = sky
     add_child(environment)
     var sun := DirectionalLight3D.new()
     sun.name = "SurfaceSun"
     sun.rotation_degrees = Vector3(-52, -32, 0)
-    sun.light_color = Color("#fff4de")
-    sun.light_energy = 1.0
+    sun.light_color = Color("#e9dfca")
+    sun.light_energy = 0.74
     sun.shadow_enabled = false
     add_child(sun)
     var fill := DirectionalLight3D.new()
     fill.name = "SurfaceFill"
     fill.rotation_degrees = Vector3(-34, 150, 0)
-    fill.light_color = Color("#c1dbec")
-    fill.light_energy = 0.22
+    fill.light_color = Color("#a9c0cb")
+    fill.light_energy = 0.18
     fill.shadow_enabled = false
     add_child(fill)
     var ground := MeshInstance3D.new()
@@ -139,6 +148,7 @@ func build(nav) -> void:
     _ruins()
     _canyon()
     _scatter()
+    _earth_atmosphere()
 
 func _outpost() -> void:
     var pad: Vector3 = terrain.on_ground(TERRAIN.SITES[0], -0.02)
@@ -230,11 +240,84 @@ func _scatter() -> void:
             var scale_value := random.randf_range(0.35, 0.95)
             var basis := Basis(Vector3.UP, random.randf_range(0, TAU)).scaled(Vector3.ONE * scale_value)
             plants.set_instance_transform(planted, Transform3D(basis, terrain.on_ground(at, 0)))
-            plants.set_instance_color(planted, Color("#b5d0bf").lerp(Color.WHITE, random.randf()))
+            plants.set_instance_color(planted, Color("#687a61").lerp(Color("#aab49a"), random.randf()))
             planted += 1
         if planted == plants.instance_count and rocks == 72:
             break
     vegetation = MultiMeshInstance3D.new()
-    vegetation.name = "AlienPlants"
+    vegetation.name = "EarthVegetation"
     vegetation.multimesh = plants
     add_child(vegetation)
+
+func _earth_atmosphere() -> void:
+    atmosphere_root = Node3D.new()
+    atmosphere_root.name = "EarthAtmosphere"
+    add_child(atmosphere_root)
+    _distant_city()
+    _road_remnants()
+    _radio_anomaly()
+
+func _distant_city() -> void:
+    skyline = Node3D.new()
+    skyline.name = "DistantDeadCity"
+    atmosphere_root.add_child(skyline)
+    var xs := [-82.0, -69.0, -55.0, -39.0, -22.0, -6.0, 12.0, 29.0, 46.0, 63.0, 78.0]
+    for i in range(xs.size()):
+        var x: float = xs[i]
+        var z := -118.0 - float(i % 3) * 5.0
+        var floor_y: float = backdrop.height(x, z)
+        var height := 13.0 + float((i * 11) % 27)
+        var width := 6.0 + float(i % 4) * 2.1
+        var building := box(skyline, Vector3(x, floor_y, z), Vector3(width, height, 7.0 + float(i % 3) * 2.0),
+            Color("#263139").lerp(Color("#3c4649"), float(i % 4) / 5.0))
+        building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        if i in [1, 4, 7, 9]:
+            var mast := box(skyline, Vector3(x + width * 0.18, floor_y + height, z), Vector3(0.22, 7.0 + float(i % 3) * 2.0, 0.22), Color("#59646a"))
+            mast.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    var horizon := caption(skyline, "ОБЕСТОЧЕННЫЙ ГОРОД · СЕВЕРНЫЙ ПОЯС", 0)
+    horizon.position = Vector3(0, backdrop.height(0, -118) + 26, -118)
+    horizon.visibility_range_end = 190
+    horizon.modulate = Color(0.72, 0.78, 0.80, 0.72)
+
+func _road_remnants() -> void:
+    var road := TERRAIN.ROADS[0]
+    for segment in range(road.size() - 1):
+        var from: Vector3 = road[segment]
+        var to: Vector3 = road[segment + 1]
+        var direction := Vector2(to.x - from.x, to.z - from.z)
+        var distance := direction.length()
+        if distance < 0.1:
+            continue
+        var yaw := atan2(direction.x, direction.y)
+        var marks := maxi(1, floori(distance / 5.5))
+        for index in range(marks):
+            var t := (float(index) + 0.5) / float(marks)
+            var flat := from.lerp(to, t)
+            var point := terrain.on_ground(flat, 0.025)
+            var stripe := box(atmosphere_root, point, Vector3(0.16, 0.025, 1.3), Color("#857f68"))
+            stripe.rotation.y = yaw
+            stripe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+func _radio_anomaly() -> void:
+    var centre := terrain.on_ground(TERRAIN.SITES[3], 0)
+    for i in range(3):
+        var marker := Node3D.new()
+        marker.name = "RadioAnomaly_%d" % i
+        marker.position = centre + Vector3(0, 1.6 + float(i) * 1.05, 0)
+        marker.rotation_degrees = Vector3(90, float(i) * 23.0, float(i) * 11.0)
+        atmosphere_root.add_child(marker)
+        var ring := MeshInstance3D.new()
+        var torus := TorusMesh.new()
+        torus.inner_radius = 1.25 + float(i) * 0.75
+        torus.outer_radius = torus.inner_radius + 0.055
+        ring.mesh = torus
+        ring.material_override = material(Color("#7cc5bd"), 1.8 - float(i) * 0.25)
+        ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        ring.visibility_range_end = 70
+        marker.add_child(ring)
+        anomaly_markers.append(marker)
+    var label_anchor := Node3D.new()
+    label_anchor.position = centre + Vector3(0, 0, -2)
+    atmosphere_root.add_child(label_anchor)
+    var warning := caption(label_anchor, "РАДИОПОМЕХИ · DEAD SIGNAL", 5.4)
+    warning.modulate = Color("#9fd8d1")

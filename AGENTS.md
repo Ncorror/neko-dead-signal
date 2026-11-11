@@ -1,15 +1,24 @@
 # NEKO: DEAD SIGNAL — rules for future coding agents
 
-## Current binding decisions (11 November 2026)
+## Binding decisions · 11 November 2026
 
-1. **Read [Earth GDD v0.4](docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md) first.** It is the sole authority for world, characters, factions and story. Earth 2116, 27 years after the Night of Silence; NEKO mobile headquarters **Night Line** vs quarantine authority **Kontur**, settlements, human memories/Echo, the terrestrial Zero network. Space fleets, Saari aliens, unknown planets, orbital command and orbital deployment are **cancelled concepts**, never features to implement.
-2. **Preserve working Godot mechanics**: Android 2.5D tap movement, local RPG/PvE, 128×128 surface, RTS free movement/order queues, construction, power, production, fog, local saves, full diagnostics, animations and tests. Current server gameplay is not online; do not claim MMO functionality.
-3. **Compatibility:** keep package `com.ncorror.neko.deadsignal`, persistent faction indices 0=NEKO and 1=Kontur (previously humans/Saari), existing officer indices, character IDs and `user://` save paths. No silent save migration or resets.
-4. **Heroines:** Amina, Reina, Mira Kade and Lyra Voss remain adult authored leads. Preserve class and ability contracts and approved art. Saira Nel and Oralin remain as human Kontur leads with stable data identifiers. Lyra's unfinished Blender rifle grips are not accepted assets, even if CI passes.
-5. **RTS networking**: preserve the existing order DTO and local command executor. Future server validates ownership, visibility and sequencing. Do not import lockstep as an MMO server substitute.
-6. **Tests and documentation:** update all required scripts, tests and user-facing labels when changing names. Do not restore removed space-era GDDs based on historical git references, README snapshots or obsolete CI test assertions. Source history remains accessible through Git; it is not current design authority.
-7. **Branch hygiene:** never merge diverged animation branch blindly; compare conflicts, run Godot/Python/Android CI and retain source assets. Remove old branches only after their changes are merged or independently preserved.
+1. **Read [Earth GDD v0.4](docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md) first.** It is the only authority for world, factions and story: Earth 2116, Night Line, NEKO, Kontur, settlements, Echo and the terrestrial Zero network.
+2. **Cancelled lore stays cancelled.** Space fleets, alien Saari, unknown planets, orbital command/deployment and space-pirate concepts exist only in Git history. Never restore them from old commits, branches, reports or test fixtures.
+3. **Preserve working Godot mechanics:** Android tap movement, local PvE, 128×128 surface, RTS orders, construction, power, production, fog, saves, diagnostics, animations and tests. The server is not yet an online game simulation.
+4. **Compatibility:** keep package `com.ncorror.neko.deadsignal`, faction indices 0=NEKO / 1=Kontur, officer IDs, character IDs and existing `user://` save paths.
+5. **Heroines:** Amina, Reina, Mira Kade and Lyra Voss remain authored leads. Saira Nel and Oralin remain Kontur leads. Approved class contracts and art are preserved.
+6. **Lyra:** runtime regressions for lab frame stepping, isolated animation resources, death playback, planted facing and target revalidation are part of the active code. Blender rifle drafts are still unapproved visual candidates.
+7. **RTS networking:** preserve the order DTO and local executor. Future server work validates ownership, visibility and sequencing; do not import lockstep as a substitute.
+8. **Branch hygiene:** the former diverged animation branch was audited and its unique runtime/test fixes were transferred into the active Earth branch. Do not merge or resurrect retired branches. Old feature branches may be deleted after the active PR is green.
+9. **Documentation:** only files listed by [docs/README.md](docs/README.md) are active design documents. Removed reports remain available through Git history and must not be regenerated to satisfy obsolete tooling.
 
-## Non-canonical material
+## Current source of truth
 
-The old cosmic GDDs, retired pre-0.0.33 skill drafts, previous Art Base v1/v2, and pre-Earth test instructions were removed from the working tree. They remain available only in historical Git commits. Do not restore them, quote them as requirements, or regenerate deprecated files to satisfy old tooling. The active skills contract is `docs/MMORTS_HERO_SKILL_BALANCE_V03_2026-11-06.md`; approved female reference is v3. No released online MMO is claimed.
+- World/story: `docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md`
+- Decisions: `docs/DECISIONS.md`
+- Roadmap/status: `docs/ROADMAP.md`
+- Architecture: `docs/ARCHITECTURE.md`
+- Hero skill contract: `docs/MMORTS_HERO_SKILL_BALANCE_V03_2026-11-06.md`
+- Lyra visual acceptance: `docs/LYRA_GOLD_STANDARD.md`
+
+No released online MMO is claimed.

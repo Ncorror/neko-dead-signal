@@ -1,9 +1,10 @@
 extends RefCounted
-## Lyra Voss uses the 20 verified imported Meshy/Mixamo clips.
-## Export contains no authored Idle. Neutral state uses the symmetric skeleton rest pose.
+## Imported clips are candidates, not approved rifle animations.
+## Neutral stance is a temporary walking sample, not an authored idle.
 const FIT := preload("res://scripts/rts_character_fit.gd")
 const MODEL_PATH := "res://assets/characters/lyra_voss/rigged.glb"
 const WEAPON_PATH := "res://assets/characters/lyra_voss/sniper_rifle.glb"
+const FIRE_ANGLE_TOLERANCE := deg_to_rad(8.0)
 const CLIP_NAMES = [
     "Running", "Walking", "Archery_Aim_with_Lateral_Scan",
     "Archery_Shot_2", "Bar_Hang_Idle", "Charged_Spell_Cast_1",
@@ -228,6 +229,10 @@ static func hold_ready_pose(player: AnimationPlayer) -> bool:
     var name := resolve_clip(player, "Walking")
     if name.is_empty():
         return false
+    # Clear rotations on bones not keyed by the next clip (including fingers).
+    # Otherwise stopping a death/reload can retain part of that pose.
+    player.stop()
+    skeleton.reset_bone_poses()
     player.play(name)
     player.seek(0.017, true)
     player.pause()
@@ -253,43 +258,50 @@ static func restore_ready(player: AnimationPlayer) -> bool:
 
 
 static func play_attack(player: AnimationPlayer) -> float:
-    if player == null or not ready_weapon(player):
+    if player == null or str(player.get_meta("neko_lyra_motion", "")) == "death":
         return 0.0
-    var name := resolve_clip(player, "Archery_Shot_2")
+    # Archery_Shot_2 pulls a bowstring; it is not a two-handed rifle shot.
+    # Keep simulation/VFX operational while the authored rifle clip is missing.
+    var name := resolve_clip(player, "Rifle_Fire")
     if name.is_empty():
         return 0.0
-    var animation: Animation = player.get_animation(name)
-    if animation == null:
+    var animation := _local_animation(player, name)
+    if animation == null or not ready_weapon(player):
         return 0.0
     animation.loop_mode = Animation.LOOP_NONE
     player.set_meta("neko_lyra_motion", "attack")
-    player.play(name, 0.06, 1.35)
-    return clampf(animation.length / 1.35, 0.35, 0.82)
+    player.play(name, 0.06)
+    return animation.length
 
 
 static func play_death(player: AnimationPlayer) -> float:
     if player == null:
         return 0.0
-    stow_weapon(player)
+    # Repeated damage/events must not restart a fall or teleport a held rifle
+    # onto the back. Keep the attachment used at the moment of death.
+    if str(player.get_meta("neko_lyra_motion", "")) == "death":
+        return maxf(0.0, player.current_animation_length - player.current_animation_position) if player.is_playing() else 0.0
     var name := resolve_clip(player, "Dead")
     if name.is_empty():
         name = resolve_clip(player, "Fall_Dead_from_Abdominal_Injury")
     if name.is_empty():
         return 0.0
-    var animation: Animation = player.get_animation(name)
+    var animation := _local_animation(player, name)
     if animation == null:
         return 0.0
     animation.loop_mode = Animation.LOOP_NONE
     player.set_meta("neko_lyra_motion", "death")
     player.play(name, 0.08)
-    return clampf(animation.length, 0.8, 1.6)
+    return animation.length
 
 
 static func play_movement(player: AnimationPlayer, moving: bool, speed: float) -> String:
     if player == null:
         return "missing"
     var current := str(player.get_meta("neko_lyra_motion", ""))
-    if current in ["attack", "death"]:
+    if current == "death":
+        return current
+    if current == "attack" and not moving and player.is_playing():
         return current
     var state := "idle"
     if moving:
@@ -301,7 +313,7 @@ static func play_movement(player: AnimationPlayer, moving: bool, speed: float) -
     var name := resolve_clip(player, "Running" if state == "run" else "Walking")
     if name.is_empty():
         return "missing"
-    var animation: Animation = player.get_animation(name)
+    var animation := _local_animation(player, name)
     if animation != null:
         animation.loop_mode = Animation.LOOP_LINEAR
     stow_weapon(player)
@@ -314,9 +326,35 @@ static func play_preview(player: AnimationPlayer, clip: String) -> bool:
     var name := resolve_clip(player, clip)
     if name.is_empty():
         return false
-    var animation: Animation = player.get_animation(name)
+    var animation := _local_animation(player, name)
     if animation != null:
         animation.loop_mode = Animation.LOOP_LINEAR if clip in ["Walking", "Running"] else Animation.LOOP_NONE
     player.set_meta("neko_lyra_motion", "preview")
     player.play(name, 0.1)
     return true
+
+
+static func _local_animation(player: AnimationPlayer, name: String) -> Animation:
+    # PackedScene instances share libraries. Lab loop flags must not change a
+    # live actor's death/attack playback. Only copy clips actually used by this
+    # actor; meshes, textures, skins and unused animation tracks stay shared.
+    if not player.has_meta("neko_local_animations"):
+        for library_name in player.get_animation_library_list():
+            var original := player.get_animation_library(library_name)
+            var local := AnimationLibrary.new()
+            for clip in original.get_animation_list():
+                local.add_animation(clip, original.get_animation(clip))
+            player.remove_animation_library(library_name)
+            player.add_animation_library(library_name, local)
+        player.set_meta("neko_local_animations", true)
+    var copied: Dictionary = player.get_meta("neko_copied_clips", {})
+    if not copied.has(name):
+        var library_name := name.get_slice("/", 0) if "/" in name else ""
+        var clip := name.get_slice("/", 1) if "/" in name else name
+        var library := player.get_animation_library(library_name)
+        var animation := player.get_animation(name).duplicate() as Animation
+        library.remove_animation(clip)
+        library.add_animation(clip, animation)
+        copied[name] = true
+        player.set_meta("neko_copied_clips", copied)
+    return player.get_animation(name)

@@ -77,8 +77,8 @@ func _special_attack(enemy: Dictionary, delta: float, hero_at: Vector3) -> bool:
         return true
     return false
 
-func tick(seconds: float, hero_at: Vector3, hero_can_fire: bool = true) -> void:
-    super.tick(seconds, hero_at, hero_can_fire)
+func tick(seconds: float, hero_at: Vector3, hero_can_fire: bool = true, aimed_target: int = -2) -> void:
+    super.tick(seconds, hero_at, hero_can_fire, aimed_target)
     if not enabled:
         return
     var delta := clampf(seconds, 0, 0.1)

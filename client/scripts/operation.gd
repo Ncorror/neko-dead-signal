@@ -1366,6 +1366,13 @@ func _update_attack_order(unit: Combatant, delta: float) -> bool:
     return false
 
 func _shoot(shooter: Combatant, target: Combatant, reason: StringName = &"order") -> void:
+    if _is_lyra_unit(shooter):
+        if unit_paths.has(shooter) or shooter.hull <= 0:
+            return
+        var direction := target.position - shooter.position
+        _face_direction(shooter, direction)
+        if absf(angle_difference(shooter.rotation.y, atan2(direction.x, direction.z))) > LYRA_MOTION.FIRE_ANGLE_TOLERANCE:
+            return
     var previous_hull: int = target.hull
     if not shooter.fire_at(target):
         return
@@ -1395,7 +1402,7 @@ func _shoot(shooter: Combatant, target: Combatant, reason: StringName = &"order"
                 enemy_ai.stop(true)
             auto_fire.enemy_destroyed(target, self)
         else:
-            target.hide()
+            _play_unit_death(target)
             units.erase(target)
             auto_fire.cancel(target, self)
             _clear_attack(target)
@@ -1405,6 +1412,16 @@ func _shoot(shooter: Combatant, target: Combatant, reason: StringName = &"order"
             if selected_units.has(target):
                 _select_units(units.duplicate())
     _update_status()
+
+func _play_unit_death(unit: Combatant) -> void:
+    # Death visuals outlive membership in the combat/navigation/sight lists.
+    # AnimationPlayer holds the final frame; no timer can affect a later scene.
+    if _is_lyra_unit(unit) and animation_players.has(unit):
+        var player: AnimationPlayer = animation_players[unit]
+        if is_instance_valid(player) and LYRA_MOTION.play_death(player) > 0.0:
+            animation_state[unit] = "death"
+            return
+    unit.hide()
 
 func _other_unit_positions(unit: Combatant) -> Array[Vector3]:
     var positions: Array[Vector3] = []

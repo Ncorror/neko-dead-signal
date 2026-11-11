@@ -51,6 +51,20 @@ func _ready() -> void:
     _check(shot_events.size() == 1 and float(shot_events[0]["distance"]) <= 16.0 and float(shot_events[0]["hp_after"]) < hp,
         "Lyra shot event is not tied to a real in-range damage result")
 
+    # Retaliation can change targets during enemy simulation, after the view
+    # checked facing. Do not reuse that authorization for a different enemy.
+    model = _fresh()
+    model.set_profile("lyra_voss")
+    model.enemies[2]["hp"] = 0
+    model.last_attacker = 0
+    model.enemies[0]["shot"] = 5.0
+    model.enemies[1]["at"] = at + Vector3(2, 0, 0)
+    model.enemies[1]["home"] = model.enemies[1]["at"]
+    model.tick(0.01, at, true, 0)
+    _check(model.last_attacker == 1 and is_zero_approx(model.weapon)
+        and not model.take_events().any(func(e): return e["type"] == "hero_shot"),
+        "Facing authorization leaked to a new aggressor in the same tick")
+
     model = _fresh()
     model.set_profile("lyra_voss")
     model.enemies[0]["at"] = Vector3(25, 0, -14)

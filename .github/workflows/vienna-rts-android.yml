@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - agent/neko32-gpt
     paths:
       - 'client/**'
       - 'scripts/**'
@@ -265,7 +264,7 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/rts-menu-test.log; then
             exit 1
           fi
-      - name: Validate imported Amina on orbital menu and RTS battlefield
+      - name: Validate imported Amina on ground base menu and RTS battlefield
         shell: bash
         run: |
           set -Eeuo pipefail
