@@ -478,6 +478,8 @@ jobs:
           mkdir -p build/tester-bundle
           cp client/build/NEKO_DEAD_SIGNAL-debug.apk build/tester-bundle/NEKO_DEAD_SIGNAL-0.0.33-debug.apk
       - name: Publish tester APK
+        # Artifact storage is delivery-only; an exhausted quota must not turn a verified build red.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: neko-dead-signal-debug-${{ github.run_number }}
@@ -486,6 +488,8 @@ jobs:
           if-no-files-found: error
       - name: Preserve CI diagnostics
         if: always()
+        # Keep diagnostics when storage is available, but do not mask the real test/export result on quota exhaustion.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: neko-dead-signal-ci-logs-${{ github.run_number }}
