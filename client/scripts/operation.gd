@@ -746,8 +746,8 @@ func _create_ui() -> void:
     objectives_dialog.get_ok_button().text = "ЗАКРЫТЬ"
     add_child(objectives_dialog)
     return_dialog = ConfirmationDialog.new()
-    return_dialog.title = "Вернуться на базу NEKO?"
-    return_dialog.dialog_text = "Текущая операция завершится. Вернуться на базу NEKO?"
+    return_dialog.title = "Вернуться в командный центр?"
+    return_dialog.dialog_text = "Текущая операция завершится. Вернуться в командный центр?"
     return_dialog.ok_button_text = "На базу"
     return_dialog.cancel_button_text = "Остаться"
     return_dialog.confirmed.connect(_back_to_ship)
