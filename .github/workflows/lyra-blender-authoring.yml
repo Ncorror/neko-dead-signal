@@ -6,6 +6,7 @@ on:
     paths:
       - tools/avatar/prepare_lyra_blender.py
       - tools/avatar/author_lyra_rifle.py
+      - tools/avatar/export_lyra_rifle_candidate.py
       - .github/workflows/lyra-blender-authoring.yml
   pull_request:
     branches: [main]
@@ -53,6 +54,11 @@ jobs:
         run: |
           blender --background build/lyra-authoring/lyra_authoring.blend --threads 2 --python-exit-code 1 --python tools/avatar/author_lyra_rifle.py -- --output build/lyra-authoring/rifle-draft --render
           blender --background build/lyra-authoring/rifle-draft/lyra_rifle_draft.blend --python-exit-code 1 --python-expr "import bpy; a=set(bpy.data.actions.keys()); assert len(a)==24; assert {'Rifle_Ready','Rifle_Aim','Rifle_Fire','Rifle_Recoil_Visual'}.issubset(a); assert len(next(o for o in bpy.data.objects if o.type=='ARMATURE').data.bones)==66; print('LYRA_RIFLE_DRAFT_REOPEN_PASS')"
+      - name: Export validated runtime Rifle candidate
+        run: |
+          blender --background build/lyra-authoring/rifle-draft/lyra_rifle_draft.blend --threads 2 --python-exit-code 1 --python tools/avatar/export_lyra_rifle_candidate.py -- --output build/lyra-authoring/rifle-draft/lyra_rifle_runtime_preview.glb
+          test -s build/lyra-authoring/rifle-draft/lyra_rifle_runtime_preview.glb
+          test -s build/lyra-authoring/rifle-draft/lyra_rifle_runtime_preview.json
       - name: Publish Blender authoring package
         continue-on-error: true
         uses: actions/upload-artifact@v4
