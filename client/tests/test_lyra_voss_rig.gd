@@ -138,9 +138,15 @@ func _run() -> void:
         _check(not lab.player.is_playing() and lab.pause_button.text == "ПУСК", "Lab transport did not detect clip completion")
         lab._step(-1)
         _check(lab.player.current_animation_position < lab.player.current_animation_length, "Lab could not inspect completed clip")
-        lab._toggle_weapon()
         var lab_mount := lab.model_view.active_model.find_child("LyraRifleBackMount", true, false) as BoneAttachment3D
-        _check(str(lab_mount.bone_name).to_lower().ends_with("righthand"), "Lab weapon inspection toggle failed")
+        _check(str(lab_mount.bone_name).to_lower().ends_with("righthand") and lab.weapon_in_hand,
+            "Lab did not start in authored Rifle_Ready")
+        lab._toggle_weapon()
+        _check(str(lab_mount.bone_name).to_lower().ends_with("spine2") and not lab.weapon_in_hand,
+            "Lab could not stow authored preview rifle")
+        lab._toggle_weapon()
+        _check(str(lab_mount.bone_name).to_lower().ends_with("righthand") and lab.weapon_in_hand,
+            "Lab could not restore authored preview rifle")
         lab._play("Roll_Dodge_1")
         lab.player.seek(0.5, true)
         var root_offset: Vector3 = LYRA.root_motion_offset(lab.player)
