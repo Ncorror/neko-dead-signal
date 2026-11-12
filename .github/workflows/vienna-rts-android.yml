@@ -1,4 +1,4 @@
-name: Neko Dead Signal Android Debug
+name: Neko Dead Signal Android Debug (GitHub-hosted)
 
 on:
   push:
@@ -7,6 +7,8 @@ on:
     paths:
       - 'client/**'
       - 'scripts/**'
+      - 'server/**'
+      - 'tools/avatar/**'
       - 'tools/build_environment_kit.py'
       - 'docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md'
       - 'docs/DECISIONS.md'
@@ -20,6 +22,8 @@ on:
     paths:
       - 'client/**'
       - 'scripts/**'
+      - 'server/**'
+      - 'tools/avatar/**'
       - 'tools/build_environment_kit.py'
       - 'docs/DEAD_SIGNAL_EARTH_GDD_v0.4.md'
       - 'docs/DECISIONS.md'
@@ -33,18 +37,75 @@ permissions:
   contents: read
 
 concurrency:
-  group: reina-rts-android-${{ github.ref }}
+  group: neko-dead-signal-android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   android-debug:
-    runs-on: [self-hosted, Linux, X64, reina-rts-ci]
-    timeout-minutes: 40
-    env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      ANDROID_HOME: /opt/android-sdk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK 36 toolchain
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.1.0"
+
+      - name: Cache Godot 4.7.2 editor and export templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/bin/godot
+            ~/.local/share/godot/export_templates/4.7.2.stable
+          key: godot-4.7.2-linux-x86_64-v1
+
+      - name: Install verified Godot 4.7.2 and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          GODOT_VERSION: '4.7.2'
+          GODOT_EDITOR_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+          GODOT_TEMPLATES_SHA256: f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011
+        run: |
+          set -Eeuo pipefail
+          RELEASE="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          EDITOR_ZIP="$RUNNER_TEMP/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          TEMPLATES_TPZ="$RUNNER_TEMP/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          mkdir -p "$HOME/.local/bin" "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$RUNNER_TEMP/godot-editor"
+          curl -fL --retry 3 "$RELEASE/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -o "$EDITOR_ZIP"
+          curl -fL --retry 3 "$RELEASE/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o "$TEMPLATES_TPZ"
+          echo "$GODOT_EDITOR_SHA256  $EDITOR_ZIP" | sha256sum -c -
+          echo "$GODOT_TEMPLATES_SHA256  $TEMPLATES_TPZ" | sha256sum -c -
+          unzip -q "$EDITOR_ZIP" -d "$RUNNER_TEMP/godot-editor"
+          install -m 755 "$RUNNER_TEMP/godot-editor/Godot_v${GODOT_VERSION}-stable_linux.x86_64" "$HOME/.local/bin/godot"
+          unzip -q -j "$TEMPLATES_TPZ" 'templates/*' -d "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+
+      - name: Add Godot to PATH
+        shell: bash
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Cache pinned Lyra source assets
+        uses: actions/cache@v4
+        with:
+          path: client/assets/characters/lyra_voss
+          key: lyra-source-${{ hashFiles('scripts/install_lyra_voss.py', 'scripts/install_lyra_voss_weapon.py') }}
       - name: Verify local server API contract
         shell: bash
         run: |
@@ -75,9 +136,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          # Each workflow job uses isolated writable data/config/cache directories.
-          # The system runner home may have root-owned intermediate directories
-          # from first-time export template provisioning.
+          # Keep Godot state isolated and writable on the disposable GitHub runner.
           DATA_DIR="$RUNNER_TEMP/reina-rts-xdg-data"
           CONFIG_DIR="$RUNNER_TEMP/reina-rts-xdg-config"
           CACHE_DIR="$RUNNER_TEMP/reina-rts-xdg-cache"
@@ -444,27 +503,41 @@ jobs:
           if grep -Ei 'SCRIPT ERROR|Parse Error|ERROR:' build/menu-smoke.log build/landing-smoke.log build/world-smoke.log; then
             exit 1
           fi
-      - name: Create RTS-only debug signing key if missing
+      - name: Prepare Android debug signing key
         shell: bash
+        env:
+          NEKO_ANDROID_DEBUG_KEYSTORE_BASE64: ${{ secrets.NEKO_ANDROID_DEBUG_KEYSTORE_BASE64 }}
+          NEKO_ANDROID_DEBUG_KEYSTORE_PASSWORD: ${{ secrets.NEKO_ANDROID_DEBUG_KEYSTORE_PASSWORD }}
+          NEKO_ANDROID_DEBUG_KEY_ALIAS: ${{ secrets.NEKO_ANDROID_DEBUG_KEY_ALIAS }}
         run: |
           set -Eeuo pipefail
           umask 077
-          mkdir -p "$HOME/.android"
-          KEY="$HOME/.android/reina-rts-debug.keystore"
-          if [ ! -s "$KEY" ]; then
-            keytool -genkeypair -keystore "$KEY" -storepass android -keypass android \
-              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 \
-              -dname 'CN=REINA RTS DEBUG, OU=CI, O=DEAD SIGNAL, C=AT' -noprompt
+          KEY="$RUNNER_TEMP/neko-dead-signal-debug.keystore"
+          PASS="${NEKO_ANDROID_DEBUG_KEYSTORE_PASSWORD:-android}"
+          ALIAS="${NEKO_ANDROID_DEBUG_KEY_ALIAS:-androiddebugkey}"
+          if [[ -n "${NEKO_ANDROID_DEBUG_KEYSTORE_BASE64:-}" ]]; then
+            printf '%s' "$NEKO_ANDROID_DEBUG_KEYSTORE_BASE64" | base64 -d > "$KEY"
+            echo "Using stable debug keystore from GitHub Secrets."
+          else
+            keytool -genkeypair -keystore "$KEY" -storepass "$PASS" -keypass "$PASS" \
+              -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 3650 \
+              -dname 'CN=NEKO DEAD SIGNAL DEBUG, OU=CI, O=DEAD SIGNAL, C=AT' -noprompt
+            echo "::warning::NEKO Android debug keystore secret is not configured; this APK uses an ephemeral signing key."
           fi
           chmod 600 "$KEY"
+          keytool -list -keystore "$KEY" -storepass "$PASS" -alias "$ALIAS" >/dev/null
+          {
+            echo "NEKO_DEBUG_KEYSTORE_PATH=$KEY"
+            echo "NEKO_DEBUG_KEYSTORE_ALIAS=$ALIAS"
+            echo "NEKO_DEBUG_KEYSTORE_PASSWORD=$PASS"
+          } >> "$GITHUB_ENV"
       - name: Export Android ARM64 APK
         shell: bash
-        env:
-          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
-          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           set -Eeuo pipefail
-          export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$HOME/.android/reina-rts-debug.keystore"
+          export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$NEKO_DEBUG_KEYSTORE_PATH"
+          export GODOT_ANDROID_KEYSTORE_DEBUG_USER="$NEKO_DEBUG_KEYSTORE_ALIAS"
+          export GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD="$NEKO_DEBUG_KEYSTORE_PASSWORD"
           mkdir -p client/build
           godot --headless --path client --export-debug Android build/NEKO_DEAD_SIGNAL-debug.apk 2>&1 | tee build/godot-export.log
           test -s client/build/NEKO_DEAD_SIGNAL-debug.apk
