@@ -9,7 +9,7 @@ const MODELS := [
     ["res://assets/characters/amina/preview.glb",
      "res://assets/characters/reina/preview.glb",
      "res://assets/characters/mira_kade/preview.glb",
-     "res://assets/characters/lyra_voss/rigged.glb"],
+     LYRA_MOTION.MODEL_PATH],
     ["", ""]
 ]
 var preview: SubViewport
@@ -93,6 +93,8 @@ func set_commander(faction: int, officer: int) -> bool:
             if not LYRA_MOTION.attach_weapon(active_model):
                 push_warning("LYRA_MENU_RIFLE_MISSING")
             else:
+                if not LYRA_MOTION.restore_ready(player):
+                    push_warning("LYRA_MENU_READY_POSE_FAILED")
                 var equipped_bounds: Dictionary = MODEL_FIT.measure_bounds(active_model)
                 if bool(equipped_bounds.get("ok", false)):
                     model_bounds = equipped_bounds["bounds"]
