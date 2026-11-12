@@ -47,15 +47,13 @@ class RepositoryContract(unittest.TestCase):
         operation = (ROOT / 'client/scripts/operation.gd').read_text()
         dialogs = (ROOT / 'client/scripts/rts_diagnostics_ui.gd').read_text()
         server = (ROOT / 'server/control_api.py').read_text()
-        deploy = (ROOT / 'ops/vienna/deploy-one-shot-termux.sh').read_text()
-        runner = (ROOT / 'ops/vienna/install-runner.sh').read_text()
         for source in (menu, operation, dialogs):
             self.assertIn('NEKO: DEAD SIGNAL', source)
             self.assertNotIn('REINA: DEAD SIGNAL', source)
         self.assertNotIn('REINA SYSTEMS', menu)
         self.assertIn('"service": "neko-dead-signal"', server)
-        self.assertIn('REPO="Ncorror/neko-dead-signal"', deploy)
-        self.assertIn('https://github.com/Ncorror/neko-dead-signal', runner)
+        self.assertFalse((ROOT / 'ops/vienna/install-runner.sh').exists())
+        self.assertFalse((ROOT / 'ops/vienna/deploy-one-shot-termux.sh').exists())
 
     def test_relative_markdown_links_exist(self):
         # Optional proof for a partial local checkout; normal CI checks real files.
