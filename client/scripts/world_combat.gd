@@ -4,6 +4,8 @@ extends RefCounted
 const MAX_HP := 100.0
 const DAMAGE := 12.0
 const SHOT_INTERVAL := 0.9
+const LYRA_AIM_SECONDS := 1.2
+const LYRA_SHOT_INTERVAL := 2.8
 const RANGE := 7.0
 const GRENADE_RANGE := 8.0
 const DASH_DISTANCE := 3.5
@@ -23,6 +25,8 @@ var cooldowns: Array = [0.0, 0.0, 0.0, 0.0, 0.0]
 var launcher := 0.0
 var protocol := 0.0
 var weapon := 0.0
+var sniper_aim := 0.0
+var sniper_aim_target := -1
 var quiet := 0.0
 var attack_target := -1
 var last_attacker := -1
@@ -52,7 +56,7 @@ static func valid_profile(value: Variant) -> bool:
         return false
     for key in ["hp", "launcher", "protocol", "weapon"]:
         var number: Variant = value.get(key)
-        var upper: float = {"hp": MAX_HP, "launcher": 1.2, "protocol": 10.0, "weapon": SHOT_INTERVAL}[key]
+        var upper: float = {"hp": MAX_HP, "launcher": 1.2, "protocol": 10.0, "weapon": maxf(SHOT_INTERVAL, LYRA_SHOT_INTERVAL)}[key]
         if not (number is int or number is float) or not is_finite(float(number)) or number < 0 or number > upper + 0.001:
             return false
     for i in range(5):
@@ -71,6 +75,8 @@ func configure(nav, saved: Dictionary) -> void:
     weapon = float(saved["weapon"])
     attack_target = -1
     last_attacker = -1
+    sniper_aim = 0.0
+    sniper_aim_target = -1
     quiet = 0
     events.clear()
     enemies.clear()
@@ -119,6 +125,9 @@ func in_safe(point: Vector3) -> bool:
 func select_target(id: int) -> bool:
     if not enabled or hp <= 0 or not alive(id) or enemies[id]["returning"]:
         return false
+    if attack_target != id:
+        sniper_aim = 0.0
+        sniper_aim_target = id
     attack_target = id
     return true
 
@@ -175,7 +184,12 @@ func tick(seconds: float, hero_at: Vector3, hero_can_fire: bool = true, aimed_ta
         for timer in ["shot", "stun", "slow", "weak"]:
             var rate := 0.9 if timer == "shot" and enemy.get("boss", false) and enemy["slow"] > 0 else 1.0
             enemy[timer] = maxf(0, enemy[timer] - delta * rate)
-        if enemy["returning"] or hp <= 0 or in_safe(hero_at) or hero_at.distance_to(enemy["home"]) > 12.0:
+        # Lyra's approved base range is 16. The old 12-unit leash caused a
+        # valid long-range hit to be healed back to max HP on the next tick.
+        # Keep the legacy leash for other profiles, but give the sniper enough
+        # room to use the range the UI and combat contract advertise.
+        var leash_distance := maxf(12.0, weapon_range + 2.0) if profile_id == "lyra_voss" else 12.0
+        if enemy["returning"] or hp <= 0 or in_safe(hero_at) or hero_at.distance_to(enemy["home"]) > leash_distance:
             if enemy["aggro"] or enemy["returning"] or enemy["at"] != enemy["home"]:
                 _retreat(enemy, delta)
             continue
@@ -204,17 +218,37 @@ func tick(seconds: float, hero_at: Vector3, hero_can_fire: bool = true, aimed_ta
     if in_safe(hero_at) and quiet >= 5.0:
         hp = minf(MAX_HP, hp + delta * 8)
     var target := weapon_target()
-    # Incoming hits can change last_attacker during this tick. A facing check
-    # for the previous target must not authorize a shot at the new aggressor.
-    if hero_can_fire and (aimed_target == -2 or target == aimed_target) and alive(target) and not in_safe(hero_at) and not enemies[target]["returning"] and weapon <= 0:
+    var shot_authorized := hero_can_fire and (aimed_target == -2 or target == aimed_target) \
+        and alive(target) and not in_safe(hero_at) and not enemies[target]["returning"]
+    if shot_authorized:
         var enemy: Dictionary = enemies[target]
-        if _can_shoot(hero_at, enemy["at"], weapon_range):
-            _hit(enemy, DAMAGE * (1.12 if protocol > 0 else 1.0), "weapon")
-            weapon = SHOT_INTERVAL
-            quiet = 0
-            events.append({"type": "hero_shot", "enemy": target, "from": hero_at, "to": enemy["at"], "distance": hero_at.distance_to(enemy["at"]), "hp_after": enemy["hp"]})
+        shot_authorized = _can_shoot(hero_at, enemy["at"], weapon_range)
+    if profile_id == "lyra_voss":
+        if not shot_authorized:
+            sniper_aim = 0.0
+            sniper_aim_target = target
+        else:
+            if sniper_aim_target != target:
+                sniper_aim = 0.0
+                sniper_aim_target = target
+            sniper_aim = minf(LYRA_AIM_SECONDS, sniper_aim + delta)
+            if weapon <= 0 and sniper_aim >= LYRA_AIM_SECONDS:
+                var enemy: Dictionary = enemies[target]
+                _hit(enemy, DAMAGE * (1.12 if protocol > 0 else 1.0), "weapon")
+                weapon = LYRA_SHOT_INTERVAL
+                sniper_aim = 0.0
+                quiet = 0
+                events.append({"type": "hero_shot", "enemy": target, "from": hero_at, "to": enemy["at"], "distance": hero_at.distance_to(enemy["at"]), "hp_after": enemy["hp"]})
+    elif shot_authorized and weapon <= 0:
+        var enemy: Dictionary = enemies[target]
+        _hit(enemy, DAMAGE * (1.12 if protocol > 0 else 1.0), "weapon")
+        weapon = SHOT_INTERVAL
+        quiet = 0
+        events.append({"type": "hero_shot", "enemy": target, "from": hero_at, "to": enemy["at"], "distance": hero_at.distance_to(enemy["at"]), "hp_after": enemy["hp"]})
     if not alive(attack_target):
         attack_target = -1
+        sniper_aim = 0.0
+        sniper_aim_target = -1
 
 func _hit(enemy: Dictionary, raw: float, source: String) -> void:
     # Armour weakening affects later hits, never the grenade that first applies it.
@@ -310,6 +344,8 @@ func respawn() -> bool:
     attack_target = -1
     last_attacker = -1
     protocol = 0
+    sniper_aim = 0.0
+    sniper_aim_target = -1
     quiet = 0
     for enemy in enemies:
         if enemy["hp"] > 0:
