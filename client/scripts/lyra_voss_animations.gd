@@ -110,8 +110,17 @@ static func ready_weapon(source: Node) -> bool:
     var hand_index := bone_index(skeleton, "RightHand")
     if hand_index < 0:
         return false
+    # The source rifle's -X axis is the muzzle direction. Calibrate the
+    # separate weapon in skeleton space while the authored Rifle_Ready pose is
+    # active, then convert that desired transform into RightHand-local space.
+    # This avoids inheriting the hand bone's arbitrary local axes (the previous
+    # identity transform made the rifle point sideways/down in game).
+    var hand_pose: Transform3D = skeleton.get_bone_global_pose(hand_index)
+    var rifle_forward_basis := Basis.from_euler(Vector3(0.0, deg_to_rad(90.0), 0.0))
+    var desired_origin := hand_pose.origin + Vector3(0.0, 0.025, 0.26)
+    var desired := Transform3D(rifle_forward_basis, desired_origin)
     mount.bone_name = skeleton.get_bone_name(hand_index)
-    carrier.transform = Transform3D(Basis.IDENTITY, Vector3(0.34, -0.015, 0.015))
+    carrier.transform = hand_pose.affine_inverse() * desired
     carrier.scale = Vector3.ONE * 0.50
     return true
 
