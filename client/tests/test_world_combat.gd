@@ -36,20 +36,30 @@ func _ready() -> void:
         model.tick(1.0 / 60, at + Vector3(frame * 0.002, 0, 0))
     _check(model.enemies[0]["hp"] < hp, "response fire stopped while the hero moved")
 
-    # Lyra is a planted sniper: movement blocks the shot entirely.
+    # Lyra is a planted sniper: movement resets aim; first shot needs 1.2 s.
     model = _fresh()
     model.set_profile("lyra_voss")
     model.enemies[1]["hp"] = 0
     model.enemies[2]["hp"] = 0
     model.select_target(0)
     hp = model.enemies[0]["hp"]
-    model.tick(1.0 / 60, at, false)
-    _check(model.enemies[0]["hp"] == hp, "Lyra fired while movement gate was closed")
-    model.tick(1.0 / 60, at, true)
-    _check(model.enemies[0]["hp"] < hp, "Stationary Lyra failed to fire inside sniper range")
+    model.tick(1.0 / 60, at, false, 0)
+    _check(model.enemies[0]["hp"] == hp and is_zero_approx(model.sniper_aim),
+        "Lyra fired or kept aim while movement gate was closed")
+    for frame in range(68):
+        model.tick(1.0 / 60, at, true, 0)
+    _check(model.enemies[0]["hp"] == hp, "Lyra fired before the 1.2 s aim window")
+    for frame in range(6):
+        model.tick(1.0 / 60, at, true, 0)
+    _check(model.enemies[0]["hp"] < hp, "Stationary Lyra failed to fire after sniper aim")
     var shot_events := model.take_events().filter(func(e): return e["type"] == "hero_shot")
     _check(shot_events.size() == 1 and float(shot_events[0]["distance"]) <= 16.0 and float(shot_events[0]["hp_after"]) < hp,
         "Lyra shot event is not tied to a real in-range damage result")
+    var first_hit_hp: float = model.enemies[0]["hp"]
+    for frame in range(120):
+        model.tick(1.0 / 60, at, true, 0)
+    _check(is_equal_approx(model.enemies[0]["hp"], first_hit_hp),
+        "Lyra repeated a sniper shot too quickly")
 
     # Retaliation can change targets during enemy simulation, after the view
     # checked facing. Do not reuse that authorization for a different enemy.
@@ -64,6 +74,25 @@ func _ready() -> void:
     _check(model.last_attacker == 1 and is_zero_approx(model.weapon)
         and not model.take_events().any(func(e): return e["type"] == "hero_shot"),
         "Facing authorization leaked to a new aggressor in the same tick")
+
+    # Regression: a valid sniper hit near the 16-unit limit must not be
+    # erased by the legacy 12-unit enemy leash on the following tick.
+    model = _fresh()
+    model.set_profile("lyra_voss")
+    model.enemies[1]["hp"] = 0
+    model.enemies[2]["hp"] = 0
+    model.enemies[0]["at"] = at + Vector3(0, 0, -15.0)
+    model.enemies[0]["home"] = model.enemies[0]["at"]
+    model.select_target(0)
+    var long_hp: float = model.enemies[0]["hp"]
+    for frame in range(74):
+        model.tick(1.0 / 60, at, true, 0)
+    _check(model.enemies[0]["hp"] < long_hp, "Lyra failed to damage a clear target at 15 units")
+    var long_hit_hp: float = model.enemies[0]["hp"]
+    for frame in range(12):
+        model.tick(1.0 / 60, at, true, 0)
+    _check(model.enemies[0]["hp"] <= long_hit_hp and not model.enemies[0]["returning"],
+        "Long-range Lyra damage was healed by the old enemy leash")
 
     model = _fresh()
     model.set_profile("lyra_voss")
@@ -167,5 +196,5 @@ func _ready() -> void:
     invalid["defeated"] = [0, 0]
     _check(not COMBAT.valid_profile(invalid), "duplicate defeated IDs were accepted")
     if failures == 0:
-        print("WORLD_COMBAT_TEST_PASS auto_reply=moving lyra=planted,range16 los=ok skills=5 passive=1 damage=PvE launcher=shared dash=blocked leash=safe death=ok fps=30,60,120")
+        print("WORLD_COMBAT_TEST_PASS auto_reply=moving lyra=aim1.2,interval2.8,range16,long_hit_persists los=ok skills=5 passive=1 damage=PvE launcher=shared dash=blocked leash=safe death=ok fps=30,60,120")
     get_tree().quit(0 if failures == 0 else 1)
