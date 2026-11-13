@@ -112,7 +112,7 @@ func refresh() -> void:
     cancel_button.visible = aim_skill >= 0
     respawn_button.visible = model.hp <= 0 and death_ready
     if hint.text.is_empty():
-        hint.text = "Коснись врага — подойти и открыть снайперский огонь. Навыки Лиры подключим отдельным набором." if is_lyra else "Коснись врага — подойти и атаковать. Граната / рывок — навык, затем цель."
+        hint.text = "Коснись врага — занять позицию и прицелиться ~1,2 с. Дальность 16 · следующий выстрел через ~2,8 с." if is_lyra else "Коснись врага — подойти и атаковать. Граната / рывок — навык, затем цель."
     for i in range(model.enemies.size()):
         var enemy: Dictionary = model.enemies[i]
         actors[i].visible = model.enabled and enemy["hp"] > 0
