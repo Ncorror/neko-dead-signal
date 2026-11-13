@@ -340,8 +340,10 @@ func _check_combat_facing(zone) -> void:
     view.update_hero_facing()
     _check(absf(angle_difference(zone.heading, PI / 2)) < 0.001, "Target switch kept stale heading")
     zone.hero.rotation.y = zone.heading
-    view.tick(0.01)
-    _check(model.enemies[1]["hp"] < 65.0 and model.enemies[0]["hp"] == 65.0, "Turn completion damaged stale target")
+    for frame in range(74):
+        view.tick(1.0 / 60.0)
+    _check(model.enemies[1]["hp"] < 65.0 and model.enemies[0]["hp"] == 65.0,
+        "Aimed turn completion failed to damage the new target or damaged the stale target")
     zone.route.append(zone.hero.position + Vector3(0, 0, 2))
     zone.heading = 0.0
     model.weapon = 0.0
