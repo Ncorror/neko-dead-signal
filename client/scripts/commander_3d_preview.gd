@@ -3,7 +3,7 @@ extends SubViewportContainer
 ## Static GLB can be previewed without a rig. Animation is optional.
 const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
 const LYRA_MOTION := preload("res://scripts/lyra_voss_animations.gd")
-const MENU_PREVIEW_HEIGHT := 2.75
+const MENU_PREVIEW_HEIGHT := 2.20
 const MENU_FRONT_YAW_DEGREES := 0.0
 const MODELS := [
     ["res://assets/characters/amina/preview.glb",
@@ -125,7 +125,7 @@ func _frame_model() -> void:
     var radius_x := maxf(absf(model_bounds.position.x), absf(model_bounds.end.x))
     var radius_z := maxf(absf(model_bounds.position.z), absf(model_bounds.end.z))
     var diameter := 2.0 * Vector2(radius_x, radius_z).length()
-    camera.size = maxf(model_bounds.size.y, diameter / aspect) * 1.14
+    camera.size = maxf(model_bounds.size.y, diameter / aspect) * 1.38
     var center_y := model_bounds.get_center().y
     camera.position = Vector3(0.0, center_y, maxf(diameter, model_bounds.size.y) + 2.0)
     camera.look_at(Vector3(0.0, center_y, 0.0), Vector3.UP)
