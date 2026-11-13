@@ -218,7 +218,7 @@ func tick(seconds: float, hero_at: Vector3, hero_can_fire: bool = true, aimed_ta
     if in_safe(hero_at) and quiet >= 5.0:
         hp = minf(MAX_HP, hp + delta * 8)
     var target := weapon_target()
-    var shot_authorized := hero_can_fire and (aimed_target == -2 or target == aimed_target) \
+    var shot_authorized: bool = hero_can_fire and (aimed_target == -2 or target == aimed_target) \
         and alive(target) and not in_safe(hero_at) and not enemies[target]["returning"]
     if shot_authorized:
         var enemy: Dictionary = enemies[target]
