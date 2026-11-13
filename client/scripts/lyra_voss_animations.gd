@@ -1,8 +1,8 @@
 extends RefCounted
-## Imported clips are candidates, not approved rifle animations.
-## Neutral stance is a temporary walking sample, not an authored idle.
+## Runtime preview keeps the verified source library and adds authored rifle candidates.
+## Rifle Ready/Aim/Fire still require physical Android visual acceptance.
 const FIT := preload("res://scripts/rts_character_fit.gd")
-const MODEL_PATH := "res://assets/characters/lyra_voss/rigged.glb"
+const MODEL_PATH := "res://assets/characters/lyra_voss/rigged_rifle_preview.glb"
 const WEAPON_PATH := "res://assets/characters/lyra_voss/sniper_rifle.glb"
 const FIRE_ANGLE_TOLERANCE := deg_to_rad(8.0)
 const CLIP_NAMES = [
@@ -15,6 +15,7 @@ const CLIP_NAMES = [
     "Standing_Reload", "Sword_Parry_Backward_3",
     "air_squat", "falling_down", "walking_2"
 ]
+const RIFLE_CLIP_NAMES = ["Rifle_Ready", "Rifle_Aim", "Rifle_Fire"]
 
 
 const UPPER_BONES = ["LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand", "RightShoulder", "RightArm", "RightForeArm", "RightHand"]
@@ -109,8 +110,17 @@ static func ready_weapon(source: Node) -> bool:
     var hand_index := bone_index(skeleton, "RightHand")
     if hand_index < 0:
         return false
+    # The source rifle's -X axis is the muzzle direction. Calibrate the
+    # separate weapon in skeleton space while the authored Rifle_Ready pose is
+    # active, then convert that desired transform into RightHand-local space.
+    # This avoids inheriting the hand bone's arbitrary local axes (the previous
+    # identity transform made the rifle point sideways/down in game).
+    var hand_pose: Transform3D = skeleton.get_bone_global_pose(hand_index)
+    var rifle_forward_basis := Basis.from_euler(Vector3(0.0, deg_to_rad(90.0), 0.0))
+    var desired_origin := hand_pose.origin + Vector3(0.0, 0.025, 0.26)
+    var desired := Transform3D(rifle_forward_basis, desired_origin)
     mount.bone_name = skeleton.get_bone_name(hand_index)
-    carrier.transform = Transform3D(Basis.IDENTITY, Vector3(0.34, -0.015, 0.015))
+    carrier.transform = hand_pose.affine_inverse() * desired
     carrier.scale = Vector3.ONE * 0.50
     return true
 
@@ -181,6 +191,9 @@ static func mount(parent: Node3D, height: float) -> Dictionary:
     if not attach_weapon(rig):
         rig.queue_free()
         return {"ok": false, "reason": "missing or unattachable sniper rifle"}
+    if has_authored_rifle(player) and not ready_weapon(rig):
+        rig.queue_free()
+        return {"ok": false, "reason": "cannot mount rifle for authored ready pose"}
     return {"ok": true, "rig": rig, "player": player, "fit": fitted}
 
 static func find_player(root: Node) -> AnimationPlayer:
@@ -207,6 +220,25 @@ static func loaded_count(player: AnimationPlayer) -> int:
             result += 1
     return result
 
+
+static func has_authored_rifle(player: AnimationPlayer) -> bool:
+    if player == null:
+        return false
+    for clip in RIFLE_CLIP_NAMES:
+        if resolve_clip(player, clip).is_empty():
+            return false
+    return true
+
+
+static func review_clips(player: AnimationPlayer) -> Array[String]:
+    var result: Array[String] = []
+    for clip in CLIP_NAMES:
+        result.append(str(clip))
+    for clip in RIFLE_CLIP_NAMES:
+        if not resolve_clip(player, str(clip)).is_empty():
+            result.append(str(clip))
+    return result
+
 static func root_motion_offset(player: AnimationPlayer) -> Vector3:
     # Imported combat clips animate Mixamo Hips translation. RTS movement is
     # driven by navigation; the animation lab cancels horizontal root travel.
@@ -220,17 +252,28 @@ static func root_motion_offset(player: AnimationPlayer) -> Vector3:
 
 
 static func hold_ready_pose(player: AnimationPlayer) -> bool:
-    # Bind/rest is an A-pose. Walking at 0.017 s has naturally lowered arms.
-    # Keep that upper-body silhouette, then reset hips and both leg chains to
-    # rest so the character stands evenly instead of freezing mid-stride.
     var skeleton: Skeleton3D = find_skeleton(player)
     if skeleton == null:
         return false
+    var authored := resolve_clip(player, "Rifle_Ready")
+    if not authored.is_empty():
+        player.stop()
+        skeleton.reset_bone_poses()
+        var authored_animation := _local_animation(player, authored)
+        if authored_animation == null:
+            return false
+        authored_animation.loop_mode = Animation.LOOP_LINEAR
+        player.play(authored)
+        player.seek(authored_animation.length * 0.5, true)
+        player.pause()
+        skeleton.force_update_all_bone_transforms()
+        player.set_meta("neko_lyra_motion", "idle")
+        return true
+    # Fallback for the pinned source GLB: Walking at 0.017 s lowers the arms.
+    # Reset hips and both leg chains so the character does not freeze mid-stride.
     var name := resolve_clip(player, "Walking")
     if name.is_empty():
         return false
-    # Clear rotations on bones not keyed by the next clip (including fingers).
-    # Otherwise stopping a death/reload can retain part of that pose.
     player.stop()
     skeleton.reset_bone_poses()
     player.play(name)
@@ -252,9 +295,10 @@ static func hold_ready_pose(player: AnimationPlayer) -> bool:
 static func restore_ready(player: AnimationPlayer) -> bool:
     if player == null:
         return false
+    var authored := has_authored_rifle(player)
     if not hold_ready_pose(player):
         return false
-    return stow_weapon(player)
+    return ready_weapon(player) if authored else stow_weapon(player)
 
 
 static func play_attack(player: AnimationPlayer) -> float:
@@ -326,9 +370,11 @@ static func play_preview(player: AnimationPlayer, clip: String) -> bool:
     var name := resolve_clip(player, clip)
     if name.is_empty():
         return false
+    if clip in RIFLE_CLIP_NAMES and not ready_weapon(player):
+        return false
     var animation := _local_animation(player, name)
     if animation != null:
-        animation.loop_mode = Animation.LOOP_LINEAR if clip in ["Walking", "Running"] else Animation.LOOP_NONE
+        animation.loop_mode = Animation.LOOP_LINEAR if clip in ["Walking", "Running", "Rifle_Ready", "Rifle_Aim"] else Animation.LOOP_NONE
     player.set_meta("neko_lyra_motion", "preview")
     player.play(name, 0.1)
     return true

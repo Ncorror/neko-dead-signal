@@ -35,6 +35,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: neko-dead-signal-android-${{ github.ref }}
@@ -159,6 +160,41 @@ jobs:
           "$RUNNER_TEMP/lyra-venv/bin/python" scripts/install_lyra_voss.py
           "$RUNNER_TEMP/lyra-venv/bin/python" scripts/install_lyra_voss_weapon.py
           python3 tools/avatar/validate_game_glb.py client/assets/characters/lyra_voss/rigged.glb --min-clips 20
+      - name: Install validated Lyra Rifle preview candidate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LYRA_PREVIEW_ARTIFACT_ID: '13995082948'
+          LYRA_PREVIEW_SHA256: e033de189a6e0bbe068af5d35389876e1a52453ebfed56768ccdd9406ef89832
+        run: |
+          set -Eeuo pipefail
+          ZIP="$RUNNER_TEMP/lyra-rifle-preview.zip"
+          TARGET="client/assets/characters/lyra_voss/rigged_rifle_preview.glb"
+          mkdir -p "$(dirname "$TARGET")"
+          curl -fL --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts/$LYRA_PREVIEW_ARTIFACT_ID/zip" \
+            -o "$ZIP"
+          unzip -p "$ZIP" 'rifle-draft/lyra_rifle_runtime_preview.glb' > "$TARGET"
+          echo "$LYRA_PREVIEW_SHA256  $TARGET" | sha256sum -c -
+          python3 tools/avatar/validate_game_glb.py "$TARGET" --min-clips 23
+          python3 - "$TARGET" <<'PY'
+          import json, struct, sys
+          from pathlib import Path
+          path = Path(sys.argv[1])
+          with path.open("rb") as f:
+              f.read(12)
+              n, kind = struct.unpack("<I4s", f.read(8))
+              assert kind == b"JSON"
+              doc = json.loads(f.read(n))
+          clips = {a.get("name", "") for a in doc.get("animations", [])}
+          required = {"Rifle_Ready", "Rifle_Aim", "Rifle_Fire"}
+          assert required <= clips, sorted(required - clips)
+          assert len(clips) == 23, len(clips)
+          assert len(doc["skins"]) == 1 and len(doc["skins"][0]["joints"]) == 66
+          print("LYRA_RIFLE_PREVIEW_ASSET_PASS clips=23 bones=66")
+          PY
       - name: Import and validate RTS project
         shell: bash
         run: |

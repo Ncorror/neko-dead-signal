@@ -3,13 +3,13 @@ extends SubViewportContainer
 ## Static GLB can be previewed without a rig. Animation is optional.
 const MODEL_FIT := preload("res://scripts/rts_character_fit.gd")
 const LYRA_MOTION := preload("res://scripts/lyra_voss_animations.gd")
-const MENU_PREVIEW_HEIGHT := 2.75
+const MENU_PREVIEW_HEIGHT := 2.20
 const MENU_FRONT_YAW_DEGREES := 0.0
 const MODELS := [
     ["res://assets/characters/amina/preview.glb",
      "res://assets/characters/reina/preview.glb",
      "res://assets/characters/mira_kade/preview.glb",
-     "res://assets/characters/lyra_voss/rigged.glb"],
+     LYRA_MOTION.MODEL_PATH],
     ["", ""]
 ]
 var preview: SubViewport
@@ -93,6 +93,8 @@ func set_commander(faction: int, officer: int) -> bool:
             if not LYRA_MOTION.attach_weapon(active_model):
                 push_warning("LYRA_MENU_RIFLE_MISSING")
             else:
+                if not LYRA_MOTION.restore_ready(player):
+                    push_warning("LYRA_MENU_READY_POSE_FAILED")
                 var equipped_bounds: Dictionary = MODEL_FIT.measure_bounds(active_model)
                 if bool(equipped_bounds.get("ok", false)):
                     model_bounds = equipped_bounds["bounds"]
@@ -123,7 +125,7 @@ func _frame_model() -> void:
     var radius_x := maxf(absf(model_bounds.position.x), absf(model_bounds.end.x))
     var radius_z := maxf(absf(model_bounds.position.z), absf(model_bounds.end.z))
     var diameter := 2.0 * Vector2(radius_x, radius_z).length()
-    camera.size = maxf(model_bounds.size.y, diameter / aspect) * 1.14
+    camera.size = maxf(model_bounds.size.y, diameter / aspect) * 1.38
     var center_y := model_bounds.get_center().y
     camera.position = Vector3(0.0, center_y, maxf(diameter, model_bounds.size.y) + 2.0)
     camera.look_at(Vector3(0.0, center_y, 0.0), Vector3.UP)

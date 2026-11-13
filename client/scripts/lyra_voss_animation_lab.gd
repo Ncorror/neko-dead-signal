@@ -102,14 +102,15 @@ func _load() -> void:
     if player == null:
         status.text = "AnimationPlayer не найден."
         return
-    for clip in LYRA.CLIP_NAMES:
+    var clips := LYRA.review_clips(player)
+    for clip in clips:
         var b := _button(str(clip).replace("_", " "), 42)
         b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         b.disabled = LYRA.resolve_clip(player, str(clip)).is_empty()
         b.pressed.connect(_play.bind(str(clip)))
         entries.add_child(b)
     preview_origin = model_view.active_model.position
-    status.text = "Загружено %d / 20 анимаций" % LYRA.loaded_count(player)
+    status.text = "Загружено %d анимаций · исходных %d / 20" % [clips.size(), LYRA.loaded_count(player)]
     _hold()
 
 func _hold() -> void:
@@ -118,13 +119,13 @@ func _hold() -> void:
     if player != null and LYRA.restore_ready(player):
         selected_clip = ""
         paused = true
-        weapon_in_hand = false
-        weapon_button.text = "ОРУЖИЕ: СПИНА"
+        weapon_in_hand = LYRA.has_authored_rifle(player)
+        weapon_button.text = "ОРУЖИЕ: КИСТЬ" if weapon_in_hand else "ОРУЖИЕ: СПИНА"
         timeline.editable = false
         timeline.set_value_no_signal(0)
         time_label.text = "—"
         pause_button.text = "ПУСК"
-        status.text = "Временная стойка из Walking; ноги сброшены в rest. Не авторский idle."
+        status.text = "Авторская Rifle_Ready · preview, требуется проверка на Android." if weapon_in_hand else "Временная стойка из Walking; ноги сброшены в rest. Не авторский idle."
 
 func _play(clip: String) -> void:
     if model_view != null and model_view.active_model != null:

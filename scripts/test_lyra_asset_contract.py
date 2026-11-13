@@ -21,7 +21,10 @@ class LyraAssetTests(unittest.TestCase):
         self.assertNotIn('"Idle",', s)
         menu = (ROOT / "client/scripts/commander_3d_preview.gd").read_text()
         self.assertIn("amina/preview.glb", menu)
-        self.assertIn("lyra_voss/rigged.glb", menu)
+        self.assertIn("LYRA_MOTION.MODEL_PATH", menu)
+        self.assertIn('rigged_rifle_preview.glb', s)
+        for clip in ("Rifle_Ready", "Rifle_Aim", "Rifle_Fire"):
+            self.assertIn('"' + clip + '"', s)
 
     def test_lyra_rifle_source(self):
         path = ROOT / "scripts/install_lyra_voss_weapon.py"
@@ -38,3 +41,5 @@ class LyraAssetTests(unittest.TestCase):
             "Lyra standing pose must explicitly reset lower-body bone poses",
         )
         self.assertIn('player.seek(0.017, true)', controller)
+        self.assertIn('Rifle_Ready', controller)
+        self.assertIn('Rifle_Fire', controller)

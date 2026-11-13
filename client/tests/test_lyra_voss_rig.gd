@@ -32,6 +32,9 @@ func _run() -> void:
     _check(p != null, "No imported AnimationPlayer")
     if p != null:
         _check(LYRA.loaded_count(p) == 20, "Expected exactly 20 original clips")
+        _check(LYRA.has_authored_rifle(p), "Authored Rifle Ready/Aim/Fire preview clips missing")
+        for rifle_clip in LYRA.RIFLE_CLIP_NAMES:
+            _check(not LYRA.resolve_clip(p, str(rifle_clip)).is_empty(), "Missing authored clip: " + str(rifle_clip))
         _check(LYRA.resolve_clip(p, "Idle").is_empty(), "Idle was not exported")
         var skeleton: Skeleton3D = LYRA.find_skeleton(p)
         _check(skeleton != null, "Missing Lyra Skeleton3D")
@@ -51,16 +54,14 @@ func _run() -> void:
         var rifle_mount := model.find_child("LyraRifleBackMount", true, false) as BoneAttachment3D
         _check(rifle_node != null and rifle_mount != null, "Rifle visual or mount node missing")
         if rifle_node != null:
-            var rifle_at: Vector3 = model.to_local(rifle_node.global_position)
-            _check(absf(rifle_at.x) < 0.30 and rifle_at.y > 0.55 and rifle_at.y < 1.40 and rifle_at.z < -0.02 and rifle_at.z > -0.20,
-                "Rifle is not close to Lyra back: " + str(rifle_at))
+            _check(rifle_node.visible, "Rifle preview visual is hidden")
         if rifle_mount != null:
-            _check(str(rifle_mount.bone_name).to_lower().ends_with("spine2"), "Rifle did not start stowed on Spine2")
+            _check(str(rifle_mount.bone_name).to_lower().ends_with("righthand"), "Authored ready pose did not start with rifle in right hand")
             var attack_time := LYRA.play_attack(p)
-            _check(is_zero_approx(attack_time) and str(rifle_mount.bone_name).to_lower().ends_with("spine2")
-                and str(p.get_meta("neko_lyra_motion", "")) == "idle", "Missing rifle clip must not play archery or move weapon")
-            _check(LYRA.restore_ready(p) and str(rifle_mount.bone_name).to_lower().ends_with("spine2"),
-                "Attack did not restore rifle to Lyra back")
+            _check(attack_time > 0.1 and str(rifle_mount.bone_name).to_lower().ends_with("righthand")
+                and str(p.get_meta("neko_lyra_motion", "")) == "attack", "Authored Rifle_Fire did not start")
+            _check(LYRA.restore_ready(p) and str(rifle_mount.bone_name).to_lower().ends_with("righthand"),
+                "Attack did not restore authored Rifle_Ready")
             var death_time := LYRA.play_death(p)
             _check(death_time >= 0.8 and str(p.get_meta("neko_lyra_motion", "")) == "death", "Death animation was not started")
             _check(is_equal_approx(death_time, p.get_animation(p.current_animation).length), "Death was truncated")
@@ -114,7 +115,7 @@ func _run() -> void:
     for i in range(10):
         await tree.process_frame
     var lab = tree.current_scene
-    _check(lab.player != null and lab.entries.get_child_count() == 20, "Lab not ready")
+    _check(lab.player != null and lab.entries.get_child_count() == 23, "Lab did not expose 20 source + 3 authored rifle clips")
     if lab.player != null:
         lab._play("Standing_Reload")
         _check(lab.status.text.contains("Standing_Reload"), "Play clip failed")
@@ -137,9 +138,15 @@ func _run() -> void:
         _check(not lab.player.is_playing() and lab.pause_button.text == "ПУСК", "Lab transport did not detect clip completion")
         lab._step(-1)
         _check(lab.player.current_animation_position < lab.player.current_animation_length, "Lab could not inspect completed clip")
-        lab._toggle_weapon()
         var lab_mount := lab.model_view.active_model.find_child("LyraRifleBackMount", true, false) as BoneAttachment3D
-        _check(str(lab_mount.bone_name).to_lower().ends_with("righthand"), "Lab weapon inspection toggle failed")
+        _check(str(lab_mount.bone_name).to_lower().ends_with("righthand") and lab.weapon_in_hand,
+            "Lab did not start in authored Rifle_Ready")
+        lab._toggle_weapon()
+        _check(str(lab_mount.bone_name).to_lower().ends_with("spine2") and not lab.weapon_in_hand,
+            "Lab could not stow authored preview rifle")
+        lab._toggle_weapon()
+        _check(str(lab_mount.bone_name).to_lower().ends_with("righthand") and lab.weapon_in_hand,
+            "Lab could not restore authored preview rifle")
         lab._play("Roll_Dodge_1")
         lab.player.seek(0.5, true)
         var root_offset: Vector3 = LYRA.root_motion_offset(lab.player)
@@ -148,8 +155,8 @@ func _run() -> void:
             _check(lab.model_view.active_model.position.distance_to(lab.preview_origin) > 0.001,
                 "Animation lab did not cancel horizontal root travel")
         lab._hold()
-        _check(str(lab_mount.bone_name).to_lower().ends_with("spine2") and not lab.timeline.editable,
-            "Lab stance failed to reset weapon and transport")
+        _check(str(lab_mount.bone_name).to_lower().ends_with("righthand") and lab.weapon_in_hand and not lab.timeline.editable,
+            "Lab stance failed to restore authored Rifle_Ready and transport")
         _check(lab.model_view.active_model.position.distance_to(lab.preview_origin) < 0.001,
             "Animation lab failed to recenter neutral stance")
         for resolution in [Vector2i(1024, 600), Vector2i(2048, 945)]:
@@ -299,7 +306,7 @@ func _run() -> void:
     GameState.world_progress_path = original_world
     GameState.surface_progress_path = original_surface
     if failures == 0:
-        print("LYRA_RIG_TEST_PASS clips=20 rifle_fire=missing death=full_length movement=walk,run menu=ok lab=ok battlefield=ok surface128=ok world=ok")
+        print("LYRA_RIG_TEST_PASS clips=23 rifle_fire=authored ready=authored death=full_length movement=walk,run menu=ok lab=ok battlefield=ok surface128=ok world=ok")
     tree.quit(0 if failures == 0 else 1)
 
 func _check_combat_facing(zone) -> void:
@@ -333,8 +340,10 @@ func _check_combat_facing(zone) -> void:
     view.update_hero_facing()
     _check(absf(angle_difference(zone.heading, PI / 2)) < 0.001, "Target switch kept stale heading")
     zone.hero.rotation.y = zone.heading
-    view.tick(0.01)
-    _check(model.enemies[1]["hp"] < 65.0 and model.enemies[0]["hp"] == 65.0, "Turn completion damaged stale target")
+    for frame in range(74):
+        view.tick(1.0 / 60.0)
+    _check(model.enemies[1]["hp"] < 65.0 and model.enemies[0]["hp"] == 65.0,
+        "Aimed turn completion failed to damage the new target or damaged the stale target")
     zone.route.append(zone.hero.position + Vector3(0, 0, 2))
     zone.heading = 0.0
     model.weapon = 0.0
